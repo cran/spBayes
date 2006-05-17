@@ -1,0 +1,9 @@
+useDynLib(spBayes)
+
+export(prior)
+export(ggt)
+export(ggt.sp)
+export(sp.predict)
+export(sp.effect)
+export(sp.DIC)
+#export(r.DIC.sp)
