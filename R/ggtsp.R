@@ -1,7 +1,6 @@
-"ggt.sp" <- function(formula, data = parent.frame(), coords, run.control,
-                     beta.control, cov.model, var.update.control,
-                     DIC=TRUE, DIC.start = 1, verbose=TRUE, ...){
-
+ggt.sp <- function(formula, data = parent.frame(), coords, run.control, var.update.control, beta.update.control,
+                   cov.model, verbose=TRUE, ...){
+  
   ####################################################
   ##Check for unused args
   ####################################################
@@ -12,197 +11,114 @@
       warning("'",i, "' is not an argument")
   }
 
-  
   ####################################################
-  ##verbose
-  ####################################################
-  if(!is.logical(verbose)){stop("error: verbose must be of type logical")}
-  
-  ##start report
-  if(verbose){
-    cat("\n------------------------------------------------------------------------\n")
-    cat("\t\t\tModel specifications")
-    cat("\n------------------------------------------------------------------------\n")
-  }
-
-  ####################################################
-  ##run
+  ##run control
   ####################################################
   if(missing(run.control)){stop("error: run.control must be specified")}
-  if(!is.list(run.control)){stop("error: run.control must be a list")}
-  if(!"n.samples"%in%names(run.control)){stop("error: n.samples must be specified in run.control list")}
-  n.samples <- run.control$n.samples
-  if(!is.numeric(n.samples) || n.samples <= 0){stop("error: n.samples must be numeric and greater than zero")}
-
-  ##make the run list
-  run <- list("n.samples" = as.integer(n.samples))
-
-  ####################################################
-  ##DIC
-  ####################################################
-  if(!is.logical(DIC)){stop("error: DIC must be of type logical")}
-  if(DIC){
-    if(!is.numeric(DIC.start)){stop("error: DIC.start must be of type logical")}
-    if(DIC.start < 1 || DIC.start >= as.integer(n.samples))
-      {stop("error: DIC.start is not reasonable, DIC.start should be > 1 and < n.samples")}
-    
-    DIC.start <- as.integer(DIC.start)
-  }else{
-    DIC.start <- NULL
-  }
   
+  if(!"n.samples"%in%names(run.control))
+    {stop("error: 'n.samples' must be specified in run.control")}
+  
+  n.samples <- as.integer(run.control$n.samples)
+ 
+  if(n.samples <= 0)
+    stop("error: 'n.samples' must be > 0")
+
+  if(!"linpack"%in%names(run.control))##make default TRUE
+    linpack <- as.integer(TRUE)
+  else
+    linpack <- as.integer(run.control$linpack)
+
+  if(!"sp.effects"%in%names(run.control))
+    sp.effects <- as.integer(FALSE)
+  else
+    sp.effects <- as.integer(run.control$sp.effects)
+
+  ######################
+  ##DIC in run control
+  ######################
+  if(!"DIC"%in%names(run.control))
+    DIC <- as.integer(FALSE)
+  else
+    DIC <- as.integer(run.control$DIC)
+
+  ##just ignore on c++ side if DIC == FALSE
+  if(!"DIC.start"%in%names(run.control))
+    DIC.start <- 1
+  else
+    DIC.start <- run.control$DIC.start
+  
+  if(DIC.start <= 0 || DIC.start > n.samples)
+    stop("error: 'DIC.start' must be > 0 and <= n.samples")
+
+  ##change to c++ index
+  DIC.start <- DIC.start-1
+  
+  DIC.start <- as.integer(DIC.start)
+  
+    
   ####################################################
   ##covariance model
   ####################################################
   if(missing(cov.model)){stop("error: cov.model must be specified")}
   if(!cov.model%in%c("gaussian","exponential","matern","spherical"))
     {stop("error: specified cov.model '",cov.model,"' is not a valid option; choose, from gaussian, exponential, matern, spherical.")}
-
-  ####################################################
-  ##Beta
-  ####################################################
-  if(missing(formula)){stop("error: model formula must be a specified\n")}
-   
-  ##form response and model matrices
-  holder <- parse.formula(formula, data)
-  Y <- holder[[1]]
-  X <- holder[[2]]
-  xnames <- holder[[3]]
   
-  ##get the beta.control stuff
-  if(missing(beta.control)){stop("error: beta.control must be specified\n")}
-  if(!is.list(beta.control)){stop("error: beta.control must be list\n")}
-
-  ##get the method for updating the beta
-  if(!"beta.update.method"%in%names(beta.control)){
-    if(verbose)
-      cat("note: 'beta.update.method' is missing, updates will be made with Gibbs\n\n")
-    update.beta.method <- "GIBBS"
-  }else if(beta.control$beta.update.method%in%c("mh","MH","metrop","Metrop")){
-    update.beta.method <- "MH"
-  }else if(beta.control$beta.update.method%in%c("gibbs","Gibbs","GIBBS")){
-    update.beta.method <- "GIBBS"
-  }else{
-    stop("error: beta.update.method in the beta.control list is not specified correctly, it should be set to 'gibbs' or 'metorp'\n")
-  }
-
-  ##get the tuning matrix if metrop is the update method
-  if(update.beta.method == "MH"){
-    ##get the Cholesky factored tuning matrix
-    if(!"tuning.matrix"%in%names(beta.control)){
-      if(verbose)
-        cat("note: Beta tuning matrix 'tuning.matrix' is missing, will use the default tuning matrix chol(vcov(lm(Y~X)))\n\n")
-      if(ncol(X) == 1){
-        tuning.matrix <- t(chol(vcov(lm(Y ~ 1)))) ##recall I want the lower
-      }else{
-        tuning.matrix <- t(chol(vcov(lm(Y ~ X)))) ##recall I want the lower
-      }
-    }else{
-      if(is.matrix(beta.control$tuning.matrix)){
-        tuning.matrix <- beta.control$tuning.matrix ##just a temp for the next test
-        
-        if(dim(tuning.matrix)[1] == dim(tuning.matrix)[2] && dim(tuning.matrix)[1] == ncol(X)){
-          ##recall I want the lower, assume they give the upper with chol()
-          tuning.matrix <- t(beta.control$tuning.matrix)
-        }else{
-          stop("error: beta tuning matrix is not square or does not have the same dimension as the number of beta in the model formula\n")
-        }
-      }else{
-        stop("error: beta tuning matrix is not a matrix\n")
-      }     
-    }
-  }else{
-    ##just set the tuning matrix to NULL so I don't have to send two different beta lists to ggt
-    tuning.matrix <- NULL
-  }
-
-  ##get the starting values
-  if(!"beta.starting"%in%names(beta.control)){
-    beta.starting <- rep(0.0,ncol(X))
-    if(verbose)
-      cat("note: Beta staring values 'beta.starting' is missing, will using default starting values of 0 for each beta\n\n")
-  }else{
-    beta.starting <- as.double(beta.control$beta.starting)
-    if(length(beta.starting) != ncol(X)){
-      stop(paste("error: number of beta starting values (", length(beta.starting),") is different than the number of specified covariates (",ncol(X),")\n",sep=""))
-    }
-  }
-
-  ##get prior if needed
-  if("beta.prior"%in%names(beta.control)){
-    if(class(beta.control$beta.prior) == "ggt.prior" && beta.control$beta.prior$dist %in% c("NORMAL")){
-      beta.prior <- "NORMAL"
-      beta.prior.mu <- as.matrix(beta.control$beta.prior$params$mu)
-      beta.prior.precision <- as.matrix(beta.control$beta.prior$params$precision)
-      
-      ##check the hyperparameters
-      if(nrow(beta.prior.precision) != ncol(beta.prior.precision))
-        stop("error: precision matrix for the beta's normal prior is not square\n")
-      
-      if(nrow(beta.prior.mu) != ncol(beta.prior.precision))
-        stop("error: for the specified normal prior on the beta parameters, the number of rows in the mu matrix does not equal the number of rows in the square precision matrix\n")
-      
-      if((ncol(beta.prior.mu) != 1) || (nrow(beta.prior.mu) != ncol(X)))
-        stop("error: mu matrix for the beta's normal prior should be 1 x p, where p is the number of beta parameters")
-            
-    }else{
-      stop("error: the prior on the beta parameters is not specified correctly or is not an valid prior distribution\n")
-    }
-  }else{ ##assume flat
-    beta.prior <- "FLAT"
-    beta.prior.mu <- NULL
-    beta.prior.precision <- NULL
-  }
-
-
-  ##get sample.order
-  if("sample.order"%in%names(beta.control)){
-    if(update.beta.method == "GIBBS"){
-      if(verbose)
-        cat("note: 'sample.order' is specified in the 'beta.control' list; however, sample order only applies when 'beta.update.method' is Metropolis-Hastings (MH)\n")
-    }
+  ####################################################
+  ##formula
+  ####################################################
+  if(missing(formula)){stop("error: formula must be specified")}
+  
+  if(class(formula) == "formula"){
     
-    beta.sample.order <- beta.control$sample.order
+    holder <- parse.formula(formula, data)
+    Y <- holder[[1]]
+    X <- holder[[2]]
+    x.names <- holder[[3]]
+    m <- 1
+    
+  }else if(class(formula) == "list"){
+    
+    mv.mats <- mk.mats(formula, data)
+    Y <- mv.mats[[1]]
+    X <- mv.mats[[2]]
+    x.names <- mv.mats[[3]]
+    m <- length(formula)
+    
   }else{
-    if(update.beta.method == "MH"){
-      if(verbose)
-        cat("note: 'beta.update.method' is Metropolis-Hastings (MH), but no 'sample.order' is specified in the 'beta.control' list; therefore, relative sample order is set to 0\n")
-
-      beta.sample.order <- 0
-    }else{##else update.beta.method == "GIBBS"
-      beta.sample.order <- NULL
-    }
-      
+    stop("error: formula is misspecified")
   }
-
   
-  ##make the beta list
-  beta <- list("Y"=Y, "X"=as.matrix(as.data.frame(X)),
-               "fixed.effects.starting"=beta.starting,
-               "update.theta.method"=update.beta.method, "tuning.matrix"=tuning.matrix, "prior"=beta.prior,
-               "prior.mu"=beta.prior.mu, "prior.precision"=beta.prior.precision, "sample.order"=beta.sample.order)
- 
+  ##make sure storage mode is correct
+  storage.mode(Y) <- "double"
+  storage.mode(X) <- "double"
+  storage.mode(m) <- "integer"
+  n.beta <- ncol(X)
+
   ####################################################
-  ##coordinate matrix
+  ##Distance matrix
   ####################################################
   if(missing(coords)){stop("error: coords must be specified")}
   if(!is.matrix(coords)){stop("error: coords must n-by-2 matrix of xy-coordinate locations")}
-  if(ncol(coords) != 2 || nrow(coords) != nrow(Y)){
+  if(ncol(coords) != 2 || nrow(coords) != nrow(Y)/m){
     stop("error: either the coords have more than two columns or then number of rows is different than data used in the model formula")
   }
   
+  D <- as.matrix(dist(coords))
+  storage.mode(D) <- "double"
+  
   ####################################################
-  ##variance
+  ##variance parameter
   ####################################################
   if(missing(var.update.control)){stop("error: var.update.control must be specified")}
   if(!is.list(var.update.control)){stop("error: var.update.control must be list")}
 
   ##check for the parameters required for the specified cov.model
-  ##sigma^2, phi, nu
+  ##K, phi, nu
   var.params <- names(var.update.control)
   
-  if(!"sigmasq"%in%var.params)
-    stop("error: sigmasq must be included in the var.update.control list.")
+  if(!"K"%in%var.params)
+    stop("error: K must be included in the var.update.control list.")
 
   if(!"phi"%in%var.params)
     stop("error: phi must be included in the var.update.control list.")
@@ -212,175 +128,663 @@
 
   if("nu"%in%var.params && cov.model!="matern")
     stop("error: the selected cov.model '",cov.model,"' does not use the nu parameter, remove nu from the var.update.control list.")
-
-  no.tausq <- FALSE
-  if(!"tausq"%in%var.params)
-    no.tausq <- TRUE
-
-  ##
-  ##check for fixed parameters and add to fixed.var.params list
-  ##
-
-  ##make sure they didn't put 'fixed' as a value not a tag
-  for(i in 1:length(var.update.control)){
-    tmp <- var.update.control[[i]]
-    for(j in 1:length(tmp)){
-      if(tmp[j]=="fixed"){
-        stop("error: a fixed parameter in the var.update.control list must have 'fixed' as a list tag and associated value (e.g., phi = list(fixed=0.1))\n")
-      }
-    }
-  }
   
-  ##
-  ##add parameters to their respective lists fixed.var.parmas and var.update.params
-  ##
-  fixed.var.params <- list()
+  no.Psi <- FALSE
+  if(!"Psi"%in%var.params)
+    no.Psi <- TRUE
 
-  ##get just the fixed parameters
-  for(i in 1:length(var.update.control)){
-    if("fixed"%in%names(var.update.control[[i]])){
-      fixed.var.params <- c(fixed.var.params, var.update.control[i])
-    }
-  }
-  
-  ##get just the free parameters
-  tmp <- list()
-  for(i in 1:length(var.update.control)){
-    if(!"fixed"%in%names(var.update.control[[i]])){
-      tmp <- c(tmp, var.update.control[i])
-    }
-  }
-  var.update.control <- tmp
-  
-  ##make sure there is at least one free parameter
-  if(length(var.update.control) == 0)
-    stop("error: at least one parameter in the var.update.control list must be free (i.e., not fixed)\n")
-
-  ##check if all the update information is in the parameters' list
-  ##get the MH sampling order
-  cnt <- 0
-  for(i in 1:length(var.update.control)){
-    if("sample.order"%in%names(var.update.control[[i]])){
-      cnt <- cnt+1
-    }
-  }
-  
-  if(cnt != length(var.update.control)){
-      if(verbose){
-        cat("note: 'sample.order' is not specified for the parameters in the var.update.control list, or not specified for all parameters; therefore, single block updating will be used in the Metropolis-Hastings\n\n")
-      }
-      for(i in 1:length(var.update.control)){
-        var.update.control[[i]]$sample.order <- 0
-      }
-  }
-
-  ##check for starting values
-  for(i in 1:length(var.update.control)){
-    if(!"starting"%in%names(var.update.control[[i]])){
-      stop("error: 'starting' value is not specified for at least one of the non-fixed parameters defined in the var.update.control list\n")
-    }
-  }
-
-  ##check for tuning values
-  for(i in 1:length(var.update.control)){
-    if(!"tuning"%in%names(var.update.control[[i]])){
-      stop("error: 'tuning' value is not specified for at least one of the non-fixed parameters defined in the var.update.control list\n")
-    }
-    
-    if(var.update.control[[i]]$tuning <= 0){
-      stop("error: at least one of the tuning values associated with a non-fixed parameter in the var.update.control list is <=0, tuning must be > 0\n")
-    }
-  }
-
-  ##check for prior
-  for(i in 1:length(var.update.control)){
-    if(!"prior"%in%names(var.update.control[[i]])){
-      stop("error: 'prior' is not specified for at least one of the non-fixed parameters defined in the var.update.control list\n")
-    }
-    
-    if(class(var.update.control[[i]]$prior) != "ggt.prior" || !var.update.control[[i]]$prior$dist %in% c("IG", "UNIF", "LOGUNIF", "HC")){
-      stop(" error: one of the 'priors' associated with a non-fixed parameter in the var.update.control is not specified correctly or is not an valid prior distribution for this parameter\n")
-    }
-  }
-
-  ##
-  ##make the random list
-  ##
-  var <- list("var.update.control" = var.update.control,
-              "fixed.var.params" = fixed.var.params,
-              "no.tausq" = as.integer(no.tausq), "env"=.GlobalEnv)
-  
   ####################################################
-  ##report
+  ##Parameter prep for matrix, vector, or scaler 
   ####################################################
-  if(verbose){
-    cat("---------------------------------------------------------\n")
-    ##show the covariates
-    cat("Number of observations: ",nrow(X),"\n\n")
-    print.model.matrix(X)
-    cat("Beta will be updated using: ")
+  mkPar <- function(param.name, K.list, m){
 
-    update.beta.method
-    if(update.beta.method=="MH"){
-      cat("Metropolis-Hastings\n\n")
+    ##determine the case
+    ##case 1: if m == 1 or if m > 1 and single non-fixed prior is given
+    ##case 2: if m > 1 and prior is a list of length m
+    ##case 3: if m > 1 and prior is WISH
+    
+    ##prior
+    if(!"prior"%in%names(K.list))
+      stop("error: 'prior' value is not specified for the ",param.name," parameter in the var.update.control list\n")
+    
+    if(class(K.list$prior) == "list"){
+      if(m == 1)
+        stop("error: misspecification for ",param.name," parameter in the var.update.control list, a only a single response model is specified but 'prior' is a list\n")
+
+      if(length(K.list$prior) != m)
+         stop("error: misspecification for ",param.name," parameter in the var.update.control list, 'prior' must be a list of length ",m,"\n")
+
+      ##check each prior in the list
+      for(i in K.list$prior){
+        if(class(i) != "prior" || !i$dist %in% c("IG", "LOGUNIF", "HC", "FIXED"))
+          stop("error: 'prior' value is misspecified for the ",param.name," parameter in the var.update.control list. It seems you are trying to specify independent priors for each element on the diag(",param.name,"); however, one or more of these priors is misspecified, they must IG, LOGUNIF, HC, or FIXED\n")
+      }
+      K.list$case <- 2
+    }else if(class(K.list$prior) == "prior"){
+      if(m == 1){
+        if(K.list$prior$dist %in% c("IG", "LOGUNIF", "HC", "FIXED")){
+          K.list$case <- 1
+        }else{
+          stop("error: 'prior' value is misspecifed for the ",param.name," parameter in the var.update.control list.  For the univariate response model the prior must be IG, LOGUNIF, HC, or FIXED\n")
+        }
+      }else if(m > 1){
+
+        ##two options based on the starting value, if dist is IWISH then starting must be a mxm matrix
+        ##if dist is in "IG", "LOGUNIF", "HC" then starting must be a scaler
+        ##now if dist is FIXED then the starting data type determines which case we have
+        ##if dist is FIXED and starting is matrix then assumed fixed matrix
+        ##if dist is Fixed and starting is scaler then assumed single parame for all diag elements
+
+        ##first check for starting in list.
+        if(!"starting"%in%names(K.list))
+          stop("error: 'starting' value is not specified for the ",param.name," parameter is not in the var.update.control list\n")
+              
+        if(K.list$prior$dist == "IWISH"){
+          K.list$case <- 3
+        }else if(K.list$prior$dist%in%c("IG", "LOGUNIF", "HC")){
+          K.list$case <- 1
+        }else if(K.list$prior$dist == "FIXED"){
+          if(is.matrix(K.list$starting)){
+            if(dim(K.list$starting)[1] != dim(K.list$starting)[2] || dim(K.list$starting)[1] != m)
+              stop("error: 'starting' value must be a ",m,"x",m," matrix as ",param.name,"'s 'prior' is FIXED and 'starting' is a matrix")
+            K.list$case <- 3
+            
+          }else if(is.numeric(K.list$starting) || length(K.list$starting) == 1){
+            K.list$case <- 1
+          }else{
+            stop("error: 'prior' value is misspecified for the ",param.name," parameter in the var.update.control list, with a multivariate response and FIXED 'prior' the 'starting' must be either a mxm matrix or scaler depending on which specification you want\n")
+          }
+        }
+      }else{
+        stop("error: 'prior' value is misspecifed for the ",param.name," parameter in the var.update.control list.\n")
+      }
     }else{
-      cat("Gibbs\n\n")
+      stop("error: 'prior' value is misspecified for the ",param.name," parameter in the var.update.control list.\n")
     }
-    cat("Beta prior is: ", beta.prior,"\n\n")
 
-    cat("Beta starting values (same order as formula covariates):\n")
-    for(i in beta.starting)
-      cat("\t",i)
-    cat("\n\n")
-
-    if(update.beta.method=="MH")
-      cat("Beta sample order (relative): ", beta.sample.order,"\n\n")
-        
-    cat("Covariance model: ",cov.model,"\n\n")
     
-    cat("Covariance model parameters to be estimated:\n")
-      for(i in 1:length(var.update.control)){
-        cat("\t",names(var.update.control[i]),":\n")
-        
-        cat("\t\tsample order (relative):\t\t",var.update.control[[i]]$sample.order,"\n")
-        cat("\t\tstarting value:\t\t\t\t",var.update.control[[i]]$starting,"\n")
-        cat("\t\tMetropolis-Hastings tuning value:\t",var.update.control[[i]]$tuning,"\n")
-        cat("\t\tprior:\t\t\t\t\t",var.update.control[[i]]$prior[["dist"]],"\n")
-      }
+    ##make list for K and assign case
+    K <- list()
+    K$case <- as.integer(K.list$case)
     
-    if(length(fixed.var.params)){
-      cat("\nCovariance model fixed parameters and values:\n\t")
-      for(i in 1:length(fixed.var.params)){
-        cat(names(fixed.var.params[i]),"=",fixed.var.params[[i]]$fixed," ")
+    ##cases
+    if(K$case == 1){
+      
+      ##prior
+      K$prior <- K.list$prior
+      
+      ##starting
+      if(!"starting"%in%names(K.list))
+        stop("error: 'starting' value is not specified for the ",param.name," parameter is not in the var.update.control list\n")
+      
+      if(length(K.list$starting) != 1)
+        stop("error: 'starting' value is the wrong length for diag(",param.name,"), because this is a multiple response model and you specified a single prior it seems you want all diagonal elements of ",param.name," to share a common parameter therefore only specify one 'starting' value")
+      
+      K$starting <- K.list$starting
+      
+      ##tuning
+      if(K$prior$dist != "FIXED"){ ##disregard if fixed
+        if(!"tuning"%in%names(K.list))
+          stop("error: 'tuning' value is not specified for the ",param.name," parameter in the var.update.control list\n")
+        
+        if(length(K.list$tuning) != 1)
+                  stop("error: 'tuning' value is the wrong length for diag(",param.name,"), because this is a multiple response model and you specified a single prior it seems you want all diagonal elements of ",param.name," to share a common parameter therefore only specify one 'tuning' value")
+        
+        K$tuning <- K.list$tuning
+        
+        ##sample order
+        if(!"sample.order"%in%names(K.list)){
+          if(verbose){
+            cat("note: 'sample.order' is not specified for the ",param.name," parameter in the var.update.control list; therefore, it is set to zero\n\n")
+          }
+          K$sample.order <- 0
+        }else if(length(K.list$sample.order) != 1){
+          stop("error: 'sample.order' should be of length 1 or m")
+        }else{
+          
+          if(any(K.list$sample.order < 0))
+            stop("error: for the ",param.name," parameter in the var.update.control list 'sample.order' must be >= 0\n")
+          
+          K$sample.order <- K.list$sample.order
+        }
+      }else{##fixed
+        K$tuning <- -1
+        K$sample.order <- -1
       }
-    }
+            
+      ##make sure storage mode is correct
+      storage.mode(K$starting) <- "double"
+      storage.mode(K$tuning) <- "double"
+      storage.mode(K$sample.order) <- "integer"
+      
+    }else if(K$case == 2){
+      
+      ##prior
+      K$prior <- K.list$prior
+      
+      ##starting
+      if(!"starting"%in%names(K.list))
+        stop("error: 'starting' value is not specified for the ",param.name," parameter is not in the var.update.control list\n")
+      
+      if(length(K.list$starting) == 1){
+        ##expand to m
+        K.list$starting <- rep(K.list$starting, m)
+      }else if(length(K.list$starting) != m){
+        stop("error: 'starting' value is the wrong length for diag(",param.name,")")
+      }    
+      
+      K$starting <- K.list$starting
+      
+      ##tuning
+      if(!"tuning"%in%names(K.list))
+        stop("error: 'tuning' value is not specified for the ",param.name," parameter in the var.update.control list\n")
+      
+      if(length(K.list$tuning) == 1){
+        ##expand to m
+        K.list$tuning <- rep(K.list$tuning, m)
+      }else if(length(K.list$tuning) != m){
+        stop("error: 'tuning' value is the wrong length for diag(",param.name,")")
+      }    
+      
+      K$tuning <- K.list$tuning
+      
+      ##sample order
+      if(!"sample.order"%in%names(K.list)){
+        if(verbose){
+          cat("note: 'sample.order' is not specified for the ",param.name," parameter in the var.update.control list; therefore, it is set to zero\n\n")
+        }
+        K$sample.order <- rep(0, m)
+      }else if(length(K.list$sample.order) == 1){
+        if(any(K.list$sample.order < 0))
+          stop("error: for the ",param.name," parameter in the var.update.control list 'sample.order' must be >= 0\n")
+        
+        ##expand to m
+        K$sample.order <- rep(K.list$sample.order, m)
+      }else if(length(K.list$sample.order) != m){
+        stop("error: 'sample.order' should be of length 1 or m")
+      }else{
+        if(any(K.list$sample.order < 0))
+          stop("error: for the ",param.name," parameter in the var.update.control list 'sample.order' must be >= 0\n")
+        
+        K$sample.order <- K.list$sample.order
+      }
 
-    if(no.tausq){
-      cat("\n\nNote: tau^2 was not specified as fixed or free so it will not be used in the covariance model\n")
-    }
+      
+      ##make sure storage mode is correct
+      storage.mode(K$starting) <- "double"
+      storage.mode(K$tuning) <- "double"
+      storage.mode(K$sample.order) <- "integer"
+      
+    }else if(K$case == 3){
+      
+      ##must be fixed or IWISH
+      if(K.list$prior$dist=="FIXED"){
+        
+        if(!"starting"%in%names(K.list))
+          stop("error: 'starting' value is not specified for the ",param.name," parameter is not in the var.update.control list\n")
+        
+        if(!is.matrix(K.list$starting))
+          stop("error: 'starting' value must be a mxm matrix as ",param.name,"'s")
+        
+        if(dim(K.list$starting)[1] != dim(K.list$starting)[2] || dim(K.list$starting)[1] != m)
+          stop("error: 'starting' value must be a mxm matrix as ",param.name,"'s")
+        
+        K$starting <- K.list$starting[lower.tri(K.list$starting, diag=TRUE)]
 
+        storage.mode(K$starting) <- "double"
+        K$sample.order <- -1
+        storage.mode(K$sample.order) <- "integer"
+        K$fixed <- as.integer(TRUE)      
+        
+      }else{##IWISH
+        
+        ##prior
+        if(!K.list$prior$dist=="IWISH")
+          stop("error: ",param.name,"'s prior distribution must be IWISH\n")
+        
+        ##check dim of S, already checked for square in prior formation
+        if(dim(K.list$prior$params$S)[1] != m)
+          stop("error: the IWISH prior on ",param.name," has the wrong dimension S hyperparameter")
+        
+        K$prior <- K.list$prior
+        
+        ##starting
+        if(!"starting"%in%names(K.list))
+          stop("error: 'starting' value is not specified for the ",param.name," parameter in the var.update.control list\n")
+        
+        if(!is.matrix(K.list$starting))
+          stop("error: 'starting' value must be a mxm matrix as ",param.name,"'s")
+        
+        if(dim(K.list$starting)[1] != dim(K.list$starting)[2] || dim(K.list$starting)[1] != m)
+          stop("error: 'starting' value must be a mxm matrix as ",param.name,"'s")
+        
+        K$starting <- K.list$starting[lower.tri(K.list$starting, diag=TRUE)] 
+        
+        ##tuning
+        if(!"tuning"%in%names(K.list))
+          stop("error: 'tuning' value is not specified for the ",param.name," parameter in the var.update.control list\n")
+        
+        if(!is.matrix(K.list$tuning))
+          stop("error: 'tuning' value must be a matrix as IWISH was specified for ",param.name,"'s prior")
+        
+        if(dim(K.list$tuning)[1] != dim(K.list$tuning)[2] || dim(K.list$tuning)[1] != (m^2-m)/2+m)
+          stop("error: 'tuning' value must be the upper Cholesky of a matrix with dimension (m^2-m)/2+m as IWISH was specified for ",param.name,"'s prior")
+        
+        K$tuning <- t(K.list$tuning)##I want lower Cholesky
+                
+        ##sample order
+        if(!"sample.order"%in%names(K.list)){
+          if(verbose){
+            cat("note: 'sample.order' is not specified for the ",param.name," parameter in the var.update.control list; therefore, it is set to zero\n\n")
+          }
+          K$sample.order <- 0
+        }else if(length(K.list$sample.order) != 1){
+          stop("error: 'sample.order' should be of length 1")
+        }else{
+          if(K.list$sample.order < 0)
+            stop("error: for the ",param.name," parameter in the var.update.control list 'sample.order' must be >= 0\n")
+         
+          K$sample.order <- K.list$sample.order
+        }
+        
+        ##make sure storage mode is correct
+        storage.mode(K$starting) <- "double"
+        storage.mode(K$tuning) <- "double"
+        storage.mode(K$sample.order) <- "integer"
+        K$fixed <- as.integer(FALSE)
+      }
+      
+    }else{
+      stop("error: invalid case number in ",param.name," parameter var.update.control list\n")
+    }
+    ##return
+    K
+    
+  }## end mkKPsi function
+   
+  ####################################################
+  ##make the variance parameter list
+  ####################################################
+  ##
+  ##mk K
+  ##
+  K <- mkPar("K", var.update.control$K, m)
+  var <- list("K"=K)
+  
+  ##
+  ##mk Psi
+  ##
+  if(!no.Psi){
+    Psi <- mkPar("Psi", var.update.control$Psi, m)
+    var$Psi <- Psi
+  }
+  var$no.Psi <- as.integer(no.Psi)
+  
+  ##
+  ##mk phi
+  ##
+  phi <- list()
+  
+  ##prior
+  if(!"prior"%in%names(var.update.control$phi))
+    stop("error: 'prior' value is not specified for the phi parameter in the var.update.control list\n")
+  
+  if(class(var.update.control$phi$prior) == "prior"){##for m >= 1 with single prior assume separable
+    
+    var.update.control$phi$case <- 1
+    
+  }else if(class(var.update.control$phi$prior) == "list"){
+    
+    if(length(var.update.control$phi$prior) != m)
+      stop("error: it seems you are trying to specify a non-separable model but the number of priors on the phi vector != m\n")      
+    
+    var.update.control$phi$case <- 2
+    
+  }else{
+    stop("error: 'prior' value is misspecified for the phi parameter in the var.update.control list\n")
   }
   
-  ####################################################
-  ##set up args and off it goes
-  ####################################################
-  args <- list("run" = run, "fixed"=beta, "cov.model" =cov.model,
-               "coords"=coords, "var" = var, "DIC"=as.integer(DIC),
-               "DIC.start"=as.integer(DIC.start), "verbose"=as.integer(verbose))
+  phi$case <- var.update.control$phi$case
+  phi$prior <- var.update.control$phi$prior
   
-  out <- .Call("ggtsp", args)
+  ##starting
+  if(!"starting"%in%names(var.update.control$phi))
+    stop("error: 'starting' value is not specified for the phi parameter is not in the var.update.control list\n")
+  
+  if(phi$case == 1){
+    if(length(var.update.control$phi$starting) != 1)
+      stop("error: 'starting' value is the wrong length for phi in the var.update.control list, should be length 1\n")
+    
+  }else{ ##case is 2
+    if(length(var.update.control$phi$starting) == 1)
+      var.update.control$phi$starting <- rep(var.update.control$phi$starting, m)
+    
+    if(length(var.update.control$phi$starting) != m)
+      stop("error: 'starting' value is the wrong length for phi in the var.update.control list, should be length m\n")
+  }
+  
+  phi$starting <- var.update.control$phi$starting
+  
+  ##tuning
+  if(phi$case == 1){
+    if(phi$prior$dist != "FIXED"){
+      
+      if(!"tuning"%in%names(var.update.control$phi))
+        stop("error: 'tuning' value is not specified for the phi parameter is not in the var.update.control list\n")
+      
+      if(length(var.update.control$phi$tuning) != 1)
+        stop("error: 'tuning' value is the wrong length for phi in the var.update.control list, should be length 1\n")
+      
+    }else{## fixed
+      var.update.control$phi$tuning <- -1
+    }
+    
+  }else{ ##case is 2
+    
+    if(!"tuning"%in%names(var.update.control$phi))
+      stop("error: 'tuning' value is not specified for the phi parameter is not in the var.update.control list\n")
+    
+    if(length(var.update.control$phi$tuning) == 1)      ##expand
+      var.update.control$phi$tuning <- rep(var.update.control$phi$tuning, m)
+    
+    if(length(var.update.control$phi$tuning) != m)
+      stop("error: 'tuning' value is the wrong length for phi in the var.update.control list, should be length m\n")
+  }
+  
+  phi$tuning <- var.update.control$phi$tuning
+  
+  ##sample order
+  if(!"sample.order"%in%names(var.update.control$phi)){
+    if(verbose){
+      cat("note: 'sample.order' is not specified for the phi parameter in the var.update.control list; therefore, it is set to zero\n\n")
+    }
+    var.update.control$phi$sample.order <- 0
+  }
+  
+  if(phi$case == 1){
+    if(length(var.update.control$phi$sample.order) != 1)
+      stop("error: 'sample.order' value is the wrong length for phi in the var.update.control list, should be length 1\n")
+    
+  }else{ ##case is 2
+    
+    if(length(var.update.control$phi$sample.order) == 1)      ##expand
+      var.update.control$phi$sample.order <- rep(var.update.control$phi$sample.order, m)
+    
+    if(length(var.update.control$phi$sample.order) != m)
+      stop("error: 'sample.order' value is the wrong length for phi in the var.update.control list, should be length m\n")
+  }
+  
+  phi$sample.order <- var.update.control$phi$sample.order
 
-  out1 <- list()
-  out1$cov.model <- cov.model
-  out1$no.tausq <- as.logical(no.tausq)
-  out1$coords <- coords
-  out1$X <- X
-  out1$Y <- Y
-  out1$p.samples <- cbind(t(out$fixedEffectSamples),out$varParameterSamples)
-  out1$acceptance <- out$acceptance
-  if(DIC)
-    out1$DIC <- out$DIC
-  class(out1) <- c("ggt.sp")
-  out1
+  if(any(phi$sample.order < 0))
+    stop("error: for the phi parameter in the var.update.control list 'sample.order' must be >= 0\n")
+  
+  ##make sure storage mode is correct
+  storage.mode(phi$case) <- "integer"  
+  storage.mode(phi$starting) <- "double"
+  storage.mode(phi$tuning) <- "double"
+  storage.mode(phi$sample.order) <- "integer"
+  
+  var$phi <- phi
+  
+  ##
+  ##mk nu
+  ##
+  if(cov.model=="matern"){
+    nu <- list()
+    
+    if(class(var.update.control$nu$prior) == "prior"){##for m >= 1 with single prior assume separable
+      
+      var.update.control$nu$case <- 1
+      
+    }else if(class(var.update.control$nu$prior) == "list"){
+      
+      if(length(var.update.control$nu$prior) != m)
+        stop("error: it seems you are trying to specify a non-separable model but the number of priors on the nu vector != m\n")      
+      
+      var.update.control$nu$case <- 2
+      
+    }else{
+      stop("error: 'prior' value is misspecified for the nu parameter in the var.update.control list\n")
+    }
+        
+    nu$case <- var.update.control$nu$case
+    if(nu$case != phi$case)
+      stop("error: specifications for nu and phi must match (i.e., they both must either describe a separable or non-separable model)\n")
+
+    
+    nu$prior <- var.update.control$nu$prior
+    
+    ##starting
+    if(!"starting"%in%names(var.update.control$nu))
+      stop("error: 'starting' value is not specified for the nu parameter is not in the var.update.control list\n")
+    
+    if(nu$case == 1){
+      if(length(var.update.control$nu$starting) != 1)
+        stop("error: 'starting' value is the wrong length for nu in the var.update.control list, should be length 1\n")
+      
+    }else{ ##case is 2
+      if(length(var.update.control$nu$starting) == 1)
+        var.update.control$nu$starting <- rep(var.update.control$nu$starting, m)
+      
+      if(length(var.update.control$nu$starting) != m)
+        stop("error: 'starting' value is the wrong length for nu in the var.update.control list, should be length m\n")
+    }
+    
+    nu$starting <- var.update.control$nu$starting
+    
+    ##tuning
+    if(nu$case == 1){
+      if(nu$prior$dist != "FIXED"){
+        
+        if(!"tuning"%in%names(var.update.control$nu))
+          stop("error: 'tuning' value is not specified for the nu parameter is not in the var.update.control list\n")
+        
+        if(length(var.update.control$nu$tuning) != 1)
+          stop("error: 'tuning' value is the wrong length for nu in the var.update.control list, should be length 1\n")
+        
+      }else{## fixed
+        var.update.control$nu$tuning <- -1
+      }
+      
+    }else{ ##case is 2
+      
+      if(!"tuning"%in%names(var.update.control$nu))
+        stop("error: 'tuning' value is not specified for the nu parameter is not in the var.update.control list\n")
+      
+      if(length(var.update.control$nu$tuning) == 1)      ##expand
+        var.update.control$nu$tuning <- rep(var.update.control$nu$tuning, m)
+      
+      if(length(var.update.control$nu$tuning) != m)
+        stop("error: 'tuning' value is the wrong length for nu in the var.update.control list, should be length m\n")
+    }
+    
+    nu$tuning <- var.update.control$nu$tuning
+    
+    ##sample order
+    if(!"sample.order"%in%names(var.update.control$nu)){
+      if(verbose){
+        cat("note: 'sample.order' is not specified for the nu parameter in the var.update.control list; therefore, it is set to zero\n\n")
+      }
+      var.update.control$nu$sample.order <- 0
+    }
+    
+    if(nu$case == 1){
+      if(length(var.update.control$nu$sample.order) != 1)
+        stop("error: 'sample.order' value is the wrong length for nu in the var.update.control list, should be length 1\n")
+      
+    }else{ ##case is 2
+      
+      if(length(var.update.control$nu$sample.order) == 1)      ##expand
+        var.update.control$nu$sample.order <- rep(var.update.control$nu$sample.order, m)
+      
+      if(length(var.update.control$nu$sample.order) != m)
+        stop("error: 'sample.order' value is the wrong length for nu in the var.update.control list, should be length m\n")
+    }
+    
+    nu$sample.order <- var.update.control$nu$sample.order
+    
+    if(any(nu$sample.order < 0))
+      stop("error: for the nu parameter in the var.update.control list 'sample.order' must be >= 0\n")
+    
+    ##make sure storage mode is correct
+    storage.mode(nu$case) <- "integer"  
+    storage.mode(nu$starting) <- "double"
+    storage.mode(nu$tuning) <- "double"
+    storage.mode(nu$sample.order) <- "integer"
+    
+    var$nu <- nu
+    
+  }
+
+  ####################################################
+  ##make the beta parameter list
+  ####################################################
+  
+  if(missing(beta.update.control)){stop("error: beta.update.control must be specified")}
+  if(!is.list(beta.update.control)){stop("error: beta.update.control must be list")}
+
+  ##check
+  beta.list <- beta.update.control##less typing
+  beta.list.names <- names(beta.list)
+  beta <- list()
+
+  ##prior
+  if(!"prior"%in%beta.list.names){
+    if(verbose){
+      cat("note: 'prior' is not specified for the Beta parameters in the beta.update.control list; therefore, is set to flat\n\n")
+    }
+    beta$prior <- prior(dist="FLAT")
+  }else{    
+    if(class(beta.list$prior) != "prior" || !beta.list$prior$dist %in% c("NORMAL", "FLAT"))##someday allow fixed
+      stop("error: for the Beta parameters the prior distribution must be NORMAL or FLAT\n")
+    beta$prior <- beta.list$prior
+  }
+
+  
+  if(beta$prior == "NORMAL" && length(beta$prior$params$mu) != n.beta)
+    stop("error: for the Beta parameters the prior distribution is NORMAL but the hyperparameter dimensions do not equal the number of parameters\n")
+  
+
+  ##update method
+  if(!"update"%in%beta.list.names){
+    if(verbose){
+      cat("note: 'update' method is not specified for the Beta parameters in the beta.update.control list; therefore, Gibbs will be used\n\n")
+    }
+    beta$update <- "GIBBS"
+  }else if(!beta.list$update %in% c("GIBBS", "MH")){
+    stop("error: for the Beta parameters the 'update' method must be GIBBS or MH, in the beta.update.control list\n")
+  }else{
+    beta$update <- beta.list$update
+  }
+
+  ##starting
+  if(!"starting"%in%beta.list.names){
+    if(verbose){
+      cat("note: 'starting' is not specified for the Beta parameters in the beta.update.control list; therefore, starting values will be taken from lm(Y~X)\n\n")
+    }
+    beta$starting <- unname(coefficients(lm(Y ~ X-1)))
+  }else if(length(beta.list$starting) == 1){
+    ##expand to n.beta
+    beta$starting <- rep(beta.list$starting, n.beta)  
+  }else if(length(beta.list$starting) != n.beta){
+    stop("error: 'starting' value is the wrong length for Beta, in the beta.update.control list")
+  }else{
+   beta$starting <- beta.list$starting
+  }
+  
+  ##tuning
+  if(beta$update == "MH"){
+    if(!"tuning"%in%beta.list.names){
+      if(verbose)
+        cat("note: Beta tuning matrix 'tuning' is missing, will use the default tuning matrix chol(vcov(lm(Y~X)))\n\n")
+      
+      beta.list$tuning <- chol(vcov(lm(Y ~ X-1)))
+    }
+
+    ##print(dim(beta.list$tuning))
+
+    if(n.beta > 1 && !is.matrix(beta.list$tuning))
+      stop("error: 'tuning' value must be a matrix when the number of Beta > 1, in the beta.update.control list")
+
+    if(n.beta == 1)
+      beta.list$tuning <- as.matrix(beta.list$tuning[1])
+    
+    if(dim(beta.list$tuning)[1] != dim(beta.list$tuning)[2] || dim(beta.list$tuning)[1] != n.beta)
+      stop("error: 'tuning' value must be the upper Cholesky of a matrix with dimension equal to the number of Beta parameters, in the beta.update.control list")
+    
+    beta$tuning <- t(beta.list$tuning)##I want lower Cholesky
+  }
+  
+  ##sample order
+  if(!"sample.order"%in%beta.list.names){
+    if(verbose){
+      cat("note: 'sample.order' is not specified for the Beta parameter in the beta.update.control list; therefore, it is set to zero\n\n")
+    }
+    beta$sample.order <- 0
+  }else if(length(beta.list$sample.order) != 1){
+    stop("error: 'sample.order' should be of length 1, in the beta.update.control list")
+  }else{
+    beta$sample.order <- beta.list$sample.order
+  }
+
+  if(beta$sample.order < 0)
+    stop("error: for the Beta parameter in the var.update.control list 'sample.order' must be >= 0\n")
+  
+  ##make sure storage mode is correct
+  storage.mode(beta$starting) <- "double"
+  if(beta$update == "MH")
+    storage.mode(beta$tuning) <- "double"
+  storage.mode(beta$sample.order) <- "integer"
+  beta$n.beta <- as.integer(n.beta)
+
+  #####################################################
+  ##off it goes
+  ####################################################
+
+  args <- list("n.samples"=n.samples, "linpack"=linpack, "sp.effects"=sp.effects, "DIC"=DIC, "DIC.start"=DIC.start,
+               "Y"=Y, "X"=X, "m"=m, "D"=D, "var.control"=var, "beta.control"=beta, "cov.model"=cov.model,
+               "verbose"=as.integer(verbose))
+
+  out <- .Call("ggtSp", args)
+  rownames(out$p.samples)[(nrow(out$p.samples)-n.beta+1):nrow(out$p.samples)] <- x.names
+  out$p.samples <- t(out$p.samples)
+  
+  ##if K$case or Psi$case is 3 then the corresponding p.samples are the t(chol(K)) or t(chol(Psi)), respectively.
+  ##So return A%*%t(A) if needed for each.
+  AtA <- function(x, m){
+    A <- matrix(0, m, m)
+    A[lower.tri(A, diag=TRUE)] <- x
+    (A%*%t(A))[lower.tri(A, diag=TRUE)]
+  }
+
+  ##get the names right too (i.e., column major lower triangle)
+  if(K$case == 3){
+    K.names <- paste("K_",1:((m^2-m)/2+m),sep="")
+    colnames(out$p.samples)[colnames(out$p.samples)%in%"K"] <- K.names
+    out$p.samples[,K.names] <- t(apply(out$p.samples[,K.names], 1, AtA, m))
+  }
+  
+  if(!no.Psi){
+    if(Psi$case == 3){
+      Psi.names <- paste("Psi_",1:((m^2-m)/2+m),sep="")
+      colnames(out$p.samples)[colnames(out$p.samples)%in%"Psi"] <- Psi.names
+      out$p.samples[,Psi.names] <- t(apply(out$p.samples[,Psi.names], 1, AtA, m))
+    }
+  }
+
+  out$p.samples <- mcmc(out$p.samples)
+  out$X <- X
+  out$Y <- Y
+  out$m <- m
+  out$K.case <- K$case
+  out$no.Psi <- no.Psi
+  if(!no.Psi)
+    out$Psi.case <- Psi$case
+  out$phi.case <- phi$case
+  out$cov.model <- cov.model
+  out$coords <- coords
+  class(out) <- "ggt.sp"
+  out
 }
-         
+

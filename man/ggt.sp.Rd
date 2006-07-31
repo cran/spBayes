@@ -1,45 +1,80 @@
 \name{ggt.sp}
 \alias{ggt.sp}
-\title{General Gaussian Template for common spatial covariance functions}
+\title{General Gaussian Template for fitting univariate and multivariate
+  Bayesian spatial regression models}
 
 \description{
-  The function \code{ggt.sp} performs Bayesian analysis of
-  Gaussian models with spatially dependent error structure.
+  The function \code{ggt.sp} fits Gaussian univariate and multivariate stationary Bayesian spatial regression models.
 }
 
 \usage{
-ggt.sp(formula, data = parent.frame(), coords, run.control, beta.control, cov.model, var.update.control,
-                     DIC=TRUE, DIC.start = 1, verbose=TRUE, ...)
+ggt.sp(formula, data = parent.frame(), coords, run.control,
+       var.update.control, beta.update.control, cov.model,
+       verbose=TRUE, ...)
 }
 
 \arguments{
-  \item{formula}{a symbolic description of the model to be fit. The
-    details of model specification are given below.  }
+  \item{formula}{for a univariate model, this is a symbolic description of the regression model to be
+    fit. For a multivariate model, this is a list of univariate formulas.
+    See example below. }
   \item{data}{an optional data frame containing the variables in the
     model. If not found in data, the variables are taken from
     \code{environment(formula)}, typically the environment from which \code{ggt.sp} is called.  }
   \item{coords}{an \eqn{n \times 2}{n x 2} matrix of the observation coordinates
     in \eqn{R^2}{R^2} (e.g., easting and northing). }
-  \item{run.control}{a list with tag \code{n.samples} the value of which
-    is the number of MCMC iterations.  }
-  \item{beta.control}{a list with tags
-    \code{beta.update.method}, \code{tuning.matrix},
-    \code{beta.starting}, \code{beta.prior}, and \code{sample.order}. The value of
-    \code{beta.update.method} is either \code{"gibbs"} or
-    \code{"mh"}. With the \code{"mh"} option, the value of the optional tag \code{tuning.matrix} is
+  \item{run.control}{a list with tags: \code{n.samples} the value of which
+    is the number of MCMC iterations; \code{sp.effects} a logical value
+    indicating if spatial random effects should be recovered; \code{DIC}
+    a logical value indicating if marginalized DIC and associated
+    statistics should be computed; \code{DIC.start} and \code{DIC.end}
+    the MCMC iteration interval over which DIC should be calculated; and \code{linpack} a logical value
+    indicating if LINPACK or LAPACK should be used for matrix algebra
+    operations.  The default is to use LINPACK. }
+  \item{var.update.control}{a list with each tag corresponding to a
+    parameter name used to define the variance structure of the
+    model. Valid list tags are \code{K}, \code{Psi}, \code{phi}, and
+    \code{nu}.  The value portion of each of these tags is another list with tags
+    \code{sample.order}, \code{starting}, \code{tuning}, and
+    \code{prior}.  The positive scalar value of the optional tag \code{sample.order}
+    determines the order in which parameters are updated by sequential
+    Metropolis-Hastings steps.  The \code{sample.order} value is
+    relative to the sample order specified for the other
+    parameters. The value of the \code{starting} tag defines the starting value of the parameter in the
+    Metropolis-Hastings sampling.  If the list element defines a vector or matrix
+    of parameters, then the starting value should be set
+    accordingly.  If a scalar starting value is given for a vector or
+    matrix of parameters then the scalar value is recycled.  If the
+    model defines \code{K} or \code{Psi} as a full cross-covariance
+    matrix, opposed to a diagonal matrix or scalar, then the starting value should
+    be the lower-triangle of the Cholesky square root of the desired starting
+    matrix value.  If  \code{K} or \code{Psi} is a diagonal matrix,
+    then the starting values should be passed as a vector or scalar.  The value associated with the
+    \code{tuning} tag defines the step size of the proposal used in the
+    Metropolis-Hastings sampling.  Again the tuning value is recycled if
+    needed.  If the parameter element is a matrix, i.e., \code{K} or \code{Psi}, then
+    the diagonal elements in the tuning matrix correspond to the column
+    major lower-triangle elements in the parameter matrix.  The value of the \code{prior} tag is a
+    valid \code{\link{prior}} object which describes the prior distribution of
+    the parameter.  Any parameter in the specified model can
+    be fixed by using the \code{FIXED} \code{\link{prior}} with the \code{starting} value set to the desired fixed value.  See example below. }
+  \item{beta.update.control}{a list with tags
+    \code{update}, \code{tuning},
+    \code{starting}, \code{prior}, and \code{sample.order}. The value of
+    \code{update} is either \code{"GIBBS"} or
+    \code{"MH"}. With the \code{"MH"} option, the value of the optional tag \code{tuning} is
     the upper-triangle of the Cholesky decomposed \eqn{p \times p}{p x p}
     tuning matrix, where \eqn{p} is the number of regression parameters.  The
     tuning matrix controls the proposal step size in the
     Metropolis-Hastings sampling.  The tuning values along the diagonal of this matrix
     correspond to the order of the regressors in the model
-    formula. Off diagonal elements are the covariance among the terms.  The optional tag \code{beta.starting}
-    receives a real vector of length \eqn{p}, whose elements define the starting values of the regressors used in the MCMC
+    formula. Off-diagonal elements are the covariance among the terms.  The optional tag \code{starting}
+    receives a vector of length \eqn{p}, whose elements define the starting values of the regressors used in the MCMC
     sampling. The order of the starting values in this vector corresponds
     to the order of the regressors in the model formula.  The optional
-    tag \code{beta.prior} is a valid \code{\link{prior}} object that
-    defines a normal distribution.  If \code{beta.prior} is not included
-    in the \code{beta.control} list then the prior distribution on the
-    regressors is assumed flat (i.e., proportional to 1.0).  With the \code{"mh"} option, the value of the optional tag
+    tag \code{prior} is a valid \code{\link{prior}} object that
+    defines either a normal or flat distribution.  If \code{prior} is not included
+    in the \code{beta.update.control} list then the prior distribution on the
+    regressors is assumed flat (i.e., proportional to 1.0).  With the \code{"MH"} option, the value of the optional tag
     \code{sample.order} determines the order in which parameters are updated by sequential
     Metropolis-Hastings steps, see below for details. }
   \item{cov.model}{a quoted key word that specifies the covariance
@@ -47,27 +82,6 @@ ggt.sp(formula, data = parent.frame(), coords, run.control, beta.control, cov.mo
     observations.  Supported covariance model key words are:
     \code{"exponential"}, \code{"matern"}, \code{"spherical"}, and
     \code{"gaussian"}.  See below for details.  }  
-  \item{var.update.control}{a list with each tag corresponding to a
-    parameter's name in the specified \code{cov.model}.  The value
-    portion of each of these tags is another list with tags
-    \code{sample.order}, \code{starting}, \code{tuning}, and
-    \code{prior}.  The value of the optional tag \code{sample.order}
-    determines the order in which parameters are updated by sequential
-    Metropolis-Hastings steps, see below for details.  The \code{sample.order} value is
-    relative to the sample order specified for the other
-    parameters in the \code{var.update.control} list. The value of the optional tag
-    \code{starting} defines the starting value of the parameter in the
-    Metropolis-Hastings sampling.  The value associated with the
-    \code{tuning} tag defines the step size of the proposal used in the
-    Metropolis-Hastings sampling.  The value of the \code{prior} tag is a
-    valid \code{\link{prior}} object which describes the prior distribution of
-    the parameter.  Any parameter in the specified
-    \code{cov.model} can be fixed by using the tag \code{fixed}
-    with a value equal to the desired fixed value.  See example below. }
-  \item{DIC}{if \code{TRUE}, DIC and associated statistics will be
-    calculated to assess model fit. }
-  \item{DIC.start}{the sampler iteration to start the DIC calculation.
-    This is useful for those who choose to acknowledge chain burn-in.  }
   \item{verbose}{if \code{TRUE}, model specification and progress of the
     sampler is printed to the screen. Otherwise, nothing is printed to
     the screen.  }
@@ -77,128 +91,47 @@ ggt.sp(formula, data = parent.frame(), coords, run.control, beta.control, cov.mo
 \value{
   An object of class \code{ggt.sp}, which is a list with the following tags:
   \item{cov.model}{the covariance model specified by \code{cov.model}. }
-  \item{no.tausq}{a logical value indicating if the parameter
-    \eqn{\tau^2}{tau^2} was used.  }
+  \item{no.Psi}{a logical value indicating if the parameter
+    \code{Psi} was used.  }
   \item{coords}{the \eqn{n \times 2}{n x 2} matrix specified by
     \code{coords}.  }
   \item{X}{the \eqn{n \times p}{n x p} matrix of regressors specified by \code{formula}. }
   \item(Y){the the \eqn{n \times 1}{n x 1} response variable vector specified
     by \code{formula}. }
-  \item{p.samples}{a matrix of posterior sample for the regressors and
-    parameters used in the specified \code{cov.model}.  }
+  \item{p.samples}{a matrix of posterior samples for the defined
+    parameters.  If \code{K} or \code{Psi} is specified as a full
+    cross-covariance matrix then the corresponding samples in
+    \code{p.samples} are column major lower-triangle elements of the
+    matrix. }
   \item{acceptance}{a matrix of the Metropolis-Hastings sampling
-    acceptance rate.  Row names correspond to the parameters used in the
-    \code{var.function} and if the \code{beta.update.method} is set
-    to \code{"mh"} the acceptance rate for Metropolis-Hastings block
-    proposal of the regressors is included.  }
-  \item{DIC}{a matrix that holds \eqn{DIC} and associated values \eqn{\bar{D}}{bar(D)},
-    \eqn{D[\bar{\theta}]}{D[bar(theta)]}, and \eqn{pD} (Banerjee et al. 2004
-    and Spiegelhalter et al. 2002). }
+    acceptance rate.  Row names correspond to the parameters updated with Metropolis-Hastings. }
+  \item{DIC}{a matrix that holds marginalized DIC and associated values
+    is returned if \code{DIC} is true in the \code{run.control} list. }
+  \item{sp.effects}{a matrix that holds samples from the posterior
+    distribution of the response specific spatial random effects. The rows of this matrix
+    correspond to the \eqn{n}{n} point observations and the columns are the
+    posterior samples.  If a multivariate model is fit to \eqn{m}{m}
+    response variables, the \code{sp.effects} matrix has
+    \eqn{mn}{mn} rows. The random effects samples for points are held in rows
+    1:m, (m+1):2m, ..., ((i-1)m+1):im, ..., ((n-1)m+1):nm, where i
+    = 1 ... n (e.g., the samples for the first point are in rows 1:m,
+    second point in rows (m+1):2m, etc.). }
+
+
 }
 
 \details{
-  The Gaussian model assumes that \eqn{y \sim N(X \beta,
-    \Sigma_y)}{y~N(X \beta, \Sigma_y)},
-  where \eqn{y} is the \eqn{n \times 1}{n x 1}
-  response vector, \eqn{X} is the \eqn{n \times p}{n x p}
-  matrix of regressors, and \eqn{\Sigma_y = (\sigma^2
-    R(\phi)+\tau^2 I)}{\Sigma_y=(sigma^2 R(phi)+tau^2 I)}, where \eqn{R} is a
-  valid correlation function specified by \code{cov.model}. Under this
-  marginalized model, we assume \eqn{\Sigma_y
-    \sim MVN(0, \sigma^2 R(\phi)+\tau^2 I)}{\Sigma_y ~ MVN(0,
-    sigma^2 R(phi)+tau^2 I)}.  The unmarginalized model partitions the
-  variance terms into spatial and non-spatial components which follow
-  \eqn{MVN(0, \sigma^2 R(\phi))}{MVN(0, sigma^2 R(phi))} and \eqn{MVN(0, \tau^2
-    I)}{MVN(0, tau^2 I)}, respectively.  Once the marginalized model is fit with \code{ggt.sp} the
-  vector of random spatial effects can be recovered with
-  \code{\link{sp.effect}} function (see Banerjee et al. 2004, Chapter 5 for
-  further details).
-
-  The parameters associated with the \eqn{X} are regressors and defined in the \code{beta.control} list. The \code{cov.model} defines
-  the structure of \eqn{n \times n}{n x n} \eqn{\Sigma_y}.  Covariance models
-  and associated parameters are: 
-  
-  \itemize{
-    \item{Exponential: }{\eqn{\sigma^2 exp(-\phi d)+\tau^2}{sigma^2 exp(-phi d)+tau^2}, for \eqn{d > 0}{d > 0},
-      where \eqn{sigma^2}{sigma^2} is the
-      partial sill, \eqn{\tau^2}{tau^2} is the nugget,
-      \eqn{\phi}{phi} is the decay parameter, and \eqn{d} is the distance
-      between any two sites. }
-    
-    \item{Gaussian: }{\eqn{\sigma^2 exp(-\phi^2 d^2)+\tau^2}{sigma^2 exp(-phi^2 d^2) + tau^2}, for \eqn{d > 0}{d > 0},
-      where \eqn{sigma^2}{sigma^2} is the
-      partial sill, \eqn{\tau^2}{tau^2} is the nugget,
-      \eqn{\phi}{phi} is the decay parameter, and \eqn{d} is the distance
-      between any two sites. }
-    
-    \item{Spherical: }{\eqn{\sigma^2 (1 - 3/2 \phi d + 1/2(\phi
-	d)^3)+\tau^2}{sigma^2(1 - 3/2 phi d + 1/2(phi d)^3)+tau^2},
-      for \eqn{0 < d <= 1/\phi}{0 < d <= 1/phi}, where \eqn{sigma^2}{sigma^2} is the
-      partial sill, \eqn{\tau^2}{tau^2} is the nugget,
-      \eqn{\phi}{phi} is the decay parameter, and \eqn{d} is the distance
-      between any two sites. }
-    
-    \item{Matern: }{\eqn{\sigma^2/(2^(\nu - 1) \Gamma(\nu)) (2
-	\nu^0.5 d \phi)^\nu K_\nu (2 \nu^0.5 d \phi)}{sigma^2/(2^(nu -
-	1) gamma(nu)) (2 nu^0.5 d phi)^nu K_nu(2 nu^0.5 d phi)}, for \eqn{d > 0}{d > 0}, where \eqn{sigma^2}{sigma^2} is the
-      partial sill, \eqn{\tau^2}{tau^2} is the nugget, \eqn{\phi}{phi}
-      is the decay parameter, \eqn{\nu}{nu} is decay smoothness,
-      \eqn{\Gamma}{gamma} is the gamma function, and \eqn{K_\nu}{K_nu}
-      is the modified Bessel of the second kind. }
-  }
-  
-  For all covariance models the \eqn{\tau^2}{tau^2} parameter is
-  optional. To omit \eqn{\tau^2}{tau^2} from the model, do not include it in the \code{var.update.control}
-  
-  The update method for the regressors is either the
-  Metropolis-Hastings algorithm or Gibbs.  If the Metropolis-Hastings
-  algorithm is chosen, then updates come from a single block draw from a
-  multi-variate normal distribution with step size determined by the
-  tuning matrix.  Otherwise, a Gibbs sampler is used to sample from the conditional
-  posterior distribution of the regressors given the error terms.
-
-  The Metropolis-Hastings algorithm is used to estimate the joint posterior
-  distribution of the model's variance and, if specified, regression parameters.  In the simplest case, for each iteration of the algorithm
-  a single a single vector of candidate values is drawn from a multivariate normal
-  distribution with variance matrix specified by the tuning values
-  in the \code{var.update.control} and \code{beta.control} lists.  This
-  single block draw is specified by setting the \code{sample.order}
-  values equal in the \code{var.update.control} and \code{beta.control}
-  lists.  In so doing, a single acceptance rate is monitored for all
-  parameters. An acceptance rate of about 30 percent is generally
-  recommended (see Gelman et al., 1996). Hand tuning can be tricky, and it is often useful to update parameters independently or
-  in smaller sets (i.e., blocks).  This is accomplished by setting the
-  \code{sample.order} accordingly. For instance, to update variance
-  parameters as a single block separate from the regressors, set
-  the all \code{sample.order} values in the \code{var.update.control}
-  list equal and different than the \code{sample.order} in the
-  \code{beta.control} list.  In this way, two separate acceptance rates
-  are monitored and reported.  The extreme is setting all
-  \code{sample.order} values different, which allows each parameter to
-  be monitored independently. However, the likelihood is evaluated for
-  each each parameter block, this requires an inversion of the
-  covariance matrix, which if \eqn{n} is large could take a significant amount of
-  time.   
+  Please refer to Section 3.1 in the vignette.
 }
 
 \seealso{
-  \code{\link{prior}}, \code{\link{sp.effect}},
-  \code{\link{sp.predict}}, \code{\link{sp.predict}},
-  \code{\link{sp.DIC}}, \code{\link{ggt}}
+  \code{\link{prior}}, \code{\link{sp.predict}}, \code{\link{sp.DIC}}
 }
 
 \references{
   Banerjee, S., Carlin, B.P., and Gelfand, A.E. (2004). Hierarchical modeling and analysis for spatial data. Chapman and Hall/CRC Press, Boca Raton, Fla.
 
-  Gelman, A., Roberts, G.O., and Gilks, W.R. (1996). Efficient Metropolis
-  jumping rules. In Bayesian Statistics 5, eds. J.M. Bernardo,
-  J.O. Berger, A.P. Dawid, and A.F.M. Smith. Oxford: Oxfod University
-  Press, pp. 599-607.
-  
-  Spiegelhalter, D.J., Best, N., Carlin, B.P., and van der Linde, A. (2002). Bayesian measures of model complexity and fit (with discussion). J. Roy. Statist. Soc., Ser. B, 64, 583-639.
-
-  Further information on the package \pkg{spBayes} can be found
-  at: \url{http://blue.fr.umn.edu/spatialBayes}.
+  Further information on the package \pkg{spBayes} can be found at: \url{http://blue.fr.umn.edu/spatialBayes}.
 }
 
 \author{
@@ -208,112 +141,355 @@ ggt.sp(formula, data = parent.frame(), coords, run.control, beta.control, cov.mo
 }
 
 \examples{
-###############################################
-##Subset data
-###############################################
-set.seed(1234)
+\dontrun{
 
-data(BEF)
+data(FBC07)
+Y.1 <- FBC07[1:100,"Y.1"]
+Y.2 <- FBC07[1:100,"Y.2"]
+coords <- as.matrix(FBC07[1:100,c("coord.X", "coord.Y")])
 
-n.subset <- 100
-BEF.subset <- BEF[sample(1:nrow(BEF),n.subset),]
+#############################
+##   Univariate models
+#############################
 
-##############################################
-##General ggt.sp setup and model fit
-##############################################
+##Fit some competing models.
+##Full model with nugget (Psi), partial sill (K),
+##and spatial range (Phi).
+K.prior <- prior(dist="IG", shape=2, scale=5)
+Psi.prior <- prior(dist="IG", shape=2, scale=5)
+phi.prior <- prior(dist="LOGUNIF", a=0.06, b=3)
 
-##Specify the priors, hyperparameters, and variance parameter starting values.
-sigmasq.prior <- prior(dist="IG", shape=2, scale=30)
-tausq.prior <- prior(dist="IG", shape=2, scale=30)
-##The prior on phi corresponds to a prior of 500-2000 meters
-##for the effective range (i.e., -log(0.05)/0.0015, -log(0.05)/0.006, when
-##using the exponential covariance function).
-phi.prior <- prior(dist="LOGUNIF", a=0.0015, b=0.006)
+var.update.control <-
+  list("K"=list(starting=5, tuning=0.5, prior=K.prior),
+       "Psi"=list(starting=5, tuning=0.5, prior=Psi.prior),
+       "phi"=list(starting=0.1, tuning=0.5, prior=phi.prior)
+       )
 
-var.update.control <- list("sigmasq"=list(sample.order=0, starting=30, tuning=0.5, prior=sigmasq.prior),
-                           "tausq"=list(sample.order=0, starting=30, tuning=0.5, prior=tausq.prior),
-                           "phi"=list(sample.order=0, starting=0.006, tuning=0.8, prior=phi.prior))
+beta.control <- list(update="GIBBS", prior=prior(dist="FLAT"))
 
-##Specify the number of samples.
-run.control <- list("n.samples" = 1500)
+run.control <- list("n.samples"=1000, "sp.effects"=TRUE)
 
-##Specify the model, assign the prior, and starting values for the regressors.
-model <- BE_BA_AREA~ELEV+SPR_02_TC1+SPR_02_TC2+SPT_02_TC3
+Fit.m1 <- ggt.sp(formula=Y.2~1, run.control=run.control,
+                 coords=coords, var.update.control=var.update.control,
+                 beta.update.control=beta.control,
+                 cov.model="exponential")
 
-##Note, precision of 0 is same as flat prior alternatively if you want a flat prior
-##do not include the beta.prior tag in the beta.control list.
-beta.prior <- prior(dist="NORMAL", mu=rep(0, 5), precision=diag(0, 5))
+plot(Fit.m1$p.samples)
+summary(Fit.m1$p.samples)
 
-beta.control <- list(beta.update.method="gibbs", beta.starting=rep(0, 5), beta.prior=beta.prior)
+##First reduced model with no nugget just partial sill and range.
+var.update.control <-
+  list("K"=list(starting=5, tuning=0.5, prior=K.prior),
+       "phi"=list(starting=0.1, tuning=0.5, prior=phi.prior)
+       )
 
-model.coords <- cbind(BEF.subset$XUTM, BEF.subset$YUTM)
+Fit.m2 <- ggt.sp(formula=Y.2~1, run.control=run.control,
+                 coords=coords, var.update.control=var.update.control,
+                 beta.update.control=beta.control,
+                 cov.model="exponential")
 
-ggt.sp.out <-ggt.sp(formula=model, data=BEF.subset,
-                    coords=model.coords,
-                    var.update.control=var.update.control,
-                    beta.control=beta.control,
-                    cov.model="exponential",
-                    run.control=run.control, DIC=TRUE, verbose=TRUE)
+plot(Fit.m2$p.samples)
 
-print(ggt.sp.out$accept)
-print(ggt.sp.out$DIC)
+##Second reduced model with no nugget just partial sill and fixed
+##range at the WRONG value, which forces the wrong estimate of K.
+phi.prior <- prior(dist="FIXED")
+       
+var.update.control <-
+  list("K"=list(starting=5, tuning=0.5, prior=K.prior),
+       "phi"=list(starting=0.1, prior=phi.prior)
+       )
 
-##Get the effective range of spatial dependence.
-eff.range <- -log(0.05)/ggt.sp.out$p.samples[,"phi"]
+Fit.m3 <- ggt.sp(formula=Y.2~1, run.control=run.control,
+                 coords=coords, var.update.control=var.update.control,
+                 beta.update.control=beta.control,
+                 cov.model="exponential")
+plot(Fit.m3$p.samples)
 
-##Plot the chain with coda.
-mcmc.obj <- mcmc(cbind(ggt.sp.out$p.samples, eff.range))
-plot(mcmc.obj)
+##For this data, DIC cannot distinguish between the first two
+##models but does show that the third model is clearly
+##wrong.  An empirical semivariogram is useful
+##for recognizing that the full model is the correct choice
+##over the second model.
+print(sp.DIC(Fit.m1, DIC.unmarg=FALSE))
+print(sp.DIC(Fit.m2, DIC.unmarg=FALSE))
+print(sp.DIC(Fit.m3, DIC.unmarg=FALSE))
 
-##############################################
-##ggt.sp setup and model fit with a
-##fixed variance parameter
-##############################################
+##Use akima or MBA to produce interpolated surfaces of
+##estimated random spatial effects.
 
-var.update.control <- list("sigmasq"=list(sample.order=0, starting=30, tuning=0.5, prior=sigmasq.prior),
-                           "tausq"=list(sample.order=0, starting=30, tuning=0.5, prior=tausq.prior),
-                           "phi"=list(fixed=0.001))
+m1.surf <- mba.surf(cbind(coords, rowMeans(Fit.m1$sp.effects)),
+                    no.X=100, no.Y=100, extend=TRUE)$xyz.est
+image(m1.surf, xaxs="r", yaxs="r",
+      main="Y.2 random spatial effects")
+points(coords, pch=19)
 
-ggt.sp.out <-ggt.sp(formula=model, data=BEF.subset,
-                    coords=model.coords,
-                    var.update.control=var.update.control,
-                    beta.control=beta.control,
-                    cov.model="exponential",
-                    run.control=run.control, DIC=TRUE, verbose=TRUE)
+##Now the full model using the Matern spatial correlation function.
+##Also, for fun, update the spatial range parameters
+##phi and nu in a separate MH block.  This provides finer control
+##on the parameters' acceptance rate, but takes a bit longer to
+##run.
+phi.prior <- prior(dist="LOGUNIF", a=0.06, b=3)
+nu.prior <- prior(dist="LOGUNIF", a=0.01, b=2)
 
-print(ggt.sp.out$accept)
-print(ggt.sp.out$DIC)
+var.update.control <-
+  list("K"=list(starting=5, tuning=0.5, prior=K.prior),
+       "Psi"=list(starting=5, tuning=0.5, prior=Psi.prior),
+       "phi"=list(sample.order=1, starting=0.1,
+         tuning=0.5, prior=phi.prior),
+       "nu"=list(sample.order=1, starting=0.1,
+         tuning=0.5, prior=nu.prior)     
+       )
 
-##Summarize and plot chain with coda
-mcmc.obj <- mcmc(ggt.sp.out$p.samples)
-summary(mcmc.obj)
-##plot(mcmc.obj)
+run.control <- list("n.samples"=1000, "sp.effects"=FALSE)
+
+Fit.m4 <-
+  ggt.sp(formula=Y.2~1, run.control=run.control,
+         coords=coords, var.update.control=var.update.control,
+         beta.update.control=beta.control,
+         cov.model="matern")
+
+plot(Fit.m4$p.samples)
+
+##Solve the Matern correlation function for the estimated
+##95\% CI for effective range (e.g., distance at which the
+##correlation drops to 0.05).
+phi.hat <-  quantile(Fit.m4$p.samples[,"Phi"], c(0.50,0.025,0.975))
+nu.hat <- quantile(Fit.m4$p.samples[,"Nu"], c(0.50,0.025,0.975))
+
+matern <- function(cor, eff.d, phi, nu){
+  cor - (eff.d*phi)^nu/(2^(nu-1)*gamma(nu))*besselK(x=eff.d*phi, nu=nu)
+}
+
+##50% (2.5%, 97.5%)
+print(uniroot(matern, interval=c(1, 50),
+              cor=0.05, phi=phi.hat[1], nu=nu.hat[1])$root)
+print(uniroot(matern, interval=c(1, 50),
+              cor=0.05, phi=phi.hat[2], nu=nu.hat[2])$root)
+print(uniroot(matern, interval=c(1, 50),
+              cor=0.05, phi=phi.hat[3], nu=nu.hat[3])$root)
+
+##Finally, the full model again but this time update the Beta
+##using MH.  Using the default of sample.order=0, this sampling
+##scheme is simply a single block MH proposal of all model parameters.
+##Also, the first run uses the default tuning value for the Beta
+##(i.e., chol(vcov(lm(Y~X))). Both chains use a normal prior on Beta;
+##however, the first chain allows for a vague prior, where as the
+##second is much too strict.
+var.update.control <-
+  list("K"=list(starting=5, tuning=0.5, prior=K.prior),
+       "Psi"=list(starting=5, tuning=0.5, prior=Psi.prior),
+       "phi"=list(starting=0.1, tuning=0.5, prior=phi.prior)
+       )
+
+##Chain 1: vague prior normal variance of 1/0.001 = 1000
+beta.prior <- prior(dist="NORMAL", mu=5, precision=0.001)
+beta.control <- list(update="MH", prior=beta.prior)
+
+Fit.m5.a <-
+  ggt.sp(formula=Y.2~1, run.control=run.control,
+         coords=coords, var.update.control=var.update.control,
+         beta.update.control=beta.control,
+         cov.model="exponential")
+
+##Chain 2: restrictive prior normal variance of 1/5 = 0.2
+##(i.e., crazy strict)
+beta.prior <- prior(dist="NORMAL", mu=5, precision=5)
+beta.control <- list(update="MH", prior=beta.prior, tuning=0.75)
+
+Fit.m5.b <-
+  ggt.sp(formula=Y.2~1, run.control=run.control,
+         coords=coords, var.update.control=var.update.control,
+         beta.update.control=beta.control,
+         cov.model="exponential")
+
+plot(mcmc.list(Fit.m5.a$p.samples, Fit.m5.b$p.samples))
 
 
+##Now just for fun, here is the full model but using the weakly
+##informative half-Cauchy for the nugget (Psi) and partial sill (K).
 
-##############################################
-##ggt.sp setup and model fit with single
-##block update of the variance and regression
-##parameters
-##############################################
+K.prior <- prior(dist="HC", a=50)
+Psi.prior <- prior(dist="HC", a=50)
+phi.prior <- prior(dist="LOGUNIF", a=0.06, b=3)
 
-var.update.control <- list("sigmasq"=list(sample.order=0, starting=30, tuning=0.5, prior=sigmasq.prior),
-                           "tausq"=list(sample.order=0, starting=30, tuning=0.5, prior=tausq.prior),
-                           "phi"=list(sample.order=0, starting=0.006, tuning=0.8, prior=phi.prior))
+var.update.control <-
+  list("K"=list(starting=5, tuning=0.5, prior=K.prior),
+       "Psi"=list(starting=5, sample.order=1, tuning=2, prior=Psi.prior),
+       "phi"=list(starting=0.1, sample.order=2, tuning=1, prior=phi.prior)
+       )
 
-#Using Metropolis-Hastings and default flat prior for regression parameters.
-beta.control <- list(beta.update.method="mh", sample.order=0)
+beta.control <- list(update="GIBBS", prior=prior(dist="FLAT"))
 
-ggt.sp.out <-ggt.sp(formula=model, data=BEF.subset,
-                    coords=model.coords,
-                    var.update.control=var.update.control,
-                    beta.control=beta.control,
-                    cov.model="exponential",
-                    run.control=run.control, DIC=TRUE, verbose=TRUE)
+run.control <- list("n.samples"=3000, "sp.effects"=TRUE)
 
-##Note single acceptance rate.
-print(ggt.sp.out$accept)
+Fit.m1 <- ggt.sp(formula=Y.2~1, run.control=run.control,
+                 coords=coords, var.update.control=var.update.control,
+                 beta.update.control=beta.control,
+                 cov.model="exponential")
 
+plot(Fit.m1$p.samples)
+summary(Fit.m1$p.samples)
+
+
+#############################
+##   Multivariate models
+#############################
+
+##Full model with non-spatial cross-covariance
+##(Psi) matrix, spatial cross-covariance matrix (K),
+##and response specific spatial range parameter (Phi)
+##(i.e., a non-separable model).
+
+##These chains really need to be run for several thousand
+##samples (e.g., 10,000). Also note that it is much easier to maintain
+##a healthy acceptance rate for each parameter if they
+##are updated individually using the sample.order
+##directive, as shown in the second example below.
+K.prior <- prior(dist="IWISH", df=2, S=diag(c(3, 6)))
+Psi.prior <- prior(dist="IWISH", df=2, S=diag(c(7, 5)))
+phi.prior <- prior(dist="LOGUNIF", a=0.06, b=3)
+
+##The matrix starting values for K and Psi are actually
+##passed as the sqrt of the desired starting values.
+##This is only done if K or Psi are full cross-covariance
+##matrices and serve to insure that the true starting value
+##matrix is positive definite.
+K.starting <- matrix(c(2,-3, 0, 1), 2, 2)
+Psi.starting <- diag(c(3, 2))
+
+var.update.control <-
+  list("K"=list(starting=K.starting, tuning=diag(c(0.08, 0.3, 0.08)),
+         prior=K.prior),
+       "Psi"=list(starting=Psi.starting, tuning=diag(c(0.08, 0.3, 0.08)),
+         prior=Psi.prior),
+       "phi"=list(starting=0.1, tuning=0.5,
+         prior=list(phi.prior, phi.prior))
+       )
+
+beta.control <- list(update="GIBBS", prior=prior(dist="FLAT"))
+
+run.control <- list("n.samples"=2000, "sp.effects"=FALSE)
+
+Fit.mv.m1 <-
+  ggt.sp(formula=list(Y.1~1, Y.2~1), run.control=run.control,
+         coords=coords, var.update.control=var.update.control,
+         beta.update.control=beta.control,
+         cov.model="exponential")
+
+plot(Fit.mv.m1$p.samples)
+
+##Calculate the mean K correlation matrix.  Note that since K is
+##specified as a full cross-covariance matrix, the posterior
+##samples are returned for the lower triangle of the symmetric K,
+##in column major order.
+K <- matrix(0, 2, 2)
+K[lower.tri(K, diag=TRUE)] <-
+  colMeans(Fit.mv.m1$p.samples[,c("K_1","K_2","K_3")])
+K[upper.tri(K, diag=FALSE)] <- t(K[lower.tri(K, diag=FALSE)])
+print(cov2cor(K))
+
+
+##Now using sample order.  Note this takes ~3 times as long
+##to run, but provides much finer control of acceptance rates.
+var.update.control <-
+  list("K"=list(sample.order=0, starting=K.starting,
+         tuning=diag(c(0.3, 0.5, 0.2)), prior=K.prior),
+       "Psi"=list(sample.order=1, starting=Psi.starting,
+         tuning=diag(c(0.2, 0.5, 0.2)), prior=Psi.prior),
+       "phi"=list(sample.order=2, starting=0.1,
+         tuning=0.5, prior=list(phi.prior, phi.prior))
+       )
+
+run.control <- list("n.samples"=2000, "sp.effects"=TRUE)
+
+Fit.mv.m2 <-
+  ggt.sp(formula=list(Y.1~1, Y.2~1), run.control=run.control,
+         coords=coords, var.update.control=var.update.control,
+         beta.update.control=beta.control,
+         cov.model="exponential")
+
+plot(Fit.mv.m2$p.samples)
+
+##Now again check out the random spatial effects.  Recall,
+##these are stored in the sp.effects matrix, which is organized
+##as m consecutive rows for each point.
+rand.effect.Y.1 <-
+  Fit.mv.m2$sp.effects[seq(1, nrow(Fit.mv.m2$sp.effects), 2),]
+
+rand.effect.Y.2 <-
+  Fit.mv.m2$sp.effects[seq(2, nrow(Fit.mv.m2$sp.effects), 2),]
+
+rand.effect.Y.1.surf <-
+  mba.surf(cbind(coords, rowMeans(rand.effect.Y.1)),
+           no.X=100, no.Y=100, extend=TRUE)$xyz.est
+
+rand.effect.Y.2.surf <-
+  mba.surf(cbind(coords, rowMeans(rand.effect.Y.2)),
+           no.X=100, no.Y=100, extend=TRUE)$xyz.est
+
+##The estimated negative value of off-diagonal element in K is
+##clearly seen in the map of random spatial effects.
+par(mfrow=c(1,2))
+image(rand.effect.Y.1.surf, xaxs="r", yaxs="r",
+      main="Y.1 random spatial effects")
+contour(rand.effect.Y.1.surf, add=TRUE)
+image(rand.effect.Y.2.surf, xaxs="r", yaxs="r",
+      main="Y.2 random spatial effects")
+contour(rand.effect.Y.2.surf, add=TRUE)
+
+##Now a simpler model.  Specifically, the full model shows that
+##there is negligible non-spatial cross-covariance, therefore,
+##Psi might just be modeled with a diagonal covariance matrix.
+##This is actually the model which gave rise to this synthetic
+##data set.
+K.prior <- prior(dist="IWISH", df=2, S=diag(c(3, 6)))
+Psi.prior <- prior(dist="IG", shape=2, scale=5)
+phi.prior <- prior(dist="LOGUNIF", a=0.06, b=3)
+
+var.update.control <-
+  list("K"=list(sample.order=0, starting=K.starting,
+         tuning=diag(c(0.3, 0.5, 0.2)), prior=K.prior),
+       "Psi"=list(sample.order=1, starting=5,
+         tuning=0.5, prior=list(Psi.prior, Psi.prior)),
+       "phi"=list(sample.order=2, starting=0.1,
+         tuning=0.5, prior=list(phi.prior, phi.prior))
+       )
+
+run.control <- list("n.samples"=2000)
+
+Fit.mv.m3 <-
+  ggt.sp(formula=list(Y.1~1, Y.2~1), run.control=run.control,
+         coords=coords, var.update.control=var.update.control,
+         beta.update.control=beta.control,
+         cov.model="exponential")
+
+plot(Fit.mv.m3$p.samples)
+summary(Fit.mv.m3$p.samples)
+
+##Finally, a really simple model which we know makes no sense
+##for this data set.  Specifically, a single variance parameter
+##for the diagonal elements of K and Psi and common spatial range,
+##phi.  Also, we use a spherical spatial covariance function, just
+##because we can.
+K.prior <- prior(dist="IG", shape=2, scale=5)
+Psi.prior <- prior(dist="IG", shape=2, scale=5)
+phi.prior <- prior(dist="LOGUNIF", a=0.06, b=3)
+
+var.update.control <-
+  list("K"=list(starting=5, tuning=0.5, prior=K.prior),
+       "Psi"=list(starting=5, tuning=0.5, prior=Psi.prior),
+       "phi"=list(starting=0.1, tuning=0.5, prior=phi.prior)
+       )
+
+Fit.mv.m4 <-
+  ggt.sp(formula=list(Y.1~1, Y.2~1), run.control=run.control,
+         coords=coords, var.update.control=var.update.control,
+         beta.update.control=beta.control,
+         cov.model="spherical")
+
+plot(Fit.mv.m4$p.samples)
+
+}
 }
 
 \keyword{misc}

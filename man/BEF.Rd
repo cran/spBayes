@@ -11,19 +11,21 @@
   Experimental Forest (BEF), Bartlett, NH funded by the U.S. Department
   of Agriculture, Forest Service, Northeastern Research Station.
 
-  This dataset holds 2002 forest inventory data for 437 points
-  on the BEF. Variables include total basal area, basal area of eastern
-  hemlock, basal area of American beech, slope, elevation, and tasseled cap brightness (TC1),
+  This dataset holds 1991 and 2002 forest inventory data for 437 points
+  on the BEF. Variables include species specific basal area and biomass;
+  inventory plot coordinates; slope; elevation; and tasseled cap brightness (TC1),
   greenness (TC2), and wetness (TC3) components from spring, summer,
   and fall 2002 Landsat images.
+
+  Species specific basal area and biomass are recorded as a fraction of totals.
 }
 
 \usage{
 data(BEF)
 }
-
+ 
 \format{
- A data frame containing 437 rows and 16 columns.
+ A data frame containing 437 rows and 208 columns.
 }
 
 \source{

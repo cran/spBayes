@@ -59,3 +59,41 @@ void covmodel::matern(double phi, double nu, double *r, double *d, int &length){
   }
 }
 
+
+//
+//for single values
+//
+
+
+void covmodel::spherical(double phi, double &r, double &d){
+
+    if(d > 0 && d <= 1.0/phi){
+      r = 1.0 - 1.5*phi*d + 0.5*pow(phi*d,3);
+    }else if(d >= 1.0/phi){
+      r = 0.0;
+    }else{
+      r = 1.0;
+    }
+    
+}
+
+
+void covmodel::exponential(double phi, double &r, double &d){
+  r = exp(-1.0*phi*d);
+}
+
+void covmodel::gaussian(double phi, double &r, double &d){
+    r = exp(-1.0*(pow(phi*d,2)));
+}
+
+void covmodel::matern(double phi, double nu, double &r, double &d){
+  //(d*phi)^nu/(2^(nu-1)*gamma(nu))*pi/2*(besselI(d*phi,-nu)-besselI(d*phi, nu))/sin(nu*pi), or
+  //(d*phi)^nu/(2^(nu-1)*gamma(nu))*besselK(x=d*phi, nu=nu)
+
+  //may be underflow problems here, but perhaps the bessel_k is smart.
+    if(d*phi > 0.0)
+      r = pow(d*phi, nu)/(pow(2, nu-1)*gammafn(nu))*bessel_k(d*phi, nu, 1.0);
+    else
+      r = 1.0;
+}
+

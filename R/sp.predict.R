@@ -1,4 +1,4 @@
-"sp.predict" <- function(ggt.sp.obj, pred.joint = TRUE, pred.coords, pred.covars, use.covar.names = TRUE, start=1, end, thin=1, verbose=TRUE, ...){
+sp.predict <- function(ggt.sp.obj, pred.coords, pred.covars, start=1, end, thin=1, verbose=TRUE, ...){
 
   ####################################################
   ##Check for unused args
@@ -10,26 +10,34 @@
       warning("'",i, "' is not an argument")
   }
   
-  if(missing(ggt.sp.obj)){stop("error: predict.sp expects an output object of class ggt.sp\n")}  
-  if(class(ggt.sp.obj) != "ggt.sp"){stop("error: predict.sp requires an output object of class ggt.sp\n")}
-  if(missing(pred.coords)){stop("error: predict.sp requires a data.frame or matrix of points to predict, pred.coords\n")}
+  if(missing(ggt.sp.obj)){stop("error: sp.predict expects an output object of class ggt.sp\n")}  
+  if(class(ggt.sp.obj) != "ggt.sp"){stop("error: sp.predict requires an output object of class ggt.sp\n")}
+  if(missing(pred.coords)){stop("error: pred.coords must be specified\n")}
   if(!any(is.data.frame(pred.coords), is.matrix(pred.coords))){stop("error: pred.coords must be a data.frame or matrix\n")}
-  if(!any(ncol(pred.coords) == 2, all(c("X","Y") %in% colnames(pred.coords)))){stop("error: pred.coords must have two columns (assumed to be X,Y) or include column names 'X' and 'Y'\n")}
+  if(!ncol(pred.coords) == 2){stop("error: pred.coords must have two columns (assumed to be X, Y)\n")}
 
+  m <- ggt.sp.obj$m
+  
   if(!missing(pred.covars)){
     if(!any(is.data.frame(pred.covars), is.matrix(pred.covars))){stop("error: pred.covars must be a data.frame or matrix\n")}
-    if(nrow(pred.coords) != nrow(pred.covars)){stop("error: number of rows in pred.covars must be the same as pred.covars, and coordinate rows should correspond to covariate rows, although this is obviously not checked\n")}
+    if(nrow(pred.coords)*m != nrow(pred.covars)){stop("error: nrow(pred.coords) must be the same number of rows as pred.covars/m\n")}
+  }else{
+    stop("error: pred.covars must be specified\n")
   }
   
   if(!is.logical(verbose)){stop("error: verbose must be of type logical\n")}
-  if(!is.logical(use.covar.names)){stop("error: use.covar.names must be of type logical\n")}
-  if(!is.logical(pred.joint)){stop("error: pred.joint must be of type logical\n")}
-
   
   ##subsample if specified
   samples <- as.matrix(ggt.sp.obj$p.samples)
-  n.samples <- nrow(samples)
 
+  ##make sure there is not just 2 samples
+  if(nrow(samples) == 2){
+    samples <- t(samples[2:nrow(samples),])##get rid of the starting value row
+  }else{
+    samples <- samples[2:nrow(samples),]##get rid of the starting value row
+  }
+  n.samples <- nrow(samples)
+  
   if(missing(end))
     end <- n.samples
   
@@ -40,114 +48,166 @@
   if(!is.numeric(thin) || thin >= n.samples) 
     stop("error: invalid thin")
 
-  ##note that the first row in ggt.sp.obj$p.samples is the starting values
-  ##so if start is 1 make it 2, the offset is fixed on the C++ side
-  if(start == 1)
-    start <- 2
-    
-  samples <- samples[seq(start, end, by=as.integer(thin)),]
   
+  ##if spatial effect previously calculated
+  if("sp.effects" %in% names(ggt.sp.obj))
+    sp.effect <- TRUE
+  else
+    sp.effect <- FALSE
+
+  sp.effect <- as.integer(sp.effect)
+
+  w <- NULL
+  if(sp.effect){ ##precalculated
+    w <- ggt.sp.obj$sp.effects
+    w <- w[,seq(start, end, by=as.integer(thin))]
+    storage.mode(w) <- "double"
+  }
+
+  samples <- samples[seq(start, end, by=as.integer(thin)),]
+  n.samples <- nrow(samples)
+
   ##get other stuff out of ggt.sp.obj
-  cov.model <- ggt.sp.obj$cov.model
-  no.tausq <- ggt.sp.obj$no.tausq
   X <- as.matrix(ggt.sp.obj$X)
   Y <- as.matrix(ggt.sp.obj$Y)
   obs.coords <- as.matrix(ggt.sp.obj$coords)
   
-  ##get var component samples
-  tausq <- as.numeric(0)
-  if(!no.tausq)
-    tausq <- as.matrix(samples[,"tausq"])
-  
-  sigmasq <- as.matrix(samples[,"sigmasq"])
-  phi <- as.matrix(samples[,"phi"])
-  
-  nu <- as.numeric(0)
-  if(cov.model == "matern")
-    nu <- as.matrix(samples[,"nu"])
-  
-  ##as this is a ggt.sp obj all theta are the first ncol(X) in the
-  ##sample matrix, also transpose theta to make BLAS access simple
-  theta <- t(as.matrix(samples[,1:ncol(X)]))
-  
-  ##check and get the covariates associated with each prediction
-  if(ncol(X) != 1 && missing(pred.covars)){stop("error: pred.covars needs to be specified, pred.covars should be a matrix or data frame with columns corresponding to the ",ncol(X)," fixed effects samples in the ggt.sp.obj\n")}
-
-  pred.X <- NULL
-
-  if(ncol(X) == 1 && missing(pred.covars)){#this assumes just an intercept
-
-    pred.X <- as.matrix(rep(1, nrow(pred.coords)))
-    
-  }else if(!use.covar.names){
-    
-    if(ncol(pred.covars) != ncol(X))
-      {stop("error: as use.covar.names is FALSE, the number of columns in the matrix or data frame specified by pred.covars must be equal to the number of covariates specified in ggt.sp.obj, which is ",ncol(X),"\n")}
-    
-    pred.X <- as.matrix(pred.covars)
-    
-  }else{##use.covar.names == TRUE
-    
-    if(any(is.null(colnames(X)), is.null(colnames(pred.covars))))
-      stop("error: argument use.covar.names is TURE but pred.covars and/or ggt.sp.obj$p.samples does not have column names\n")
-
-    ##if the '(Intercept)' is in X but not in pred.covars then add it
-    if(all("(Intercept)" %in% colnames(X), !"(Intercept)" %in% colnames(pred.covars))){
-      intercept <- as.matrix(rep(1.0, nrow(pred.coords)))
-      colnames(intercept) <- "(Intercept)"
-      pred.covars <- cbind(intercept, pred.covars)
-      warning("warning: '(Intercept)' added to 'pred.covars'\n")
-    }
-          
-    if(!all(colnames(X) %in% colnames(pred.covars)))
-      stop("error: argument use.covar.names is TURE but the column name(s) ", colnames(X)[!colnames(X)%in%colnames(pred.covars)]," are missing from pred.covars\n")
-
-    pred.X <- as.matrix(pred.covars[,colnames(X)])
-
-  }
-  ##just double check dims
-  if(ncol(pred.X) != nrow(theta))
-    stop("error: this should never happen, the number of prediction covariates != number of sampled theta\n")
-
-  
-  ##get distance from each prediction point to each observed point
-  ##note, the pred.coords were checked above
-  if(is.null(colnames(pred.coords))){##assumed 2 columns X,Y
-    pred.X.coords <- matrix(pred.coords[,1], nrow(obs.coords), nrow(pred.coords), byrow=T)
-    pred.Y.coords <- matrix(pred.coords[,2], nrow(obs.coords), nrow(pred.coords), byrow=T)
+  ##get parameter samples
+  ##K
+  K.case <- ggt.sp.obj$K.case
+  if(K.case == 1){
+    K <- as.matrix(samples[,1])
+  }else if(K.case == 2){
+    K <- samples[,1:m]
   }else{
-    pred.X.coords <- matrix(pred.coords[,"X"], nrow(obs.coords), nrow(pred.coords), byrow=T)
-    pred.Y.coords <- matrix(pred.coords[,"Y"], nrow(obs.coords), nrow(pred.coords), byrow=T)
+    K <- samples[,1:((m^2-m)/2+m)]
+  }
+  
+  samples <- samples[,(ncol(K)+1):ncol(samples)]
+  
+  K <- t(K) ##trans for easy BLAS
+
+  
+  ##Psi
+  no.Psi <- ggt.sp.obj$no.Psi
+  Psi <- NULL
+  Psi.case <- NULL
+  if(!no.Psi){
+    Psi.case <- ggt.sp.obj$Psi.case
+    if(Psi.case == 1){
+      Psi <- as.matrix(samples[,1])
+    }else if(Psi.case == 2){
+      Psi <- samples[,1:m]
+    }else{
+      Psi <- samples[,1:((m^2-m)/2+m)]
+    }
+    
+    samples <- samples[,(ncol(Psi)+1):ncol(samples)]
+    Psi <- t(Psi) ##trans for easy BLAS
   }
 
-  gamma.D <- sqrt((pred.X.coords-obs.coords[,1])^2+(pred.Y.coords-obs.coords[,2])^2)
-  gamma.D <- t(gamma.D) ##for the dsymm
 
-  D <- as.matrix(dist(obs.coords))
+  ##phi
+  phi.case <- ggt.sp.obj$phi.case
+  if(phi.case == 1){
+    phi <- as.matrix(samples[,1])
+  }else{
+    phi <- samples[,1:m]
+  }
 
-  pred.D <- as.matrix(dist(pred.coords))
+  samples <- samples[,(ncol(phi)+1):ncol(samples)] 
+  phi <- t(phi) ##trans for easy BLAS
+
   
-  #other stuff
-  if(pred.joint && nrow(pred.coords)==1)
-    pred.joint <- FALSE #helps on the C++ side
+  cov.model <- ggt.sp.obj$cov.model
+  nu <- NULL
+  if(cov.model == "matern"){ ##recall phi case == nu case
+    if(phi.case == 1){
+      nu <- as.matrix(samples[,1])
+    }else{
+      nu <- samples[,1:m]
+    }
+    samples <- samples[,(ncol(nu)+1):ncol(samples)] 
+    nu <- t(nu) ##trans for easy BLAS
 
+  }
 
-  ##call
-  out <- .Call("predictSp", "cov.model"=cov.model, "no.tausq"=no.tausq, "X"=X, "Y"=Y,
-               "coords"=obs.coords, "theta"=theta, "sigmasq"=sigmasq, "tausq"=tausq,
-               "phi"=phi, "nu"=nu, "D"=D, "gamma.D"=gamma.D, "pred.D"=pred.D, "pred.X"=pred.X,
-               "pred.joint"=as.integer(pred.joint), "verbose"=as.integer(verbose))
+  ##beta
+  beta <- t(samples)
+
+  ##just double check the dim of beta against the X and pred.X
+  if(nrow(beta) != ncol(X)){
+    stop("error: the number of X columns does not equal the number of sampled beta parameters\n")
+  }
+
+  ##get the prediction covars
+  if(ncol(pred.covars) != ncol(X))
+    {stop("error: the number of columns in the matrix or data frame specified by pred.covars must be equal to the number of covariates specified in ggt.sp.obj, which is ",ncol(X),"\n")}
   
-  out1 <- list()
-  #out1$cov.model <- cov.model
-  #out1$no.tausq <- as.logical(no.tausq)
-  out1$obs.coords <- obs.coords
-  out1$pred.coords <- pred.coords
-  #out1$gamma.D <- gamma.D
-  #out1$pred.D <- pred.D
-  #out1$obs.D <- D
-  out1$pp.samples <- out
+  pred.X <- as.matrix(pred.covars)
+  
+  ##just double check dims
+  if(ncol(pred.X) != nrow(beta))
+    stop("error: this should never happen, the number of prediction covariates != number of sampled beta\n")
 
-  out1
+  ##make distance matrices
+  ##observed
+  obs.coords <- ggt.sp.obj$coords
+  obs.D <- as.matrix(dist(cbind(obs.coords[,1], obs.coords[,2])))
+  
+  ##predicted
+  pred.D <- as.matrix(dist(cbind(pred.coords[,1], pred.coords[,2])))
+
+  ##predicted and observed
+  predObs.D <- matrix(0, nrow(pred.coords), nrow(obs.coords))
+  for(i in 1:nrow(obs.coords)){
+    predObs.D[,i] <- sqrt((pred.coords[,1]-obs.coords[i,1])^2 + (pred.coords[,2]-obs.coords[i,2])^2)
+  }
+
+  ##check for zeros
+  if(any(round(predObs.D, 10) == 0.0))
+    stop("error: one or more predicted points coordinates is in the observed set of coordinates\n")
+  
+  n.pred <- as.integer(nrow(pred.coords))
+  n.obs <- as.integer(nrow(obs.coords))
+  
+  ##get the right storage mode
+  storage.mode(predObs.D) <- "double"
+  storage.mode(pred.D) <- "double"
+  storage.mode(obs.D) <- "double"
+  storage.mode(pred.X) <- "double"
+  storage.mode(beta) <- "double"
+  storage.mode(X) <- "double"
+  storage.mode(Y) <- "double"
+  
+  storage.mode(K) <- "double"
+  if(!no.Psi)
+    storage.mode(Psi) <- "double"
+  storage.mode(phi) <- "double"
+  if(cov.model == "matern")
+    storage.mode(nu) <- "double"
+
+  if(sp.effect)
+    storage.mode(w) <- "double"
+
+  args <- list("X"=X, "xrows"=as.integer(nrow(X)), "xcols"=as.integer(ncol(X)), "Y"=Y, "obs.D"=obs.D, "n.obs"=n.obs,
+               "pred.X"=pred.X, "pred.D"=pred.D, "n.pred"=n.pred,
+               "predObs.D"=predObs.D,
+               "K"=K, "K.case"=K.case,
+               "Psi"=Psi, "Psi.case"=Psi.case, "no.Psi"=as.integer(no.Psi),
+               "phi"=phi, "phi.case"=phi.case,
+               "nu"=nu,
+               "beta"=beta,
+               "cov.model"=cov.model,
+               "n.samples"=n.samples,
+               "m"=m,
+               "sp.effect"=sp.effect, "w"=w,
+               "verbose"=verbose)
+  
+  out <- .Call("spPredict",args)
+
+  if(sp.effect)
+    out$sp.effect <- w
+  
+  out
 }
- 

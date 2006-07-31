@@ -11,7 +11,9 @@
 
 #include <iostream>
 #include <iomanip>
+#include <fstream>
 #include <string>
+#include <sstream>
 #include <vector>
 #include <map>
 using namespace std;
@@ -120,6 +122,27 @@ void showMatrix(double *x, int xnrow, int xncol){
   }      
 }
 
+
+void writeRMatrix(string outfile, double * a, int nrow, int ncol){
+    ofstream file(outfile.c_str());
+    if ( !file ) {
+      cerr << "Data file could not be opened." << endl;
+      exit(1);
+    }
+  for(int i = 0; i < nrow; i++){
+    for(int j = 0; j < ncol-1; j++){
+      file << fixed << a[j*nrow+i] << " ";
+    }
+    file << fixed << a[(ncol-1)*nrow+i] << endl;    
+
+  }
+  file.close();
+}
+
+
+
+
+
 SEXP getListElement (SEXP list, char *str)
 {
   SEXP elmt = R_NilValue, names = getAttrib(list, R_NamesSymbol);
@@ -137,84 +160,57 @@ SEXP getListElement (SEXP list, char *str)
   return elmt;
 }
 
-void myCholInv(double *a, double *p, int &n, double &logdet){
 
-  int i,j,k;
-  double sum;
-  logdet = 0;
+void zeros(double *x, int length){
+  for(int i = 0; i < length; i++)
+    x[i] = 0.0;
+}
 
-  for(i = 0; i < n; i++){
-    for(j = i; j < n; j++){
-      for(sum = a[(j*n)+i], k = i-1; k >= 0; k--)
-	sum -= a[(k*n)+i]*a[(k*n)+j];
-      if(i == j){
-	if(sum <=0.0)
-	  error("matrix not pd");
-	p[i]=sqrt(sum);
-      }else{
-	a[(i*n)+j] = sum/p[i];
-      }
+void identity(double *x, int &nrow){
+
+  for(int i = 0; i < nrow; i++){
+    for(int j = 0; j < nrow; j++){
+      if(i != j)
+	x[j*nrow+i] = 0.0;
+      else
+	x[j*nrow+i] = 1.0;
     }
   }
 
-  for(i = 0; i < n; i++)
-    logdet += log(p[i]);
-  logdet = 2*logdet;
+}
 
-  for(i = 0; i < n; i++){
-    a[(i*n)+i] = 1.0/p[i];
-    for(j = i+1; j <  n; j++){
-      sum=0.0;
-      for(k = i; k < j; k++)
-	sum -= a[(k*n)+j]*a[(i*n)+k];
-      a[(i*n)+j]=sum/p[j];
-    }
-  }
+void kron(double *a, int &dima1, int &dima2, 
+	  double *b, int &dimb1, int &dimb2, 
+	  double *c, int &dimc1, int &dimc2){
   
-  for (i = 0; i < n; i++) {
-    for (j = i + 1; j < n; j++) {
-      a[(j*n)+i] = 0.0;
-    }
-  }
-  for (i = 0; i < n; i++) {
-    a[(i*n)+i] *= a[(i*n)+i];
-    for (k = i + 1; k < n; k++) {
-      a[(i*n)+i] += a[(i*n)+k] * a[(i*n)+k];
-    }
-    for (j = i + 1; j < n; j++) {
-      for (k = j; k < n; k++) {
-	a[(j*n)+i] += a[(i*n)+k] * a[(j*n)+k];
+  int i, j, k, l;
+  
+  for (k = 0; k < dima1; k++) {
+    for (l = 0; l < dima2; l++) {
+      for (i = 0; i < dimb1; i++) {
+	for (j = 0; j < dimb2; j++) {
+	  c[(l*dimb2+j)*dimc1+(k*dimb1+i)] = a[l*dima1+k] * b[j*dimb1+i];
+	}
       }
-    }
-  }
-
-  for (i = 0; i < n; i++) {
-    for (j = 0; j < i; j++) {
-      a[(j*n)+i] = a[(i*n)+j];
     }
   }
 }
 
-void myChol(double *a, double *p, int &n){
-
-  int i,j,k;
-  double sum;
-
-  for(i = 0; i < n; i++){
-    for(j = i; j < n; j++){
-      for(sum = a[(j*n)+i], k = i-1; k >= 0; k--)
-	sum -= a[(k*n)+i]*a[(k*n)+j];
-      if(i == j){
-	if(sum <=0.0)
-	  error("matrix not pd");
-	p[i]=sqrt(sum);
-      }else{
-	a[(i*n)+j] = sum/p[i];
-      }
+void setLowerChol(double *A, double *S, int dim){
+  int i, j, k;
+  
+  zeros(A, dim*dim);
+  for(i = 0, k = 0; i < dim; i++){
+    for(j = i; j < dim; j++, k++){
+      A[i*dim+j] = S[k];
     }
   }
-
-  for(i = 0; i < n; i++)
-    a[(i*n)+i] = p[i];
-
 }
+
+
+string toString(int &x) {
+  ostringstream oss;
+  oss << x;
+  return oss.str();
+}
+ 

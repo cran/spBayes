@@ -1,9 +1,11 @@
 useDynLib(spBayes)
-
 export(prior)
-export(ggt)
 export(ggt.sp)
 export(sp.predict)
-export(sp.effect)
 export(sp.DIC)
-#export(r.DIC.sp)
+#export(mk.mv.Y)
+export(mk.mv.X)
+#export(mk.mv.formula.YX)
+export(bayes.lm.ref)
+
+

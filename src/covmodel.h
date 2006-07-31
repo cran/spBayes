@@ -26,6 +26,12 @@ class covmodel
   void gaussian(double phi, double *r, double *d, int &length);
   void matern(double phi, double nu, double *r, double *d, int &length);
 
+
+  void spherical(double phi, double &r, double &d);
+  void exponential(double phi, double &r, double &d);
+  void gaussian(double phi, double &r, double &d);
+  void matern(double phi, double nu, double &r, double &d);
+
  private:
 };
 #endif

@@ -7,42 +7,22 @@
 }
 
 \usage{
-  sp.predict(ggt.sp.obj, pred.joint = TRUE, pred.coords, pred.covars, use.covar.names = TRUE, start=1, end, thin=1, verbose=TRUE, ...)
+  sp.predict(ggt.sp.obj, pred.coords, pred.covars,
+             start=1, end, thin=1, verbose=TRUE, ...)
 }
 
 \arguments{
   \item{ggt.sp.obj}{an object returned by \code{\link{ggt.sp}} (i.e.,
     object of class \code{ggt.sp}). }
-  \item{pred.joint}{if \code{TRUE} the spatial dependence among the
-    prediction points is preserved; otherwise, predicted points are
-    considered independent.  See below for details. }
-  \item{pred.coords}{an \eqn{m \times 2}{m x 2} matrix of \eqn{m} prediction
+  \item{pred.coords}{an \eqn{n \times 2}{n x 2} matrix of \eqn{m} prediction
     point coordinates in \eqn{R^2}{R^2} (e.g., easting and northing).
     The first column is assumed to be easting coordinates and the second column
-    northing coordinates (i.e., x,y coordinates). }
-  \item{pred.covars}{an \eqn{m \times q}{m x q} matrix or data frame containing the
-    regressors associated with \code{pred.coords}.  Several scenarios
-    exist which determine the specification of this matrix or data frame.  If the model
-    contained in \code{ggt.sp.obj} has only an intercept, then
-    \code{pred.covars} is optional.  Specifically, in this case, if
-    \code{pred.covars} is not specified then \code{ggt.sp.obj$X} is
-    checked for only an intercept, if true an intercept is added to
-    the \eqn{m} prediction points; otherwise, and error is
-    thrown.   If \code{use.covar.names} is \code{TRUE}, then both then column names for \code{ggt.sp.obj$X} and
-    \code{pred.covars} are matched.  If in this case an intercept is
-    used in \code{ggt.sp.obj$X}, but not specified in \code{pred.covars},
-    it is added with a warning.  If one ore more regressor column names are missing
-    from \code{pred.covars} an error is thrown.  If \code{use.covar.names} is
-    \code{FALSE}, then the column order is assumed to match the intercept
-    and regressor columns in \code{ggt.sp.obj$X}.  In this case, it is
-    the users responsibility to add an intercept to \code{pred.covars}
-    if needed.  Further, an error is thrown if the number of columns in
-    \code{pred.covars} is not equal to the number of columns in
-    \code{ggt.sp.obj$X}. }
-  \item{use.covar.names}{if \code{TRUE} an attempt is made to match
-    regressor names between \code{ggt.sp.obj$X} and \code{pred.covars};
-    otherwise, column order must match between
-    \code{ggt.sp.obj$X} and \code{pred.covars}. }
+    northing coordinates. }
+  \item{pred.covars}{an \eqn{n \times p}{n x p} design matrix associated
+    with the new points.  If this is a multivariate prediction defined
+    by \eqn{m}{m} models, the multivariate design matrix can be created
+    by passing a list of the \eqn{m}{m} univariate design matrices to
+    the \code{\link{mk.mv.X}} function. }
   \item{start}{specifies the first sample included in the prediction calculation.
     This is useful for those who choose to acknowledge chain burn-in.  }
   \item{end}{specifies the last sample included  in the prediction calculation.
@@ -58,16 +38,23 @@
 }
 
 \value{
-  \item{obs.coords}{the \eqn{n \times 2}{n x 2} matrix of the observation
-    coordinates from \code{ggt.sp.obj$coords}.  }
-  \item{pred.coords}{the \eqn{m \times 2}{m x 2} matrix of prediction
-    point coordinates specified by \code{pred.coords}. }
-  \item{pp.samples}{an \eqn{n \times m}{n x m} matrix that holds \eqn{m}
-    samples from the posterior predictive distribution of the response
-    variable specified in the \code{ggt.sp.obj}. }
+  \item{obs.coords}{the matrix of the observation coordinates from \code{ggt.sp.obj$coords}.  }
+  \item{pred.coords}{the matrix of prediction point coordinates specified by \code{pred.coords}. }
+  \item{pp.samples}{a matrix that holds samples from the posterior predictive distribution of the response
+    variable(s) specified in the \code{ggt.sp.obj}. The rows of this matrix
+    correspond to the predicted points and the columns are the posterior
+    predictive samples.  If prediction is for \eqn{m}{m} response variables the \code{pp.samples} matrix has
+    \eqn{mn}{mn} rows.  The predictions for points are held in rows
+    1:m, (m+1):2m, ..., ((i-1)m+1):im, ..., ((n-1)m+1):nm, where i
+    = 1 ... n (e.g., the samples for the first point are in rows 1:m,
+    second point in rows (m+1):2m, etc.). }
 }
 
-\seealso{\code{\link{ggt.sp}}, \code{\link{sp.effect}}}
+\details{
+  Please refer to Section 3.2 in the vignette.
+}
+
+\seealso{\code{\link{ggt.sp}}}
 
 \references{
   Banerjee, S., Carlin, B.P., and Gelfand, A.E. (2004). Hierarchical modeling and analysis for spatial data. Chapman and Hall/CRC Press, Boca Raton, Fla.
@@ -83,78 +70,164 @@
 }
 
 \examples{
+\dontrun{
+library(MBA)
 
+data(FBC07)
 
-###############################################
-##subset data
-###############################################
-set.seed(1234)
+##Divide the data into model and prediction sets
+Y.1 <- FBC07[1:100,"Y.1"]
+Y.2 <- FBC07[1:100,"Y.2"]
+model.coords <- as.matrix(FBC07[1:100,c("coord.X", "coord.Y")])
+pred.coords <- as.matrix(FBC07[151:200,c("coord.X", "coord.Y")])
 
-data(BEF)
+#############################
+##   Univariate model
+#############################
 
-n.subset <- 100
-BEF.subset <- BEF[sample(1:nrow(BEF),n.subset),]
+##Fit some model with ggt.sp.
+K.prior <- prior(dist="IG", shape=2, scale=5)
+Psi.prior <- prior(dist="IG", shape=2, scale=5)
+phi.prior <- prior(dist="LOGUNIF", a=0.06, b=3)
 
-##############################################
-##general ggt.sp setup and model fit
-##############################################
+var.update.control <-
+  list("K"=list(starting=5, tuning=0.5, prior=K.prior),
+       "Psi"=list(starting=5, tuning=0.5, prior=Psi.prior),
+       "phi"=list(starting=0.1, tuning=0.5, prior=phi.prior)
+       )
 
-##Specify the priors, hyperparameters, and variance parameter starting values.
-sigmasq.prior <- prior(dist="IG", shape=2, scale=30)
-tausq.prior <- prior(dist="IG", shape=2, scale=30)
-##the prior on phi corresponds to a prior of 500-2000 meters
-##for the effective range (i.e., -log(0.05)/0.0015, -log(0.05)/0.006, when
-##using the exponential covariance function).
-phi.prior <- prior(dist="LOGUNIF", a=0.0015, b=0.006)
+beta.control <- list(update="GIBBS", prior=prior(dist="FLAT"))
 
-var.update.control <- list("sigmasq"=list(sample.order=0, starting=30, tuning=0.5, prior=sigmasq.prior),
-                           "tausq"=list(sample.order=0, starting=30, tuning=0.5, prior=tausq.prior),
-                           "phi"=list(sample.order=0, starting=0.006, tuning=0.8, prior=phi.prior))
+run.control <- list("n.samples"=1000)
 
-#specify the number of samples
-run.control <- list("n.samples" = 1500)
+Fit <- ggt.sp(formula=Y.2~1, run.control=run.control,
+              coords=model.coords,
+              var.update.control=var.update.control,
+              beta.update.control=beta.control,
+              cov.model="exponential")
 
-##specify some model, assign the prior and starting values for the regressors
-model <- BE_BA_AREA~ELEV+SPR_02_TC1+SPR_02_TC2+SPT_02_TC3
+##Now make predictions for the holdout set.
+##Step 1. make the design matrix for the prediction points.
+pred.covars <- as.matrix(rep(1, nrow(pred.coords)))
 
-##note, precision of 0 is same as flat prior.
-beta.prior <- prior(dist="NORMAL", mu=rep(0, 5), precision=diag(0, 5))
+##Step 2. call sp.predict.
+Pred <- sp.predict(Fit, pred.covars=pred.covars,
+                   pred.coords=pred.coords)
 
-beta.control <- list(beta.update.method="gibbs", beta.starting=rep(0, 5), beta.prior=beta.prior)
+##Step 3. check out the predicted random effects and
+##predicted response variable.
+Pred.sp.effects.surf <-
+  mba.surf(cbind(pred.coords, rowMeans(Pred$pred.sp.effects)),
+           no.X=100, no.Y=100, extend=TRUE)$xyz.est
 
-model.coords <- cbind(BEF.subset$XUTM, BEF.subset$YUTM)
-
-ggt.sp.out <-ggt.sp(formula=model, data=BEF.subset,
-                    coords=model.coords,
-                    var.update.control=var.update.control,
-                    beta.control=beta.control,
-                    cov.model="exponential",
-                    run.control=run.control, DIC=TRUE, verbose=TRUE)
-
-print(ggt.sp.out$accept)
-print(ggt.sp.out$DIC)
-
-###############################################
-##prediction
-###############################################
-
-##resample
-n.pred <- 100
-BEF.pred <- BEF[sample(1:nrow(BEF),n.pred),]
-
-pred.coords <- cbind(BEF.pred$XUTM, BEF.pred$YUTM)
-
-pred <- sp.predict(ggt.sp.out, pred.joint=TRUE, pred.coords=pred.coords, pred.covars=BEF.pred, start=500, thin=2)
+Pred.Y.surf <-
+  mba.surf(cbind(pred.coords, rowMeans(Pred$pred.y)),
+           no.X=100, no.Y=100, extend=TRUE)$xyz.est
 
 par(mfrow=c(1,2))
-int.obs <- interp(BEF.subset$XUTM, BEF.subset$YUTM, BEF.subset$BE_BA_AREA)
-image(int.obs, xlab="Longitude (meters)", ylab="Latitude (meters)", main="Observed density\nof American beech")
-contour(int.obs, add=TRUE)
+image(Pred.sp.effects.surf, xaxs="r", yaxs="r",
+      main="Predicted random spatial effects")
+contour(Pred.sp.effects.surf, add=TRUE)
 
-int.pred <- interp(BEF.pred$XUTM, BEF.pred$YUTM, rowMeans(pred$pp.samples))
-image(int.pred, xlab="Longitude (meters)", ylab="Latitude (meters)", main="Predicted density\nof American beech")
-contour(int.pred, add=TRUE)
+image(Pred.Y.surf, xaxs="r", yaxs="r",
+      main="Predicted Y.2")
+contour(Pred.Y.surf, add=TRUE)
 
+
+#############################
+##   Multivariate models
+#############################
+
+##Fit some model with ggt.sp.
+K.prior <- prior(dist="IWISH", df=2, S=diag(c(3, 6)))
+Psi.prior <- prior(dist="IWISH", df=2, S=diag(c(7, 5)))
+phi.prior <- prior(dist="LOGUNIF", a=0.06, b=3)
+
+K.starting <- matrix(c(2,-3, 0, 1), 2, 2)
+Psi.starting <- diag(c(3, 2))
+
+var.update.control <-
+  list("K"=list(starting=K.starting, tuning=diag(c(0.1, 0.5, 0.1)),
+         prior=K.prior),
+       "Psi"=list(starting=Psi.starting, tuning=diag(c(0.1, 0.5, 0.1)),
+         prior=Psi.prior),
+       "phi"=list(starting=0.1, tuning=0.5,
+         prior=list(phi.prior, phi.prior))
+       )
+
+beta.control <- list(update="GIBBS", prior=prior(dist="FLAT"))
+
+run.control <- list("n.samples"=1000, "sp.effects"=FALSE)
+
+Fit.mv <-
+  ggt.sp(formula=list(Y.1~1, Y.2~1), run.control=run.control,
+         coords=model.coords,
+         var.update.control=var.update.control,
+         beta.update.control=beta.control,
+         cov.model="exponential")
+
+##Now make predictions for the holdout set.
+##Step 1. make the design matrix for the prediction points using
+##the mk.mv.X function.
+pred.covars.1 <- as.matrix(rep(1, nrow(pred.coords)))
+pred.covars.2 <- as.matrix(rep(1, nrow(pred.coords)))
+
+pred.covars.mv <- mk.mv.X(list(pred.covars.1, pred.covars.2))
+
+##Step 2. call sp.predict.
+Pred.mv <- sp.predict(Fit.mv, pred.covars=pred.covars.mv,
+                      pred.coords=pred.coords)
+
+
+##Step 3. check out the predicted random effects and
+##predicted response variables.   Recall, these are
+##organized as m consecutive rows for each point.
+Pred.sp.effects.1 <-
+  Pred.mv$pred.sp.effects[seq(1, nrow(Pred.mv$pred.sp.effects), 2),]
+
+Pred.sp.effects.2 <-
+  Pred.mv$pred.sp.effects[seq(2, nrow(Pred.mv$pred.sp.effects), 2),]
+
+Pred.Y.1 <-
+  Pred.mv$pred.sp.effects[seq(1, nrow(Pred.mv$pred.y), 2),]
+
+Pred.Y.2 <-
+  Pred.mv$pred.sp.effects[seq(2, nrow(Pred.mv$pred.y), 2),]
+
+##Then map.
+Pred.sp.effects.1.surf <-
+  mba.surf(cbind(pred.coords, rowMeans(Pred.sp.effects.1)),
+           no.X=100, no.Y=100, extend=TRUE)$xyz.est
+
+Pred.sp.effects.2.surf <-
+  mba.surf(cbind(pred.coords, rowMeans(Pred.sp.effects.2)),
+           no.X=100, no.Y=100, extend=TRUE)$xyz.est
+
+Pred.Y.1.surf <-
+  mba.surf(cbind(pred.coords, rowMeans(Pred.Y.1)),
+           no.X=100, no.Y=100, extend=TRUE)$xyz.est
+
+Pred.Y.2.surf <-
+  mba.surf(cbind(pred.coords, rowMeans(Pred.Y.2)),
+           no.X=100, no.Y=100, extend=TRUE)$xyz.est
+
+par(mfrow=c(2,2))
+image(Pred.sp.effects.surf, xaxs="r", yaxs="r",
+      main="Predicted random spatial effects Y.1")
+contour(Pred.sp.effects.1.surf, add=TRUE)
+
+image(Pred.sp.effects.surf, xaxs="r", yaxs="r",
+      main="Predicted random spatial effects Y.2")
+contour(Pred.sp.effects.2.surf, add=TRUE)
+
+image(Pred.sp.effects.surf, xaxs="r", yaxs="r",
+      main="Predicted Y.1")
+contour(Pred.Y.1.surf, add=TRUE)
+
+image(Pred.sp.effects.surf, xaxs="r", yaxs="r",
+      main="Predicted Y.2")
+contour(Pred.Y.2.surf, add=TRUE)
+}
 }
 
 \keyword{misc}

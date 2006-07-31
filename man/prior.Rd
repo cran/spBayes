@@ -1,11 +1,10 @@
 \name{prior}
 \alias{prior}
 
-\title{Creates prior distribution definitions for use in ggt and ggt.sp}
+\title{Creates prior distribution definitions}
 
 \description{
-  The function \code{prior} creates a valid prior definition for use in
-  the \code{\link{ggt}} and \code{\link{ggt.sp}} functions.
+  The function \code{prior} creates a valid prior definition for use in \code{\link{ggt.sp}}.
 }
 
 \usage{
@@ -14,15 +13,17 @@ prior(dist, ...)
 
 \arguments{
   \item{dist}{a quoted key word that identifies the prior distribution.  The
-    choices are inverse gamma \code{"IG"}, uniform \code{"UNIF"},
-    log-uniform, \code{"LOGUNIF"}, half-Cauchy \code{"HC"}, and normal \code{"NORMAL"}.  }
+    choices are inverse-gamma \code{"IG"}, uniform \code{"UNIF"},
+    log-uniform, \code{"LOGUNIF"}, half-Cauchy \code{"HC"}, normal
+    \code{"NORMAL"}, flat \code{"FLAT"}, inverse-Wishart \code{"IWISH"},
+    and fixed scalar or matrix \code{"FIXED"}.  }
   \item{...}{the hyperparameters of the chosen prior distribution,
     passed as quoted key words with associated values. See details below.  }
 }
 
 \value{
-  \item{prior}{a list object of class \code{ggt.prior} which is used for the value portion of the prior tag in
-  the \code{\link{ggt}} and \code{\link{ggt.sp}} functions. }
+  \item{prior}{a list object of class \code{ggt.prior} which is used for the value portion of the \code{prior} tag in
+  the \code{\link{ggt.sp}} function. }
 }
 
 
@@ -38,7 +39,7 @@ prior(dist, ...)
       sampler efficiency.
       Use key words \code{"a"}, and \code{"b"}.  }
     
-    \item{Inverse gamma: }{\eqn{x^{-(a+1)} exp(-b/x)}{x^{-(a+1)}
+    \item{Inverse-gamma: }{\eqn{x^{-(a+1)} exp(-b/x)}{x^{-(a+1)}
 	exp(-b/x)}, where \eqn{a} is shape \eqn{> 0} and \eqn{b} is scale \eqn{> 0}.
       Use key words \code{"shape"}, and \code{"scale"}. }
     
@@ -49,16 +50,24 @@ prior(dist, ...)
       mean vector of length \eqn{p} and \eqn{V^{-1}}{V^{-1}} is the
       \eqn{p \times p}{p x p} precision matrix.  Use key words
       \code{"mu"} and \code{"precision"}. }
+
+    \item{Inverse-Wishart: }{\eqn{det(S)^{df/2}det(W)^{-(df+m+1)/2}exp(-1/2
+	tr(SW^{-1}))}{det(S)^{df/2}det(W)^{-(df+m+1)/2}exp(-1/2
+	tr(SW^{-1}))}, where \eqn{W} is the \eqn{m \times m}{m x m} covariance
+      matrix, \eqn{df} is the degrees of freedom, and \eqn{S} is the
+      positive definite \eqn{m \times m}{m x m} scale matrix. Use key words
+      \code{"df"} and \code{"S"}. }
   }
-  The normal prior can only be used for the regressors specified in \code{\link{ggt}} and \code{\link{ggt.sp}}.
+  The normal and flat priors can only be used for the regressors specified in \code{\link{ggt.sp}}.
 }
 
 
 \references{
   Banerjee, S., Carlin, B.P., and Gelfand, A.E. (2004). Hierarchical modeling and analysis for spatial data. Chapman and Hall/CRC Press, Boca Raton, Fla.
 
-  Gelman, A. (2005). Prior distributions for variance parmaters in
-  hierarchical models. 1(2):1-19, Bayesian Analysis.
+  Gelman, A. (2006). Prior distributions for variance parameters in
+  hierarchical models 1(3):515-533, Bayesian Analysis.
+  
   
   Further information on the package \pkg{spBayes} can be found
   at: \url{http://blue.fr.umn.edu/spatialBayes}.
@@ -70,6 +79,6 @@ prior(dist, ...)
   Bradley P. Carlin \email{brad@biostat.umn.edu}
 }
 
-\seealso{\code{\link{ggt}},  \code{\link{ggt.sp}} }
+\seealso{\code{\link{ggt.sp}} }
 
 \keyword{misc}
