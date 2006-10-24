@@ -385,7 +385,7 @@ plot(Fit.mv.m1$p.samples)
 K <- matrix(0, 2, 2)
 K[lower.tri(K, diag=TRUE)] <-
   colMeans(Fit.mv.m1$p.samples[,c("K_1","K_2","K_3")])
-K[upper.tri(K, diag=FALSE)] <- t(K[lower.tri(K, diag=FALSE)])
+K[upper.tri(K, diag=FALSE)] <- t(K)[upper.tri(K, diag=FALSE)]
 print(cov2cor(K))
 
 

@@ -73,10 +73,21 @@ sp.DIC <- function(ggt.sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE, start=1, end, thi
   }
   
   samples <- samples[,(ncol(K)+1):ncol(samples)]
+
+  ##if K.case is 3 then take the chol of each sample matrix.
+  A.chol <- function(x, m){
+    A <- matrix(0, m, m)
+    A[lower.tri(A, diag=TRUE)] <- x
+    A[upper.tri(A, diag=FALSE)] <- t(A)[upper.tri(A, diag=FALSE)]
+    t(chol(A))[lower.tri(A, diag=TRUE)]
+  }
+
+  if(K.case == 3){
+    K <- t(apply(K, 1, A.chol, m))
+  }
   
   K <- t(K) ##trans for easy BLAS
   K.means <- rowMeans(K)
-
   
   ##Psi
   no.Psi <- ggt.sp.obj$no.Psi
@@ -94,6 +105,12 @@ sp.DIC <- function(ggt.sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE, start=1, end, thi
     }
     
     samples <- samples[,(ncol(Psi)+1):ncol(samples)]
+
+    ##if Psi.case is 3 then take the chol of each sample matrix.
+    if(Psi.case == 3){
+      Psi <- t(apply(Psi, 1, A.chol, m))
+    }
+    
     Psi <- t(Psi) ##trans for easy BLAS
     Psi.means <- rowMeans(Psi)
   }
