@@ -1425,7 +1425,7 @@ extern "C" {
 
    //add parameter names
    SEXP samplesRowNames, samplesDimNames;
-   PROTECT(samplesRowNames = allocVector(STRSXP, nSampleCols)); nProtect++;
+   PROTECT(samplesRowNames = allocVector(VECSXP, nSampleCols)); nProtect++;
 
    for(i = 0, k = 0; i < params.size(); i++)
      for(j = 0; j < params[i]->getNPar(); j++, k++)
@@ -1451,24 +1451,24 @@ extern "C" {
    SEXP result, resultNames;
    
    PROTECT(result = allocVector(VECSXP, nResultListObjs)); nProtect++;
-   PROTECT(resultNames = allocVector(STRSXP, nResultListObjs)); nProtect++;
+   PROTECT(resultNames = allocVector(VECSXP, nResultListObjs)); nProtect++;
 
    //set result list elements   
 
    //samples
    SET_VECTOR_ELT(result, 0, samples);
-   SET_STRING_ELT(resultNames, 0, mkChar("p.samples"));    
+   SET_VECTOR_ELT(resultNames, 0, mkChar("p.samples"));    
    
    //acceptance
    SEXP acceptance, acceptColNames, acceptRowNames, acceptDimNames;
-   PROTECT(acceptColNames = allocVector(STRSXP, 1)); nProtect++;
+   PROTECT(acceptColNames = allocVector(VECSXP, 1)); nProtect++;
    SET_VECTOR_ELT(acceptColNames, 0, mkChar("acceptance.rate"));
 
    PROTECT(acceptance = allocMatrix(REALSXP, params.size(), 1)); nProtect++; 
    for(i = 0; i < params.size(); i++)
      REAL(acceptance)[i] = 100.0*params[i]->getAcceptance()/nSamples;
 
-   PROTECT(acceptRowNames = allocVector(STRSXP, params.size())); nProtect++;
+   PROTECT(acceptRowNames = allocVector(VECSXP, params.size())); nProtect++;
    
    for(i = 0; i < params.size(); i++)
      SET_VECTOR_ELT(acceptRowNames, i, mkChar(params[i]->getParName().c_str()));
@@ -1479,12 +1479,12 @@ extern "C" {
    setAttrib(acceptance, R_DimNamesSymbol, acceptDimNames);
    
    SET_VECTOR_ELT(result, 1, acceptance);
-   SET_STRING_ELT(resultNames, 1, mkChar("acceptance"));
+   SET_VECTOR_ELT(resultNames, 1, mkChar("acceptance"));
    
    //spatial effects
    if(spEffects){
      SET_VECTOR_ELT(result, 2, w);
-     SET_STRING_ELT(resultNames, 2, mkChar("sp.effects"));
+     SET_VECTOR_ELT(resultNames, 2, mkChar("sp.effects"));
    }
    
 
@@ -1497,13 +1497,13 @@ extern "C" {
      REAL(dicResults)[2] = DDBar - DDBarOmega;
      REAL(dicResults)[3] = DDBar + DDBar - DDBarOmega;   
      
-     PROTECT(dicResultsRowNames = allocVector(STRSXP, 4)); nProtect++;
+     PROTECT(dicResultsRowNames = allocVector(VECSXP, 4)); nProtect++;
      SET_VECTOR_ELT(dicResultsRowNames, 0, mkChar("bar.D"));
      SET_VECTOR_ELT(dicResultsRowNames, 1, mkChar("D.bar.Omega"));
      SET_VECTOR_ELT(dicResultsRowNames, 2, mkChar("pD"));
      SET_VECTOR_ELT(dicResultsRowNames, 3, mkChar("DIC"));
      
-     PROTECT(dicResultsColNames = allocVector(STRSXP, 1)); nProtect++;
+     PROTECT(dicResultsColNames = allocVector(VECSXP, 1)); nProtect++;
      SET_VECTOR_ELT(dicResultsColNames, 0, mkChar("value"));
      
      PROTECT(dicResultDimName = allocVector(VECSXP, 2)); nProtect++;
@@ -1515,10 +1515,10 @@ extern "C" {
     if(DIC){
       if(spEffects){
 	SET_VECTOR_ELT(result, 3, dicResults);
-	SET_STRING_ELT(resultNames, 3, mkChar("DIC"));
+	SET_VECTOR_ELT(resultNames, 3, mkChar("DIC"));
       }else{
 	SET_VECTOR_ELT(result, 2, dicResults);
-	SET_STRING_ELT(resultNames, 2, mkChar("DIC"));
+	SET_VECTOR_ELT(resultNames, 2, mkChar("DIC"));
       }
     }
 

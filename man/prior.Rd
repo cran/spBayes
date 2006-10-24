@@ -43,7 +43,7 @@ prior(dist, ...)
 	exp(-b/x)}, where \eqn{a} is shape \eqn{> 0} and \eqn{b} is scale \eqn{> 0}.
       Use key words \code{"shape"}, and \code{"scale"}. }
     
-    \item{Half-Cauchy:}{\eqn{(x^2 + a^2)^{-1}}{(x^2 + a^2)^{-1}}. Use key word \code{"a"}. }
+    \item{Half-Cauchy:}{\eqn{(x + a^2)^{-1}}{(x + a^2)^{-1}}. Use key word \code{"a"}. }
     
     \item{Normal:}{\eqn{exp(-1/2 (\beta - mu)^t V^{-1} (\beta -
 	mu))}{exp(-1/2 (B - mu)^t V^{-1} (B - mu))}, where \eqn{mu} is the

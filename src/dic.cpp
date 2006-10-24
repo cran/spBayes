@@ -1125,8 +1125,8 @@ extern "C" {
     if(!haveW  && DICUnmarg) nResultListObjs++;
     
     SEXP dicResults, dicResultsRowNames, dicResultsColNames, dicResultDimName;
-    PROTECT(dicResultsRowNames = allocVector(STRSXP, 4)); nProtect++;
-    PROTECT(dicResultsColNames = allocVector(STRSXP, 1)); nProtect++;
+    PROTECT(dicResultsRowNames = allocVector(VECSXP, 4)); nProtect++;
+    PROTECT(dicResultsColNames = allocVector(VECSXP, 1)); nProtect++;
     SET_VECTOR_ELT(dicResultsRowNames, 0, mkChar("bar.D"));
     SET_VECTOR_ELT(dicResultsRowNames, 1, mkChar("D.bar.Omega"));
     SET_VECTOR_ELT(dicResultsRowNames, 2, mkChar("pD"));
@@ -1139,7 +1139,7 @@ extern "C" {
     
     SEXP result, resultNames;
     PROTECT(result = allocVector(VECSXP, nResultListObjs)); nProtect++;
-    PROTECT(resultNames = allocVector(STRSXP, nResultListObjs)); nProtect++;
+    PROTECT(resultNames = allocVector(VECSXP, nResultListObjs)); nProtect++;
     
     //set result list elements
     int resultListIndx = 0;
@@ -1151,7 +1151,7 @@ extern "C" {
       REAL(DICMargResult)[3] = DBarMarg + DBarMarg - DBarMargOmega; 
       setAttrib(DICMargResult, R_DimNamesSymbol, dicResultDimName);
       
-      SET_STRING_ELT(resultNames, resultListIndx, mkChar("DIC.marg")); 
+      SET_VECTOR_ELT(resultNames, resultListIndx, mkChar("DIC.marg")); 
       resultListIndx++;
     }
     
@@ -1163,14 +1163,14 @@ extern "C" {
       REAL(DICUnmargResult)[3] = DBarUnmarg + DBarUnmarg - DBarUnmargOmega; 
       setAttrib(DICUnmargResult, R_DimNamesSymbol, dicResultDimName);
 
-      SET_STRING_ELT(resultNames, resultListIndx, mkChar("DIC.unmarg")); 
+      SET_VECTOR_ELT(resultNames, resultListIndx, mkChar("DIC.unmarg")); 
       resultListIndx++;
     }
     
     if(!haveW  && DICUnmarg){//calculated it here
       //w observed
       SET_VECTOR_ELT(result, resultListIndx, w_r);
-      SET_STRING_ELT(resultNames, resultListIndx, mkChar("sp.effects"));    
+      SET_VECTOR_ELT(resultNames, resultListIndx, mkChar("sp.effects"));    
     }
     
     namesgets(result, resultNames);

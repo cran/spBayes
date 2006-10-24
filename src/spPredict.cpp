@@ -740,21 +740,21 @@ extern "C" {
     SEXP result, resultNames;
     
     PROTECT(result = allocVector(VECSXP, nResultListObjs)); nProtect++;
-    PROTECT(resultNames = allocVector(STRSXP, nResultListObjs)); nProtect++;
+    PROTECT(resultNames = allocVector(VECSXP, nResultListObjs)); nProtect++;
     
     //set result list elements
     //pred w predicted
     SET_VECTOR_ELT(result, 0, wPred);
-    SET_STRING_ELT(resultNames, 0, mkChar("pred.sp.effects")); 
+    SET_VECTOR_ELT(resultNames, 0, mkChar("pred.sp.effects")); 
 
     //pred y predicted
     SET_VECTOR_ELT(result, 1, yPred);
-    SET_STRING_ELT(resultNames, 1, mkChar("pred.y")); 
+    SET_VECTOR_ELT(resultNames, 1, mkChar("pred.y")); 
 
     if(!haveW){    
       //w observed
       SET_VECTOR_ELT(result, 2, w_r);
-      SET_STRING_ELT(resultNames, 2, mkChar("sp.effects"));    
+      SET_VECTOR_ELT(resultNames, 2, mkChar("sp.effects"));    
     }
 
     namesgets(result, resultNames);

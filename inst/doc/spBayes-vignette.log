@@ -1,4 +1,4 @@
-This is pdfeTeXk, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=pdflatex 2006.10.20)  22 OCT 2006 16:32
+This is pdfeTeXk, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=pdflatex 2006.8.7)  24 OCT 2006 08:28
 entering extended mode
  file:line:error style messages enabled.
 **\nonstopmode \input /home/andy/Rdevel/spBayes/inst/doc/spBayes-vignette.tex
@@ -451,7 +451,7 @@ LaTeX Warning: There were undefined references.
  ) 
 Here is how much of TeX's memory you used:
  3674 strings out of 94500
- 46282 string characters out of 1175787
+ 46299 string characters out of 1175772
  92436 words of memory out of 1000000
  6705 multiletter control sequences out of 10000+50000
  51252 words of font info for 102 fonts, out of 500000 for 2000
@@ -478,4 +478,4 @@ uesky/cm/cmr7.pfb></usr/share/texmf-tetex/fonts/type1/bluesky/cm/cmcsc10.pfb></
 usr/share/texmf-tetex/fonts/type1/bluesky/cm/cmssbx10.pfb></usr/share/texmf-tet
 ex/fonts/type1/bluesky/cm/cmbx12.pfb></usr/share/texmf-tetex/fonts/type1/bluesk
 y/cm/cmb10.pfb>
-Output written on spBayes-vignette.pdf (28 pages, 6024227 bytes).
+Output written on spBayes-vignette.pdf (28 pages, 6024245 bytes).
