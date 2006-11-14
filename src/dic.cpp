@@ -393,7 +393,7 @@ extern "C" {
 	
 	if(verbose){
 	  if(status == 100){
-	    Rprintf("Sampled: %i of %i, %3.2f\%\n", s, nSamples, 100.0*s/nSamples);
+	    Rprintf("Sampled: %i of %i, %3.2f%%\n", s, nSamples, 100.0*s/nSamples);
             #ifdef Win32
 	    R_FlushConsole();
             #endif
@@ -408,7 +408,7 @@ extern "C" {
       PutRNGstate(); 
       
       if(verbose){
-	Rprintf("Sampled: %i of %i, %3.2f\%\n", nSamples, nSamples, 100.0);
+	Rprintf("Sampled: %i of %i, %3.2f%%\n", nSamples, nSamples, 100.0);
         #ifdef Win32
 	R_FlushConsole();
         #endif
@@ -599,7 +599,7 @@ extern "C" {
 
 	if(verbose){
 	  if(status == 100){
-	    Rprintf("Sampled: %i of %i, %3.2f\%\n", s, nSamples, 100.0*s/nSamples);
+	    Rprintf("Sampled: %i of %i, %3.2f%%\n", s, nSamples, 100.0*s/nSamples);
             #ifdef Win32
 	    R_FlushConsole();
             #endif
@@ -747,7 +747,7 @@ extern "C" {
       DBarMargOmega = logDetR+F77_NAME(ddot)(&xnrow, tmpXRow, &incOne, tmpXRow1, &incOne); //i.e., DMarg = -2.0*(-0.5*logDetCov - 0.5*dotResult);
       
       if(verbose){
-	Rprintf("Sampled: %i of %i, %3.2f\%\n", nSamples, nSamples, 100.0);
+	Rprintf("Sampled: %i of %i, %3.2f%%\n", nSamples, nSamples, 100.0);
         #ifdef Win32
 	R_FlushConsole();
         #endif	
@@ -929,7 +929,7 @@ extern "C" {
 
 	if(verbose){
 	  if(status == 100){
-	    Rprintf("Sampled: %i of %i, %3.2f\%\n", s, nSamples, 100.0*s/nSamples);
+	    Rprintf("Sampled: %i of %i, %3.2f%%\n", s, nSamples, 100.0*s/nSamples);
             #ifdef Win32
 	    R_FlushConsole();
             #endif
@@ -1104,7 +1104,7 @@ extern "C" {
       DBarUnmargOmega += logDetR+F77_NAME(ddot)(&xnrow, wMeans, &incOne, tmpXRow1, &incOne);
       
       if(verbose){
-	Rprintf("Sampled: %i of %i, %3.2f\%\n", nSamples, nSamples, 100.0);
+	Rprintf("Sampled: %i of %i, %3.2f%%\n", nSamples, nSamples, 100.0);
         #ifdef Win32
 	R_FlushConsole();
         #endif

@@ -376,7 +376,7 @@ extern "C" {
 	
 	if(verbose){
 	  if(status == 100){
-	    Rprintf("Sampled: %i of %i, %3.2f\%\n", s, nSamples, 100.0*s/nSamples);
+	    Rprintf("Sampled: %i of %i, %3.2f%%\n", s, nSamples, 100.0*s/nSamples);
             #ifdef Win32
 	    R_FlushConsole();
             #endif
@@ -388,7 +388,7 @@ extern "C" {
       }//end sample loop
       
       if(verbose){
-	Rprintf("Sampled: %i of %i, %3.2f\%\n", nSamples, nSamples, 100.0);
+	Rprintf("Sampled: %i of %i, %3.2f%%\n", nSamples, nSamples, 100.0);
         #ifdef Win32
 	R_FlushConsole();
         #endif
@@ -707,7 +707,7 @@ extern "C" {
 
       if(verbose){
 	if(status == 100){
-	  Rprintf("Sampled: %i of %i, %3.2f\%\n", s, nSamples, 100.0*s/nSamples);
+	  Rprintf("Sampled: %i of %i, %3.2f%%\n", s, nSamples, 100.0*s/nSamples);
           #ifdef Win32
 	  R_FlushConsole();
           #endif
@@ -720,7 +720,7 @@ extern "C" {
     }//end sample loop
 
     if(verbose){
-      Rprintf("Sampled: %i of %i, %3.2f\%\n", nSamples, nSamples, 100.0);
+      Rprintf("Sampled: %i of %i, %3.2f%%\n", nSamples, nSamples, 100.0);
       #ifdef Win32
       R_FlushConsole();
       #endif

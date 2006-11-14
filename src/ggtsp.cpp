@@ -1211,7 +1211,7 @@ extern "C" {
      //report
      if(verbose){
        if(status == 100){
-	 Rprintf("Sampled: %i of %i, %3.2f\%\n", s, nSamples, 100.0*s/nSamples);
+	 Rprintf("Sampled: %i of %i, %3.2f%%\n", s, nSamples, 100.0*s/nSamples);
 	 Rprintf("Acceptance rates\n");
 	 for(i = 0; i < params.size(); i++){
 	   if(params[i]->getSubParIndx() == -1)
@@ -1233,7 +1233,7 @@ extern "C" {
    
    //final status report
    if(verbose){
-     Rprintf("Sampled: %i of %i, %3.2f\%\n", s, nSamples, 100.0*s/nSamples);
+     Rprintf("Sampled: %i of %i, %3.2f%%\n", s, nSamples, 100.0*s/nSamples);
      Rprintf("Acceptance rates\n");
      for(i = 0; i < params.size(); i++){
        if(params[i]->getSubParIndx() == -1)
