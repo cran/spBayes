@@ -94,8 +94,8 @@ extern "C" {
 	AParams.push_back(new hc("K", 1, 0, 1, nSamples));
 	AParams[0]->setHyper1(&REAL(getListElement(APriorHyper, "a"))[0]);
 	AParams[0]->setSampleOrder(INTEGER(getListElement(AList, "sample.order"))[0]);
-      }else if(PriorDist == "LOGUNIF"){
-	AParams.push_back(new logunif("K", 1, 1, 1, nSamples));
+      }else if(PriorDist == "UNIF"){
+	AParams.push_back(new unif("K", 1, 1, 1, nSamples));
 	AParams[0]->setHyper1(&REAL(getListElement(APriorHyper, "a"))[0]);
 	AParams[0]->setHyper2(&REAL(getListElement(APriorHyper, "b"))[0]);
 	AParams[0]->setSampleOrder(INTEGER(getListElement(AList, "sample.order"))[0]);
@@ -131,8 +131,8 @@ extern "C" {
 	  AParams.push_back(new hc("K", 1, 0, 1, nSamples));
 	  AParams[i]->setHyper1(&REAL(getListElement(APriorHyper, "a"))[0]);
 	  AParams[i]->setSampleOrder(INTEGER(getListElement(AList, "sample.order"))[i]);
-	}else if(PriorDist == "LOGUNIF"){
-	  AParams.push_back(new logunif("K", 1, 1, 1, nSamples));
+	}else if(PriorDist == "UNIF"){
+	  AParams.push_back(new unif("K", 1, 1, 1, nSamples));
 	  AParams[i]->setHyper1(&REAL(getListElement(APriorHyper, "a"))[0]);
 	  AParams[i]->setHyper2(&REAL(getListElement(APriorHyper, "b"))[0]);
 	  AParams[i]->setSampleOrder(INTEGER(getListElement(AList, "sample.order"))[i]);
@@ -205,8 +205,8 @@ extern "C" {
 	  PsiParams.push_back(new hc("Psi", 1, 0, 1, nSamples));
 	  PsiParams[0]->setHyper1(&REAL(getListElement(PsiPriorHyper, "a"))[0]);
 	  PsiParams[0]->setSampleOrder(INTEGER(getListElement(PsiList, "sample.order"))[0]);
-	}else if(PriorDist == "LOGUNIF"){
-	  PsiParams.push_back(new logunif("Psi", 1, 1, 1, nSamples));
+	}else if(PriorDist == "UNIF"){
+	  PsiParams.push_back(new unif("Psi", 1, 1, 1, nSamples));
 	  PsiParams[0]->setHyper1(&REAL(getListElement(PsiPriorHyper, "a"))[0]);
 	  PsiParams[0]->setHyper2(&REAL(getListElement(PsiPriorHyper, "b"))[0]);
 	  PsiParams[0]->setSampleOrder(INTEGER(getListElement(PsiList, "sample.order"))[0]);
@@ -242,8 +242,8 @@ extern "C" {
 	    PsiParams.push_back(new hc("Psi", 1, 0, 1, nSamples));
 	    PsiParams[i]->setHyper1(&REAL(getListElement(PsiPriorHyper, "a"))[0]);
 	    PsiParams[i]->setSampleOrder(INTEGER(getListElement(PsiList, "sample.order"))[i]);
-	  }else if(PriorDist == "LOGUNIF"){
-	    PsiParams.push_back(new logunif("Psi", 1, 1, 1, nSamples));
+	  }else if(PriorDist == "UNIF"){
+	    PsiParams.push_back(new unif("Psi", 1, 1, 1, nSamples));
 	    PsiParams[i]->setHyper1(&REAL(getListElement(PsiPriorHyper, "a"))[0]);
 	    PsiParams[i]->setHyper2(&REAL(getListElement(PsiPriorHyper, "b"))[0]);
 	    PsiParams[i]->setSampleOrder(INTEGER(getListElement(PsiList, "sample.order"))[i]);
@@ -315,13 +315,8 @@ extern "C" {
 	PhiParams.push_back(new hc("Phi", 1, 0, 1, nSamples));
 	PhiParams[0]->setHyper1(&REAL(getListElement(PhiPriorHyper, "a"))[0]);
 	PhiParams[0]->setSampleOrder(INTEGER(getListElement(PhiList, "sample.order"))[0]);
-      }else if(PriorDist == "LOGUNIF"){
-	PhiParams.push_back(new logunif("Phi", 1, 1, 1, nSamples));
-	PhiParams[0]->setHyper1(&REAL(getListElement(PhiPriorHyper, "a"))[0]);
-	PhiParams[0]->setHyper2(&REAL(getListElement(PhiPriorHyper, "b"))[0]);
-	PhiParams[0]->setSampleOrder(INTEGER(getListElement(PhiList, "sample.order"))[0]);
       }else if(PriorDist == "UNIF"){
-	PhiParams.push_back(new logunif("Phi", 1, 1, 1, nSamples));
+	PhiParams.push_back(new unif("Phi", 1, 1, 1, nSamples));
 	PhiParams[0]->setHyper1(&REAL(getListElement(PhiPriorHyper, "a"))[0]);
 	PhiParams[0]->setHyper2(&REAL(getListElement(PhiPriorHyper, "b"))[0]);
 	PhiParams[0]->setSampleOrder(INTEGER(getListElement(PhiList, "sample.order"))[0]);
@@ -357,13 +352,8 @@ extern "C" {
 	  PhiParams.push_back(new hc("Phi", 1, 0, 1, nSamples));
 	  PhiParams[i]->setHyper1(&REAL(getListElement(PhiPriorHyper, "a"))[0]);
 	  PhiParams[i]->setSampleOrder(INTEGER(getListElement(PhiList, "sample.order"))[i]);
-	}else if(PriorDist == "LOGUNIF"){
-	  PhiParams.push_back(new logunif("Phi", 1, 1, 1, nSamples));
-	  PhiParams[i]->setHyper1(&REAL(getListElement(PhiPriorHyper, "a"))[0]);
-	  PhiParams[i]->setHyper2(&REAL(getListElement(PhiPriorHyper, "b"))[0]);
-	  PhiParams[i]->setSampleOrder(INTEGER(getListElement(PhiList, "sample.order"))[i]);
 	}else if(PriorDist == "UNIF"){
-	  PhiParams.push_back(new logunif("Phi", 1, 1, 1, nSamples));
+	  PhiParams.push_back(new unif("Phi", 1, 1, 1, nSamples));
 	  PhiParams[i]->setHyper1(&REAL(getListElement(PhiPriorHyper, "a"))[0]);
 	  PhiParams[i]->setHyper2(&REAL(getListElement(PhiPriorHyper, "b"))[0]);
 	  PhiParams[i]->setSampleOrder(INTEGER(getListElement(PhiList, "sample.order"))[i]);
@@ -415,13 +405,8 @@ extern "C" {
 	  NuParams.push_back(new hc("Nu", 1, 0, 1, nSamples));
 	  NuParams[0]->setHyper1(&REAL(getListElement(NuPriorHyper, "a"))[0]);
 	  NuParams[0]->setSampleOrder(INTEGER(getListElement(NuList, "sample.order"))[0]);
-	}else if(PriorDist == "LOGUNIF"){
-	  NuParams.push_back(new logunif("Nu", 1, 1, 1, nSamples));
-	  NuParams[0]->setHyper1(&REAL(getListElement(NuPriorHyper, "a"))[0]);
-	  NuParams[0]->setHyper2(&REAL(getListElement(NuPriorHyper, "b"))[0]);
-	  NuParams[0]->setSampleOrder(INTEGER(getListElement(NuList, "sample.order"))[0]);
 	}else if(PriorDist == "UNIF"){
-	  NuParams.push_back(new logunif("Nu", 1, 1, 1, nSamples));
+	  NuParams.push_back(new unif("Nu", 1, 1, 1, nSamples));
 	  NuParams[0]->setHyper1(&REAL(getListElement(NuPriorHyper, "a"))[0]);
 	  NuParams[0]->setHyper2(&REAL(getListElement(NuPriorHyper, "b"))[0]);
 	  NuParams[0]->setSampleOrder(INTEGER(getListElement(NuList, "sample.order"))[0]);
@@ -457,13 +442,8 @@ extern "C" {
 	    NuParams.push_back(new hc("Nu", 1, 0, 1, nSamples));
 	    NuParams[i]->setHyper1(&REAL(getListElement(NuPriorHyper, "a"))[0]);
 	    NuParams[i]->setSampleOrder(INTEGER(getListElement(NuList, "sample.order"))[i]);
-	  }else if(PriorDist == "LOGUNIF"){
-	    NuParams.push_back(new logunif("Nu", 1, 1, 1, nSamples));
-	    NuParams[i]->setHyper1(&REAL(getListElement(NuPriorHyper, "a"))[0]);
-	    NuParams[i]->setHyper2(&REAL(getListElement(NuPriorHyper, "b"))[0]);
-	    NuParams[i]->setSampleOrder(INTEGER(getListElement(NuList, "sample.order"))[i]);
 	  }else if(PriorDist == "UNIF"){
-	    NuParams.push_back(new logunif("Nu", 1, 1, 1, nSamples));
+	    NuParams.push_back(new unif("Nu", 1, 1, 1, nSamples));
 	    NuParams[i]->setHyper1(&REAL(getListElement(NuPriorHyper, "a"))[0]);
 	    NuParams[i]->setHyper2(&REAL(getListElement(NuPriorHyper, "b"))[0]);
 	    NuParams[i]->setSampleOrder(INTEGER(getListElement(NuList, "sample.order"))[i]);
@@ -798,6 +778,7 @@ extern "C" {
     double *tmpXRowCol = (double *) R_alloc(xnrow*xncol, sizeof(double));
     double *tmpXColCol = (double *) R_alloc(xncol*xncol, sizeof(double));
     int dicIndx = 0;
+    double logMHRatio = 0;
 
    GetRNGstate();
    for(s = 0; s < nSamples; s++){
@@ -949,7 +930,14 @@ extern "C" {
 	 first = false;
        }
        
-       if(runif(0.0,1.0) <= exp(logPostCand - logPostCurrent)){
+       //adjust for non-symetric proposals distributions
+       logMHRatio = logPostCand - logPostCurrent;
+       
+       for(i = 0; i < params.size(); i++){ 
+	 logMHRatio += params[i]->logHastingsAdj();
+       }
+
+       if(runif(0.0,1.0) <= exp(logMHRatio)){
 	 F77_CALL(dcopy)(&rlength, R, &incOne, RCurrent, &incOne);
 	 logPostCurrent = logPostCand;
 	 logDetCovCurrent = logDetR;

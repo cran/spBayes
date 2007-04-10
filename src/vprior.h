@@ -44,6 +44,7 @@ class vprior
   virtual void setStarting(double *s) = 0;
 
   virtual double logLikelihood() = 0;
+  virtual double logHastingsAdj() = 0;
   virtual void propose() = 0;
   virtual void reject() = 0;
   virtual double getCurrentSampleTrans(int indx) = 0;

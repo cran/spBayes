@@ -156,21 +156,21 @@ ggt.sp <- function(formula, data = parent.frame(), coords, run.control, var.upda
 
       ##check each prior in the list
       for(i in K.list$prior){
-        if(class(i) != "prior" || !i$dist %in% c("IG", "LOGUNIF", "HC", "FIXED"))
-          stop("error: 'prior' value is misspecified for the ",param.name," parameter in the var.update.control list. It seems you are trying to specify independent priors for each element on the diag(",param.name,"); however, one or more of these priors is misspecified, they must IG, LOGUNIF, HC, or FIXED\n")
+        if(class(i) != "prior" || !i$dist %in% c("IG", "UNIF", "HC", "FIXED"))
+          stop("error: 'prior' value is misspecified for the ",param.name," parameter in the var.update.control list. It seems you are trying to specify independent priors for each element on the diag(",param.name,"); however, one or more of these priors is misspecified, they must IG, UNIF, HC, or FIXED\n")
       }
       K.list$case <- 2
     }else if(class(K.list$prior) == "prior"){
       if(m == 1){
-        if(K.list$prior$dist %in% c("IG", "LOGUNIF", "HC", "FIXED")){
+        if(K.list$prior$dist %in% c("IG", "UNIF", "HC", "FIXED")){
           K.list$case <- 1
         }else{
-          stop("error: 'prior' value is misspecifed for the ",param.name," parameter in the var.update.control list.  For the univariate response model the prior must be IG, LOGUNIF, HC, or FIXED\n")
+          stop("error: 'prior' value is misspecifed for the ",param.name," parameter in the var.update.control list.  For the univariate response model the prior must be IG, UNIF, HC, or FIXED\n")
         }
       }else if(m > 1){
 
         ##two options based on the starting value, if dist is IWISH then starting must be a mxm matrix
-        ##if dist is in "IG", "LOGUNIF", "HC" then starting must be a scaler
+        ##if dist is in "IG", "UNIF", "HC" then starting must be a scaler
         ##now if dist is FIXED then the starting data type determines which case we have
         ##if dist is FIXED and starting is matrix then assumed fixed matrix
         ##if dist is Fixed and starting is scaler then assumed single parame for all diag elements
@@ -181,7 +181,7 @@ ggt.sp <- function(formula, data = parent.frame(), coords, run.control, var.upda
               
         if(K.list$prior$dist == "IWISH"){
           K.list$case <- 3
-        }else if(K.list$prior$dist%in%c("IG", "LOGUNIF", "HC")){
+        }else if(K.list$prior$dist%in%c("IG", "UNIF", "HC")){
           K.list$case <- 1
         }else if(K.list$prior$dist == "FIXED"){
           if(is.matrix(K.list$starting)){
@@ -738,6 +738,14 @@ ggt.sp <- function(formula, data = parent.frame(), coords, run.control, var.upda
   storage.mode(beta$sample.order) <- "integer"
   beta$n.beta <- as.integer(n.beta)
 
+  ####################################################
+  ##Check support on UNIF prior
+  ####################################################
+
+  ##This is done in prior.R for now since any parameter that can receive a uniform prior is strictly greater than zero
+  ##i.e., phi, K, Psi, nu. This will change later.
+  
+  
   #####################################################
   ##off it goes
   ####################################################

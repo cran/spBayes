@@ -214,3 +214,10 @@ string toString(int &x) {
   return oss.str();
 }
  
+
+double dTNorm(double x, double mu, double sd, double a, double b){
+  if(x < a || x > b)
+    return 0.0;
+  else
+    return dnorm(x, mu, sd, false)/(pnorm(b, mu, sd, true, false) - pnorm(a, mu, sd, true, false));
+}

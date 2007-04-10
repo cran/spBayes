@@ -88,7 +88,7 @@ pred.coords <- as.matrix(FBC07[151:200,c("coord.X", "coord.Y")])
 ##Fit some model with ggt.sp.
 K.prior <- prior(dist="IG", shape=2, scale=5)
 Psi.prior <- prior(dist="IG", shape=2, scale=5)
-phi.prior <- prior(dist="LOGUNIF", a=0.06, b=3)
+phi.prior <- prior(dist="UNIF", a=0.06, b=3)
 
 var.update.control <-
   list("K"=list(starting=5, tuning=0.5, prior=K.prior),
@@ -141,7 +141,7 @@ contour(Pred.Y.surf, add=TRUE)
 ##Fit some model with ggt.sp.
 K.prior <- prior(dist="IWISH", df=2, S=diag(c(3, 6)))
 Psi.prior <- prior(dist="IWISH", df=2, S=diag(c(7, 5)))
-phi.prior <- prior(dist="LOGUNIF", a=0.06, b=3)
+phi.prior <- prior(dist="UNIF", a=0.06, b=3)
 
 K.starting <- matrix(c(2,-3, 0, 1), 2, 2)
 Psi.starting <- diag(c(3, 2))

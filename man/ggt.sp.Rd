@@ -157,7 +157,7 @@ coords <- as.matrix(FBC07[1:100,c("coord.X", "coord.Y")])
 ##and spatial range (Phi).
 K.prior <- prior(dist="IG", shape=2, scale=5)
 Psi.prior <- prior(dist="IG", shape=2, scale=5)
-phi.prior <- prior(dist="LOGUNIF", a=0.06, b=3)
+phi.prior <- prior(dist="UNIF", a=0.06, b=3)
 
 var.update.control <-
   list("K"=list(starting=5, tuning=0.5, prior=K.prior),
@@ -228,8 +228,8 @@ points(coords, pch=19)
 ##phi and nu in a separate MH block.  This provides finer control
 ##on the parameters' acceptance rate, but takes a bit longer to
 ##run.
-phi.prior <- prior(dist="LOGUNIF", a=0.06, b=3)
-nu.prior <- prior(dist="LOGUNIF", a=0.01, b=2)
+phi.prior <- prior(dist="UNIF", a=0.06, b=3)
+nu.prior <- prior(dist="UNIF", a=0.01, b=2)
 
 var.update.control <-
   list("K"=list(starting=5, tuning=0.5, prior=K.prior),
@@ -310,7 +310,7 @@ plot(mcmc.list(Fit.m5.a$p.samples, Fit.m5.b$p.samples))
 
 K.prior <- prior(dist="HC", a=50)
 Psi.prior <- prior(dist="HC", a=50)
-phi.prior <- prior(dist="LOGUNIF", a=0.06, b=3)
+phi.prior <- prior(dist="UNIF", a=0.06, b=3)
 
 var.update.control <-
   list("K"=list(starting=5, tuning=0.5, prior=K.prior),
@@ -347,7 +347,7 @@ summary(Fit.m1$p.samples)
 ##directive, as shown in the second example below.
 K.prior <- prior(dist="IWISH", df=2, S=diag(c(3, 6)))
 Psi.prior <- prior(dist="IWISH", df=2, S=diag(c(7, 5)))
-phi.prior <- prior(dist="LOGUNIF", a=0.06, b=3)
+phi.prior <- prior(dist="UNIF", a=0.06, b=3)
 
 ##The matrix starting values for K and Psi are actually
 ##passed as the sqrt of the desired starting values.
@@ -444,7 +444,7 @@ contour(rand.effect.Y.2.surf, add=TRUE)
 ##data set.
 K.prior <- prior(dist="IWISH", df=2, S=diag(c(3, 6)))
 Psi.prior <- prior(dist="IG", shape=2, scale=5)
-phi.prior <- prior(dist="LOGUNIF", a=0.06, b=3)
+phi.prior <- prior(dist="UNIF", a=0.06, b=3)
 
 var.update.control <-
   list("K"=list(sample.order=0, starting=K.starting,
@@ -473,7 +473,7 @@ summary(Fit.mv.m3$p.samples)
 ##because we can.
 K.prior <- prior(dist="IG", shape=2, scale=5)
 Psi.prior <- prior(dist="IG", shape=2, scale=5)
-phi.prior <- prior(dist="LOGUNIF", a=0.06, b=3)
+phi.prior <- prior(dist="UNIF", a=0.06, b=3)
 
 var.update.control <-
   list("K"=list(starting=5, tuning=0.5, prior=K.prior),

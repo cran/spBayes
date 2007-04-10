@@ -13,8 +13,7 @@ prior(dist, ...)
 
 \arguments{
   \item{dist}{a quoted key word that identifies the prior distribution.  The
-    choices are inverse-gamma \code{"IG"}, uniform \code{"UNIF"},
-    log-uniform, \code{"LOGUNIF"}, half-Cauchy \code{"HC"}, normal
+    choices are inverse-gamma \code{"IG"}, uniform \code{"UNIF"}, half-Cauchy \code{"HC"}, normal
     \code{"NORMAL"}, flat \code{"FLAT"}, inverse-Wishart \code{"IWISH"},
     and fixed scalar or matrix \code{"FIXED"}.  }
   \item{...}{the hyperparameters of the chosen prior distribution,
@@ -32,12 +31,6 @@ prior(dist, ...)
   \itemize{
     \item{Uniform: }{\eqn{1/(b-a), b > a}{1/(b-a)}, where \eqn{b >
 	a}. Use key words \code{"a"}, and \code{"b"}. }
-    
-    \item{Log-uniform: }{\eqn{1/(b-a), b > a}{1/(b-a)}, where \eqn{b > a
-	> 0}.  When the associated parameter is known to be strictly
-      greater than zero, the log-uniform should be used to improve
-      sampler efficiency.
-      Use key words \code{"a"}, and \code{"b"}.  }
     
     \item{Inverse-gamma: }{\eqn{x^{-(a+1)} exp(-b/x)}{x^{-(a+1)}
 	exp(-b/x)}, where \eqn{a} is shape \eqn{> 0} and \eqn{b} is scale \eqn{> 0}.

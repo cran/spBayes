@@ -48,3 +48,4 @@ void setLowerChol(double *A, double *S, int dim);
 
 string toString(int &x);
 
+double dTNorm(double x, double mu, double sd, double a, double b);

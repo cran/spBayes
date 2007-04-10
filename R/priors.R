@@ -18,6 +18,11 @@ prior <- function(dist, ...){
     stop("dist type ",dist," not found\n")
   }
 
+  if(dist %in% c("LOGUNIF", "logunif")){
+    stop("As of spBayes_0.0-6 the there is no log-uniform prior. Please replace with the uniform prior.")
+  }
+
+  
   ##
   ##Inverse-Wishart
   ##
@@ -135,38 +140,18 @@ prior <- function(dist, ...){
      }else{
        stop("'b' not specified (or specified incorrectly) for UNIF prior (check if b > a\n")
      }
-
+   
     ##storage mode check
     storage.mode(a) <- "double"
     storage.mode(b) <- "double"
+
+    ##for now any parameter that receives a UNIF in this model ggt.sp must have support > 0
+    if(a <= 0)
+      stop("For this parameter the UNIF prior support must be greater than zero (i.e., 'a' > 0)\n")
     
     prior <- list(dist="UNIF", params=list("a"=a,"b"=b))
   }
 
-
-  ##
-  ##Log Uniform
-  ## 
-  if(dist %in% c("LOGUNIF", "logunif")){
-
-    
-    if("a"%in%names(dist.params) && is.numeric(dist.params$a)){
-      a <- dist.params$a
-    }else{
-      stop("'a' not specified (or specified incorrectly) for LOGUNIF prior\n")
-    }
-    if("b"%in%names(dist.params) && is.numeric(dist.params$b) && dist.params$b > dist.params$a){
-      b <- dist.params$b
-     }else{
-       stop("'b' not specified (or specified incorrectly) for LOGUNIF prior (check if b > a\n")
-     }
-
-    ##storage mode check
-    storage.mode(a) <- "double"
-    storage.mode(b) <- "double"
-    
-    prior <- list(dist="LOGUNIF", params=list("a"=a,"b"=b))
-  }
 
   ##
   ##Log Half-Cauchy

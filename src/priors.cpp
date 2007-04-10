@@ -66,6 +66,12 @@ double ig::logLikelihood(){
   return logLike;
 }
 
+
+double ig::logHastingsAdj(){
+  return 0.0;
+}
+
+
 void ig::propose(){
   current++;
   acceptance++;
@@ -226,6 +232,9 @@ double iwish::logLikelihood(){
   return logLike;
 }
 
+double iwish::logHastingsAdj(){
+  return 0.0;
+}
 
 void iwish::propose(){
   current++;
@@ -416,6 +425,19 @@ double unif::logLikelihood(){
   return 0;
 }
 
+
+double unif::logHastingsAdj(){
+  double adj = 0.0;
+  
+  for(int i = 0; i < nPar; i++){
+    adj += log(dTNorm(samples[(current-1)*nPar+i], samples[current*nPar+i], tuning[i], a[i], b[i]))-
+      log(dTNorm(samples[current*nPar+i], samples[(current-1)*nPar+i], tuning[i], a[i], b[i]));
+  }
+
+  return adj;
+}
+
+
 void unif::propose(){
   current++;
   acceptance++;
@@ -502,150 +524,6 @@ void unif::show(){
 }
 
 
-/************************
-     Log-uniform 
-************************/
-logunif::logunif(string fn, int dimH1, int dimH2, int nP, int nS): 
-  vprior(fn, dimH1, dimH2, nP, nS)
-{
-  prior = "LOGUNIF";
-  samples = (double *) R_alloc(nPar*nSamples, sizeof(double)); zeros(samples, nPar*nSamples);
-  a = (double *) R_alloc(nPar, sizeof(double)); 
-  b = (double *) R_alloc(nPar, sizeof(double));
-  tuning = (double *) R_alloc(nPar, sizeof(double)); 
-  sampleMeans = (double *) R_alloc(nPar, sizeof(double));
-}
-
-void logunif::setHyper1(double *hyper1){
-  for(int i = 0; i < nPar; i++)
-    a[i] = hyper1[i];
-}
-
-void logunif::setHyper2(double *hyper2){
-  for(int i = 0; i < nPar; i++)
-    b[i] = hyper2[i];
-}
-
-double* logunif::getHyper1(){return a;}
-
-double* logunif::getHyper2(){return b;}
-
-void logunif::setTuning(double *t){
-  for(int i = 0; i < nPar; i++)
-    tuning[i] = t[i];
-}
-
-void logunif::setStarting(double *s){
-  current = 0;
-  for(int i = 0; i < nPar; i++){
-    if(s[i] <= 0)
-      error("c++ error: logunif::setStarting given starting values is <= 0");
-    samples[i] = log(s[i]);
-  }
-
-}
-
-double logunif::logLikelihood(){
-    double logLike = 0.0;
-  
-  //with jacobian
-  for(int i = 0; i < nPar; i++)
-    logLike += samples[current*nPar+i];
-
-  return logLike;
-}
-
-void logunif::propose(){
-  current++;
-  acceptance++;
-  bool again = true;
-
-  for(int i = 0; i < nPar; i++){
-    again = true;
-    while(again){
-      samples[current*nPar+i] = rnorm(samples[(current-1)*nPar+i], tuning[i]);
-      if(exp(samples[current*nPar+i]) > a[i] && exp(samples[current*nPar+i]) < b[i])
-	again = false;
-
-      R_CheckUserInterrupt();
-    }
-  }
-
-}
-
-void logunif::reject(){
-  int incOne = 1;
-  acceptance--;
-  F77_NAME(dcopy)(&nPar, &samples[(current-1)*nPar], &incOne, &samples[current*nPar], &incOne);
-}
-
-double logunif::getCurrentSampleTrans(int indx){
-  if(indx > nPar-1)
-    error("c++ error: logunif::getCurrentSampleTrans");
-  
-  return exp(samples[current*nPar+indx]);
-}
-
-double* logunif::getSamples(){
-  return samples;
-}
-
-void logunif::setCurrentSample(double*){
-  error("c++ error: logunif::setCurrentSample not implemented");
-}
-
-double* logunif::getCurrentSample(){
-  error("c++ error: logunif::getCurrentSample not implemented");
-  return &nil;
-}
-
-void logunif::transSamples(){
-  for(int i = 0; i < nSamples; i++)
-    for(int j = 0; j < nPar; j++)
-      samples[i*nPar+j] = exp(samples[i*nPar+j]);
-}
-
-void logunif::sampleMeansFromStart(int s){
-  int n = 0;
-  int i,j;
-
-  for(j = 0; j < nPar; j++)
-    sampleMeans[j] = 0.0;
-
-  for(i = s; i < nSamples; i++){
-    n++;
-    for(j = 0; j < nPar; j++){
-      sampleMeans[j] += exp(samples[i*nPar+j]);
-    }
-  }
-
-  for(j = 0; j < nPar; j++)
-    sampleMeans[j] = sampleMeans[j]/n;
-}
-
-double* logunif::getSampleMeans(){return sampleMeans;}
-
-void logunif::show(){
- 
-  if(subParIndx == -1)
-    Rprintf("name: %s\n", formalName.c_str());
-  else
-    Rprintf("name: %s_%i\n", formalName.c_str(), subParIndx);
-  Rprintf("\tnumber of samples: %i\n", nSamples-1);//ob1 for starting
-  Rprintf("\tnumber of parameters: %i\n", nPar);
-  Rprintf("\tsample order: %i\n", sampleOrder);
-  Rprintf("\tprior: %s\n", prior.c_str());
-  Rprintf("\t\tparam. number and a and b hyperparameter:\n");
-  for(int i = 0; i < nPar; i++)
-    Rprintf("\t\t\t%i %f %f\n", i+1, a[i], b[i]);
-  
-  Rprintf("\tMetropolis-Hastings param. number, tuning, and starting value:\n");
-  for(int i = 0; i < nPar; i++)
-    Rprintf("\t\t%i %f %f\n", i+1, tuning[i], exp(samples[i]));
-  Rprintf("-------------------------------------------------\n");
-
-}
-
 
 /************************
        Half-Cauchy
@@ -699,6 +577,12 @@ double hc::logLikelihood(){
 
   return logLike;
 }
+
+
+double hc::logHastingsAdj(){
+  return 0.0;
+}
+
 
 void hc::propose(){
   current++;
@@ -829,6 +713,11 @@ double fixedpar::logLikelihood(){
   return 0;
 }
 
+double fixedpar::logHastingsAdj(){
+  return 0.0;
+}
+
+
 void fixedpar::propose(){}
 
 void fixedpar::reject(){}
@@ -931,6 +820,10 @@ void fixedmtrx::setStarting(double *s){
 
 double fixedmtrx::logLikelihood(){
   return 0;
+}
+
+double fixedmtrx::logHastingsAdj(){
+  return 0.0;
 }
 
 void fixedmtrx::propose(){}
@@ -1098,6 +991,9 @@ double betapar::logLikelihood(){
   }
 }
 
+double betapar::logHastingsAdj(){
+  return 0.0;
+}
 
 void betapar::propose(){
   //no effect if Gibbs

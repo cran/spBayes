@@ -24,6 +24,7 @@ class ig : public vprior
   virtual void setTuning(double *t);
   virtual void setStarting(double *s);
   virtual double logLikelihood();
+  virtual double logHastingsAdj();
   virtual void propose();
   virtual void reject();
   virtual double getCurrentSampleTrans(int indx);
@@ -63,6 +64,7 @@ class iwish : public vprior
   virtual void setTuning(double *t);
   virtual void setStarting(double *s);
   virtual double logLikelihood();
+  virtual double logHastingsAdj();
   virtual void propose();
   virtual void reject();
   virtual double getCurrentSampleTrans(int indx);
@@ -107,47 +109,7 @@ class unif : public vprior
   virtual void setTuning(double *t);
   virtual void setStarting(double *s);
   virtual double logLikelihood();
-  virtual void propose();
-  virtual void reject();
-  virtual double getCurrentSampleTrans(int indx);
-  virtual double* getSamples();
-  virtual void setCurrentSample(double*);
-  virtual double* getCurrentSample();
-  virtual void transSamples();
-  virtual void sampleMeansFromStart(int s);
-  virtual double* getSampleMeans();
-  virtual void show();
-
- private:
-  double *a;
-  double *b;
-  double *tuning;
-  double *samples;
-  double *sampleMeans;
-};
-
-#endif
-
-
-/************************
-       Log-uniform
-************************/
-#ifndef LOGUNIFMH_H
-#define LOGUNIFMH_H
-
-class logunif : public vprior
-{
- public:
-  logunif(string fn, int dimH1, int dimH2, int nP, int nS);
-  ~logunif(){/*cout<<"Destructor: logunif"<<endl;*/}
-
-  virtual void setHyper1(double *hyper1);
-  virtual void setHyper2(double *hyper2);
-  virtual double* getHyper1();
-  virtual double* getHyper2();
-  virtual void setTuning(double *t);
-  virtual void setStarting(double *s);
-  virtual double logLikelihood();
+  virtual double logHastingsAdj();
   virtual void propose();
   virtual void reject();
   virtual double getCurrentSampleTrans(int indx);
@@ -189,6 +151,7 @@ class hc : public vprior
   virtual void setTuning(double *t);
   virtual void setStarting(double *s);
   virtual double logLikelihood();
+  virtual double logHastingsAdj();
   virtual void propose();
   virtual void reject();
   virtual double getCurrentSampleTrans(int indx);
@@ -229,6 +192,7 @@ class fixedpar : public vprior
   virtual void setTuning(double *t);
   virtual void setStarting(double *s);
   virtual double logLikelihood();
+  virtual double logHastingsAdj();
   virtual void propose();
   virtual void reject();
   virtual double getCurrentSampleTrans(int indx);
@@ -266,6 +230,7 @@ class fixedmtrx : public vprior
   virtual void setTuning(double *t);
   virtual void setStarting(double *s);
   virtual double logLikelihood();
+  virtual double logHastingsAdj();
   virtual void propose();
   virtual void reject();
   virtual double getCurrentSampleTrans(int indx);
@@ -306,6 +271,7 @@ class betapar : public vprior
   virtual void setTuning(double *t);
   virtual void setStarting(double *s);
   virtual double logLikelihood();
+  virtual double logHastingsAdj();
   virtual void propose();//for MH
   virtual void reject();
   virtual double getCurrentSampleTrans(int indx);

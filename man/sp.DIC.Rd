@@ -70,7 +70,7 @@ coords <- as.matrix(FBC07[1:100,c("coord.X", "coord.Y")])
 ##Fit some model with ggt.sp.
 K.prior <- prior(dist="IG", shape=2, scale=5)
 Psi.prior <- prior(dist="IG", shape=2, scale=5)
-phi.prior <- prior(dist="LOGUNIF", a=0.06, b=3)
+phi.prior <- prior(dist="UNIF", a=0.06, b=3)
 
 var.update.control <-
   list("K"=list(starting=5, tuning=0.5, prior=K.prior),
