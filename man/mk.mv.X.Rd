@@ -24,7 +24,7 @@
 \seealso{\code{\link{sp.predict}}}
 
 \author{
-  Andrew O. Finley \email{afinley@stat.umn.edu}, \cr
+  Andrew O. Finley \email{finleya@msu.edu}, \cr
   Sudipto Banerjee \email{sudiptob@biostat.umn.edu}, \cr
   Bradley P. Carlin \email{brad@biostat.umn.edu}.
 }

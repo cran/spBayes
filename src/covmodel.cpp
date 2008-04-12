@@ -1,7 +1,7 @@
 // Andrew O. Finley
 // Dept. of Forest Resources
 // University of Minnesota
-// afinley@stat.umn.edu 
+// finleya@msu.edu 
 //
 // This software is distributed under the terms of the GNU GENERAL
 // PUBLIC LICENSE Version 2, June 1991.  See the package LICENSE

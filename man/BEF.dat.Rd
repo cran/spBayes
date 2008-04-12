@@ -1,18 +1,18 @@
-\name{BEF}
+\name{BEF.dat}
 \docType{data}
 
-\alias{BEF}
+\alias{BEF.dat}
 
 
 \title{Bartlett Experimental Forest inventory data}
 
 \description{
   Data generated in long-term research studies on the Bartlett
-  Experimental Forest (BEF), Bartlett, NH funded by the U.S. Department
+  Experimental Forest (BEF.dat), Bartlett, NH funded by the U.S. Department
   of Agriculture, Forest Service, Northeastern Research Station.
 
   This dataset holds 1991 and 2002 forest inventory data for 437 points
-  on the BEF. Variables include species specific basal area and biomass;
+  on the BEF.dat. Variables include species specific basal area and biomass;
   inventory plot coordinates; slope; elevation; and tasseled cap brightness (TC1),
   greenness (TC2), and wetness (TC3) components from spring, summer,
   and fall 2002 Landsat images.
@@ -21,7 +21,7 @@
 }
 
 \usage{
-data(BEF)
+data(BEF.dat)
 }
  
 \format{
@@ -29,7 +29,7 @@ data(BEF)
 }
 
 \source{
-  BEF inventory data provided by:
+  BEF.dat inventory data provided by:
   
   Marie-Louise Smith
   USDA Forest Service

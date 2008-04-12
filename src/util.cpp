@@ -1,7 +1,7 @@
 // Andrew O. Finley
 // Dept. of Forest Resources
 // University of Minnesota
-// afinley@stat.umn.edu 
+// finleya@msu.edu 
 //
 // This software is distributed under the terms of the GNU GENERAL
 // PUBLIC LICENSE Version 2, June 1991.  See the package LICENSE
@@ -123,17 +123,20 @@ void showMatrix(double *x, int xnrow, int xncol){
 }
 
 
+
 void writeRMatrix(string outfile, double * a, int nrow, int ncol){
     ofstream file(outfile.c_str());
     if ( !file ) {
       cerr << "Data file could not be opened." << endl;
       exit(1);
     }
+  
+
   for(int i = 0; i < nrow; i++){
     for(int j = 0; j < ncol-1; j++){
-      file << fixed << a[j*nrow+i] << " ";
+      file << setprecision(20) << fixed << a[j*nrow+i] << "\t";
     }
-    file << fixed << a[(ncol-1)*nrow+i] << endl;    
+    file << setprecision(20) << fixed << a[(ncol-1)*nrow+i] << endl;    
 
   }
   file.close();
@@ -143,7 +146,7 @@ void writeRMatrix(string outfile, double * a, int nrow, int ncol){
 
 
 
-SEXP getListElement (SEXP list, char *str)
+SEXP getListElement(SEXP list, const char *str)
 {
   SEXP elmt = R_NilValue, names = getAttrib(list, R_NamesSymbol);
   int i;
@@ -157,6 +160,7 @@ SEXP getListElement (SEXP list, char *str)
   if(elmt == R_NilValue){
     Rprintf("\nlist element %s not found\n", str);
   }
+
   return elmt;
 }
 
@@ -221,3 +225,12 @@ double dTNorm(double x, double mu, double sd, double a, double b){
   else
     return dnorm(x, mu, sd, false)/(pnorm(b, mu, sd, true, false) - pnorm(a, mu, sd, true, false));
 }
+
+void diagmm(int &nrow_b, int &ncol_b, double *a, double *b, double *c){
+  for(int i = 0; i < nrow_b; i++){
+    for(int j = 0; j < ncol_b; j++){
+      c[j*nrow_b+i] = b[j*nrow_b+i] * a[i];
+    }
+  }
+}
+

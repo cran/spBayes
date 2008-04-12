@@ -100,12 +100,12 @@ extern "C" {
     *****************************************/
     bool linpack = false;
     int info;
-    const char lower = 'L';
-    const char upper = 'U';
-    const char ntran = 'N';
-    const char ytran = 'T';
-    const char rside = 'R';
-    const char lside = 'L';
+    char const *lower = "L";
+    char const *upper = "U";
+    char const *ntran = "N";
+    char const *ytran = "T";
+    char const *rside = "R";
+    char const *lside = "L";
     const double one = 1.0;
     const int incOne = 1;
     const double negOne = -1.0;
@@ -166,7 +166,7 @@ extern "C" {
 	    
 	    //chol decom
 	    if(!linpack){
-	      F77_NAME(dpotrf)(&upper, &rnrow, R, &rnrow, &info);
+	      F77_NAME(dpotrf)(upper, &rnrow, R, &rnrow, &info);
 	      if(info != 0){error("c++ error: Cholesky failed\n");}
 	    }else{
 	      F77_NAME(dpofa)(R, &rnrow, &rnrow, &info);
@@ -175,7 +175,7 @@ extern "C" {
 	    
 	    //finish the invert
 	    if(!linpack){
-	      F77_NAME(dpotri)(&upper, &rnrow, R, &rnrow, &info);
+	      F77_NAME(dpotri)(upper, &rnrow, R, &rnrow, &info);
 	      if(info != 0){error("c++ error: Cholesky inverse failed\n");}
 	    }else{
 	      F77_NAME(dpodi)(R, &rnrow, &rnrow, &junk, &job);
@@ -191,7 +191,7 @@ extern "C" {
 	    
 	    //chol decom
 	    if(!linpack){
-	      F77_NAME(dpotrf)(&upper, &rnrow, R, &rnrow, &info);
+	      F77_NAME(dpotrf)(upper, &rnrow, R, &rnrow, &info);
 	      if(info != 0){error("c++ error: Cholesky failed\n");}
 	    }else{
 	      F77_NAME(dpofa)(R, &rnrow, &rnrow, &info);
@@ -200,7 +200,7 @@ extern "C" {
 	    
 	    //finish the invert
 	    if(!linpack){
-	      F77_NAME(dpotri)(&upper, &rnrow, R, &rnrow, &info);
+	      F77_NAME(dpotri)(upper, &rnrow, R, &rnrow, &info);
 	      if(info != 0){error("c++ error: Cholesky inverse failed\n");}
 	    }else{
 	      F77_NAME(dpodi)(R, &rnrow, &rnrow, &junk, &job);
@@ -208,7 +208,7 @@ extern "C" {
 	    }
 	    
 	    //make w mu
-	    F77_NAME(dgemv)(&ntran, &xnrow, &xncol, &negOne, X, &xnrow, &betaSamples[s*xncol], 
+	    F77_NAME(dgemv)(ntran, &xnrow, &xncol, &negOne, X, &xnrow, &betaSamples[s*xncol], 
 			    &incOne, &zero, tmpXRow, &incOne);
 	    
 	    F77_NAME(daxpy)(&xnrow, &one, Y, &incOne, tmpXRow, &incOne);
@@ -216,12 +216,12 @@ extern "C" {
 	    tausqTmp = 1.0/PsiSamples[s];
 	    F77_NAME(dscal)(&xnrow, &tausqTmp, tmpXRow, &incOne);
 	    
-	    F77_NAME(dsymv)(&upper, &xnrow, &one, R, &xnrow, tmpXRow, &incOne, &zero, wMu, &incOne);
+	    F77_NAME(dsymv)(upper, &xnrow, &one, R, &xnrow, tmpXRow, &incOne, &zero, wMu, &incOne);
 	    
 	    
 	    //chol decom for the mvnorm
 	    if(!linpack){
-	      F77_NAME(dpotrf)(&upper, &rnrow, R, &rnrow, &info);
+	      F77_NAME(dpotrf)(upper, &rnrow, R, &rnrow, &info);
 	      if(info != 0){error("c++ error: Cholesky failed\n");}
 	    }else{
 	      F77_NAME(dpofa)(R, &rnrow, &rnrow, &info);
@@ -230,7 +230,7 @@ extern "C" {
 	    
 	    mvrnorm(&REAL(w_r)[s*xnrow], wMu, R, xnrow, true);
 	  }else{
-	    F77_NAME(dgemv)(&ntran, &xnrow, &xncol, &negOne, X, &xnrow, &betaSamples[s*xncol], 
+	    F77_NAME(dgemv)(ntran, &xnrow, &xncol, &negOne, X, &xnrow, &betaSamples[s*xncol], 
 			    &incOne, &zero, &REAL(w_r)[s*xnrow], &incOne);
 	    
 	    F77_NAME(daxpy)(&xnrow, &one, Y, &incOne, &REAL(w_r)[s*xnrow], &incOne);
@@ -269,8 +269,8 @@ extern "C" {
 		  }
 		}
 		
-		F77_NAME(dgemm)(&ntran, &ntran, &m, &m, &m, &one, A, &m, mmblk, &m, &zero, tmp, &m);
-		F77_NAME(dgemm)(&ntran, &ytran, &m, &m, &m, &one, tmp, &m, A, &m, &zero, mmblk, &m);
+		F77_NAME(dgemm)(ntran, ntran, &m, &m, &m, &one, A, &m, mmblk, &m, &zero, tmp, &m);
+		F77_NAME(dgemm)(ntran, ytran, &m, &m, &m, &one, tmp, &m, A, &m, &zero, mmblk, &m);
 		
 		for(k = 0; k < m; k++){
 		  for(l = 0; l < m; l++){
@@ -283,7 +283,7 @@ extern "C" {
 	    
 	    //chol decom
 	    if(!linpack){
-	      F77_NAME(dpotrf)(&upper, &rnrow, R, &rnrow, &info);
+	      F77_NAME(dpotrf)(upper, &rnrow, R, &rnrow, &info);
 	      if(info != 0){error("c++ error: Cholesky failed (1), see ggt.sp documentation\n");}
 	    }else{
 	      F77_NAME(dpofa)(R, &rnrow, &rnrow, &info);
@@ -292,7 +292,7 @@ extern "C" {
 	    
 	    //finish the invert
 	    if(!linpack){
-	      F77_NAME(dpotri)(&upper, &rnrow, R, &rnrow, &info);
+	      F77_NAME(dpotri)(upper, &rnrow, R, &rnrow, &info);
 	      if(info != 0){error("c++ error: Cholesky inverse failed (1), see ggt.sp documentation\n");}
 	    }else{
 	      F77_NAME(dpodi)(R, &rnrow, &rnrow, &junk, &job);
@@ -311,7 +311,7 @@ extern "C" {
 	    }
 	    
 	    //already chol in lower tri
-	    F77_NAME(dpotri)(&lower, &m, Psi, &m, &info);
+	    F77_NAME(dpotri)(lower, &m, Psi, &m, &info);
 	    
 	    //transpose fill upper tri
 	    for(i = 0; i < m; i++)
@@ -332,7 +332,7 @@ extern "C" {
 	    
 	    //chol decom
 	    if(!linpack){
-	      F77_NAME(dpotrf)(&upper, &rnrow, R, &rnrow, &info);
+	      F77_NAME(dpotrf)(upper, &rnrow, R, &rnrow, &info);
 	      if(info != 0){error("c++ error: Cholesky failed (1), see ggt.sp documentation\n");}
 	    }else{
 	      F77_NAME(dpofa)(R, &rnrow, &rnrow, &info);
@@ -341,7 +341,7 @@ extern "C" {
 	    
 	    //finish the invert
 	    if(!linpack){
-	      F77_NAME(dpotri)(&upper, &rnrow, R, &rnrow, &info);
+	      F77_NAME(dpotri)(upper, &rnrow, R, &rnrow, &info);
 	      if(info != 0){error("c++ error: Cholesky inverse failed (1), see ggt.sp documentation\n");}
 	    }else{
 	      F77_NAME(dpodi)(R, &rnrow, &rnrow, &junk, &job);
@@ -349,16 +349,16 @@ extern "C" {
 	    }
 	    
 	    //make w mu
-	    F77_NAME(dgemv)(&ntran, &xnrow, &xncol, &negOne, X, &xnrow,  &betaSamples[s*xncol], 
+	    F77_NAME(dgemv)(ntran, &xnrow, &xncol, &negOne, X, &xnrow,  &betaSamples[s*xncol], 
 			    &incOne, &zero, tmpXRow, &incOne);
 	    F77_NAME(daxpy)(&xnrow, &one, Y, &incOne, tmpXRow, &incOne);
 	    
-	    F77_NAME(dsymv)(&upper, &xnrow, &one, IKPsi, &xnrow, tmpXRow, &incOne, &zero, tmpXRow1, &incOne);
-	    F77_NAME(dsymv)(&upper, &xnrow, &one, R, &xnrow, tmpXRow1, &incOne, &zero, wMu, &incOne);
+	    F77_NAME(dsymv)(upper, &xnrow, &one, IKPsi, &xnrow, tmpXRow, &incOne, &zero, tmpXRow1, &incOne);
+	    F77_NAME(dsymv)(upper, &xnrow, &one, R, &xnrow, tmpXRow1, &incOne, &zero, wMu, &incOne);
 	    
 	    //chol decom for the mvnorm
 	    if(!linpack){
-	      F77_NAME(dpotrf)(&upper, &rnrow, R, &rnrow, &info);
+	      F77_NAME(dpotrf)(upper, &rnrow, R, &rnrow, &info);
 	      if(info != 0){error("c++ error: Cholesky failed (1), see ggt.sp documentation\n");}
 	    }else{
 	      F77_NAME(dpofa)(R, &rnrow, &rnrow, &info);
@@ -367,7 +367,7 @@ extern "C" {
 	    
 	    mvrnorm(&REAL(w_r)[s*xnrow], wMu, R, xnrow, true);
 	  }else{
-	    F77_NAME(dgemv)(&ntran, &xnrow, &xncol, &negOne, X, &xnrow,  &betaSamples[s*xncol], 
+	    F77_NAME(dgemv)(ntran, &xnrow, &xncol, &negOne, X, &xnrow,  &betaSamples[s*xncol], 
 			    &incOne, &zero, &REAL(w_r)[s*xnrow], &incOne);
 	    F77_NAME(daxpy)(&xnrow, &one, Y, &incOne, &REAL(w_r)[s*xnrow], &incOne);
 	  }
@@ -454,7 +454,7 @@ extern "C" {
 
 	//chol decom
 	if(!linpack){
-	  F77_NAME(dpotrf)(&upper, &nSObs, obsS, &nSObs, &info);
+	  F77_NAME(dpotrf)(upper, &nSObs, obsS, &nSObs, &info);
 	  if(info != 0){error("c++ error: Cholesky failed 1\n");}
 	}else{
 	  F77_NAME(dpofa)(obsS, &nSObs, &nSObs, &info);
@@ -463,7 +463,7 @@ extern "C" {
 	
 	//finish the invert
 	if(!linpack){
-	  F77_NAME(dpotri)(&upper, &nSObs, obsS, &nSObs, &info);
+	  F77_NAME(dpotri)(upper, &nSObs, obsS, &nSObs, &info);
 	  if(info != 0){error("c++ error: Cholesky inverse failed\n");}
 	}else{
 	  F77_NAME(dpodi)(obsS, &nSObs, &nSObs, &junk, &job);
@@ -499,21 +499,21 @@ extern "C" {
 	F77_NAME(dscal)(&SPredObsLength, &ASamples[s], predObsS, &incOne);
 
 	//get predObsS*obsS^{-1}
-	F77_NAME(dsymm)(&rside, &upper, &nSPred, &nSObs, &one, obsS, &nSObs, predObsS, 
+	F77_NAME(dsymm)(rside, upper, &nSPred, &nSObs, &one, obsS, &nSObs, predObsS, 
 			&nSPred, &zero, tmpSPredSObs, &nSPred);      
 	  
 	//get mu tmpSPredSObs * w
-	F77_NAME(dgemv)(&ntran, &nSPred, &nSObs, &one, tmpSPredSObs, &nSPred, 
+	F77_NAME(dgemv)(ntran, &nSPred, &nSObs, &one, tmpSPredSObs, &nSPred, 
 			&w[s*xnrow], &incOne, &zero, wPredMu, &incOne);
 
 	//get Sigma presS - predObsS*obsS^{-1}*t(predObsS)
-	F77_NAME(dgemm)(&ntran, &ytran, &nSPred, &nSPred, &nSObs, &negOne, tmpSPredSObs, &nSPred, predObsS, &nSPred, 
+	F77_NAME(dgemm)(ntran, ytran, &nSPred, &nSPred, &nSObs, &negOne, tmpSPredSObs, &nSPred, predObsS, &nSPred, 
 			&zero, wPredS, &nSPred);
 	F77_NAME(daxpy)(&SPredLength, &one, predS, &incOne, wPredS, &incOne);
 
 	//chol decom for the mvnorm
 	if(!linpack){
-	  F77_NAME(dpotrf)(&upper, &nSPred, wPredS, &nSPred, &info);
+	  F77_NAME(dpotrf)(upper, &nSPred, wPredS, &nSPred, &info);
 	  if(info != 0){error("c++ error: Cholesky failed 2\n");}
 	}else{
 	  F77_NAME(dpofa)(wPredS, &nSPred, &nSPred, &info);
@@ -526,7 +526,7 @@ extern "C" {
 	//get prediction XB+w, just use wPredMu again for yPredMu
 	F77_NAME(dcopy)(&nSPred, &REAL(wPred)[s*nSPred], &incOne, &REAL(yPred)[s*nSPred], &incOne);
 
-	F77_NAME(dgemv)(&ntran, &nSPred, &xncol, &one, predX, 
+	F77_NAME(dgemv)(ntran, &nSPred, &xncol, &one, predX, 
 			&nSPred, &betaSamples[s*xncol], &incOne, &zero, wPredMu, &incOne);
 
 	F77_NAME(daxpy)(&nSPred, &one, wPredMu, &incOne, &REAL(yPred)[s*nSPred], &incOne);
@@ -567,8 +567,8 @@ extern "C" {
 	      }
 	    }
 	    
-	    F77_NAME(dgemm)(&ntran, &ntran, &m, &m, &m, &one, A, &m, mmblk, &m, &zero, tmp, &m);
-	    F77_NAME(dgemm)(&ntran, &ytran, &m, &m, &m, &one, tmp, &m, A, &m, &zero, mmblk, &m);
+	    F77_NAME(dgemm)(ntran, ntran, &m, &m, &m, &one, A, &m, mmblk, &m, &zero, tmp, &m);
+	    F77_NAME(dgemm)(ntran, ytran, &m, &m, &m, &one, tmp, &m, A, &m, &zero, mmblk, &m);
 	    
 	    for(k = 0; k < m; k++){
 	      for(l = 0; l < m; l++){
@@ -582,7 +582,7 @@ extern "C" {
 
 	//chol decom
 	if(!linpack){
-	  F77_NAME(dpotrf)(&upper, &nSObs, obsS, &nSObs, &info);
+	  F77_NAME(dpotrf)(upper, &nSObs, obsS, &nSObs, &info);
 	  if(info != 0){error("c++ error: Cholesky failed 1\n");}
 	}else{
 	  F77_NAME(dpofa)(obsS, &nSObs, &nSObs, &info);
@@ -591,7 +591,7 @@ extern "C" {
 	
 	//finish the invert
 	if(!linpack){
-	  F77_NAME(dpotri)(&upper, &nSObs, obsS, &nSObs, &info);
+	  F77_NAME(dpotri)(upper, &nSObs, obsS, &nSObs, &info);
 	  if(info != 0){error("c++ error: Cholesky inverse failed\n");}
 	}else{
 	  F77_NAME(dpodi)(obsS, &nSObs, &nSObs, &junk, &job);
@@ -623,8 +623,8 @@ extern "C" {
 	      }
 	    }
 	    
-	    F77_NAME(dgemm)(&ntran, &ntran, &m, &m, &m, &one, A, &m, mmblk, &m, &zero, tmp, &m);
-	    F77_NAME(dgemm)(&ntran, &ytran, &m, &m, &m, &one, tmp, &m, A, &m, &zero, mmblk, &m);
+	    F77_NAME(dgemm)(ntran, ntran, &m, &m, &m, &one, A, &m, mmblk, &m, &zero, tmp, &m);
+	    F77_NAME(dgemm)(ntran, ytran, &m, &m, &m, &one, tmp, &m, A, &m, &zero, mmblk, &m);
 	    
 	    for(k = 0; k < m; k++){
 	      for(l = 0; l < m; l++){
@@ -658,8 +658,8 @@ extern "C" {
 	      }
 	    }
 	    
-	    F77_NAME(dgemm)(&ntran, &ntran, &m, &m, &m, &one, A, &m, mmblk, &m, &zero, tmp, &m);
-	    F77_NAME(dgemm)(&ntran, &ytran, &m, &m, &m, &one, tmp, &m, A, &m, &zero, mmblk, &m);
+	    F77_NAME(dgemm)(ntran, ntran, &m, &m, &m, &one, A, &m, mmblk, &m, &zero, tmp, &m);
+	    F77_NAME(dgemm)(ntran, ytran, &m, &m, &m, &one, tmp, &m, A, &m, &zero, mmblk, &m);
 	    
 	    for(k = 0; k < m; k++){
 	      for(l = 0; l < m; l++){
@@ -671,21 +671,21 @@ extern "C" {
 	}
 
 	//get predObsS*obsS^{-1}
-	F77_NAME(dsymm)(&rside, &upper, &nSPred, &nSObs, &one, obsS, &nSObs, predObsS, 
+	F77_NAME(dsymm)(rside, upper, &nSPred, &nSObs, &one, obsS, &nSObs, predObsS, 
 			&nSPred, &zero, tmpSPredSObs, &nSPred);      
 	  
 	//get mu tmpSPredSObs * w
-	F77_NAME(dgemv)(&ntran, &nSPred, &nSObs, &one, tmpSPredSObs, &nSPred, 
+	F77_NAME(dgemv)(ntran, &nSPred, &nSObs, &one, tmpSPredSObs, &nSPred, 
 			&w[s*xnrow], &incOne, &zero, wPredMu, &incOne);
 
 	//get Sigma presS - predObsS*obsS^{-1}*t(predObsS)
-	F77_NAME(dgemm)(&ntran, &ytran, &nSPred, &nSPred, &nSObs, &negOne, tmpSPredSObs, &nSPred, predObsS, &nSPred, 
+	F77_NAME(dgemm)(ntran, ytran, &nSPred, &nSPred, &nSObs, &negOne, tmpSPredSObs, &nSPred, predObsS, &nSPred, 
 			&zero, wPredS, &nSPred);
 	F77_NAME(daxpy)(&SPredLength, &one, predS, &incOne, wPredS, &incOne);
 
 	//chol decom for the mvnorm
 	if(!linpack){
-	  F77_NAME(dpotrf)(&upper, &nSPred, wPredS, &nSPred, &info);
+	  F77_NAME(dpotrf)(upper, &nSPred, wPredS, &nSPred, &info);
 	  if(info != 0){error("c++ error: Cholesky failed 2\n");}
 	}else{
 	  F77_NAME(dpofa)(wPredS, &nSPred, &nSPred, &info);
@@ -698,7 +698,7 @@ extern "C" {
 	//get prediction XB+w, just use wPredMu again for yPredMu
 	F77_NAME(dcopy)(&nSPred, &REAL(wPred)[s*nSPred], &incOne, &REAL(yPred)[s*nSPred], &incOne);
 
-	F77_NAME(dgemv)(&ntran, &nSPred, &xncol, &one, predX, 
+	F77_NAME(dgemv)(ntran, &nSPred, &xncol, &one, predX, 
 			&nSPred, &betaSamples[s*xncol], &incOne, &zero, wPredMu, &incOne);
 
 	F77_NAME(daxpy)(&nSPred, &one, wPredMu, &incOne, &REAL(yPred)[s*nSPred], &incOne);

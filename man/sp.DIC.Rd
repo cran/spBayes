@@ -1,28 +1,29 @@
 \name{sp.DIC}
 \alias{sp.DIC}          
-\title{Calculates model DIC and associated statistics given a ggt.sp object}
+\title{Calculates model DIC and associated statistics given a ggt.sp,
+  sp.lm, or bayes.geostat.exact object}
 
 \description{
-  The function \code{sp.DIC} calculates model DIC and associated statistics given a \code{\link{ggt.sp}} object.
+  The function \code{sp.DIC} calculates model DIC and associated
+  statistics given a \code{\link{ggt.sp}}, \code{\link{sp.lm}}, or 
+  \code{\link{bayes.geostat.exact}} object.
 }
 
 \usage{
-  sp.DIC(ggt.sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE,
+  sp.DIC(sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE,
          start=1, end, thin=1, verbose=TRUE, ...)
 }
 
 \arguments{
-  \item{ggt.sp.obj}{an object returned by \code{\link{ggt.sp}} (i.e.,
-    object of class \code{ggt.sp}). }
+  \item{sp.obj}{an object returned by \code{\link{ggt.sp}}, \code{\link{bayes.geostat.exact}}, \code{\link{sp.lm}}}
   \item{DIC.marg}{a logical value indicating if marginalized DIC and
     associated statistics should be calculated. }
   \item{DIC.unmarg}{a logical value indicating if unmarginalized DIC and
     associated statistics should be calculated. }
   \item{start}{specifies the first sample included in the DIC calculation.
     This is useful for those who choose to acknowledge chain burn-in.  }
-  \item{end}{specifies the last sample included  in the DIC calculation.
-    The default is to include from \code{start} to
-    \code{nrow(ggt.sp.obj$p.samples)}. }
+  \item{end}{specifies the last sample included  in the prediction calculation.
+    The default is to use all posterior samples in \code{sp.obj}. }
   \item{thin}{a sample thinning factor.  The default of 1 considers all
     samples between \code{start} and \code{end}.  For example, if \code{thin = 10}
     then 1 in 10 samples are considered between \code{start} and
@@ -37,8 +38,7 @@
     statistics.  }
   \item{DIC.unmarg}{a matrix holding unmarginalized DIC and associated
     statistics.  }
-  \item{sp.effects}{if DIC.ummarg is true and if the \code{ggt.sp.obj}
-    does not include \code{sp.effects} then \code{sp.DIC} calculates the
+  \item{sp.effects}{if DIC.ummarg is true and if the \code{sp.obj} then \code{sp.DIC} calculates the
     random spatial effects and includes them in the return object. }
 }
 
@@ -46,35 +46,129 @@
   Please refer to Section 3.3 in the vignette.
 }
 
-\seealso{\code{\link{ggt.sp}}}
+\seealso{\code{\link{ggt.sp}}, \code{\link{bayes.geostat.exact}}, \code{\link{sp.lm}}}
 
 \references{
   Banerjee, S., Carlin, B.P., and Gelfand, A.E. (2004). Hierarchical modeling and analysis for spatial data. Chapman and Hall/CRC Press, Boca Raton, Fla.
   
-  Further information on the package \pkg{spBayes} can be found
-  at: \url{http://blue.fr.umn.edu/spatialBayes}.
+  %Further information on the package \pkg{spBayes} can be found
+  %at: \url{http://blue.fr.umn.edu/spatialBayes}.
 }
 
 \author{
-  Andrew O. Finley \email{afinley@stat.umn.edu}, \cr
-  Sudipto Banerjee \email{sudiptob@biostat.umn.edu}, \cr
-  Bradley P. Carlin \email{brad@biostat.umn.edu}.
+  Andrew O. Finley \email{finleya@msu.edu}, \cr
+  Sudipto Banerjee \email{sudiptob@biostat.umn.edu}.
 }
 
 \examples{
-data(FBC07)
+\dontrun{
+###########################################
+##          DIC for sp.lm
+###########################################
 
-Y.2 <- FBC07[1:100,"Y.2"]
-coords <- as.matrix(FBC07[1:100,c("coord.X", "coord.Y")])
+#############################
+##Modified predictive process
+##############################
+##Use some more observations
+data(rf.n200.dat)
 
-##Fit some model with ggt.sp.
+Y <- rf.n200.dat$Y
+coords <- as.matrix(rf.n200.dat[,c("x.coords","y.coords")])
+
+##############################
+##Using unmarginalized DIC
+##to assess number of knots
+##############################
+m.1 <- sp.lm(Y~1, coords=coords, knots=c(5, 5, 0),
+             starting=list("phi"=0.6,"sigma.sq"=1, "tau.sq"=1),
+             sp.tuning=list("phi"=0.01, "sigma.sq"=0.05, "tau.sq"=0.05),
+             priors=list("phi.Unif"=c(0.3, 3), "sigma.sq.IG"=c(2, 1),
+               "tau.sq.IG"=c(2, 1)),
+             cov.model="exponential",
+             n.samples=1000, verbose=TRUE, n.report=100, sp.effects=TRUE)
+
+print(sp.DIC(m.1, start=100, thin=2, DIC.marg=TRUE, DIC.unmarg=TRUE))
+
+m.2 <- sp.lm(Y~1, coords=coords, knots=c(7, 7, 0),
+             starting=list("phi"=0.6,"sigma.sq"=1, "tau.sq"=1),
+             sp.tuning=list("phi"=0.01, "sigma.sq"=0.05, "tau.sq"=0.05),
+             priors=list("phi.Unif"=c(0.3, 3), "sigma.sq.IG"=c(2, 1),
+               "tau.sq.IG"=c(2, 1)),
+             cov.model="exponential",
+             n.samples=1000, verbose=TRUE, n.report=100, sp.effects=TRUE)
+
+print(sp.DIC(m.2, start=100, thin=2, DIC.marg=TRUE, DIC.unmarg=TRUE))
+
+###########################################
+##    DIC for bayes.geostat.exact
+###########################################
+data(FORMGMT.dat)
+
+n = nrow(FORMGMT.dat)
+p = 5 ##an intercept an four covariates
+
+n.samples <- 10
+
+coords <- cbind(FORMGMT.dat$Longi, FORMGMT.dat$Lat)
+
+phi <- 3/0.07
+
+beta.prior.mean <- rep(0, times=p)
+beta.prior.precision <- matrix(0, nrow=p, ncol=p)
+
+alpha <- 1/1.5
+
+sigma.sq.prior.shape <- 2.0
+sigma.sq.prior.rate <- 10.0
+
+##With covariates
+m.3 <-
+  bayes.geostat.exact(Y~X1+X2+X3+X4, data=FORMGMT.dat,
+                      n.samples=n.samples,
+                      beta.prior.mean=beta.prior.mean,
+                      beta.prior.precision=beta.prior.precision,
+                      coords=coords, phi=phi, alpha=alpha,
+                      sigma.sq.prior.shape=sigma.sq.prior.shape,
+                      sigma.sq.prior.rate=sigma.sq.prior.rate,
+                      sp.effects=FALSE)
+
+print(sp.DIC(m.3, DIC.marg=TRUE, DIC.unmarg=FALSE))
+
+##Without covariates
+p <- 1 ##intercept only
+beta.prior.mean <- 0
+beta.prior.precision <- 0
+
+m.4 <-
+  bayes.geostat.exact(Y~1, data=FORMGMT.dat,
+                      n.samples=n.samples,
+                      beta.prior.mean=beta.prior.mean,
+                      beta.prior.precision=beta.prior.precision,
+                      coords=coords, phi=phi, alpha=alpha,
+                      sigma.sq.prior.shape=sigma.sq.prior.shape,
+                      sigma.sq.prior.rate=sigma.sq.prior.rate,
+                      sp.effects=FALSE)
+
+print(sp.DIC(m.4, DIC.marg=TRUE, DIC.unmarg=FALSE))
+
+##Lower DIC is better, so go with the covariates.
+
+###########################################
+##         DIC for ggt.sp
+###########################################
+data(FBC07.dat)
+
+Y.2 <- FBC07.dat[1:100,"Y.2"]
+coords <- as.matrix(FBC07.dat[1:100,c("coord.X", "coord.Y")])
+
+##m.5 some model with ggt.sp.
 K.prior <- prior(dist="IG", shape=2, scale=5)
 Psi.prior <- prior(dist="IG", shape=2, scale=5)
 phi.prior <- prior(dist="UNIF", a=0.06, b=3)
 
 var.update.control <-
-  list("K"=list(starting=5, tuning=0.5, prior=K.prior),
-       "Psi"=list(starting=5, tuning=0.5, prior=Psi.prior),
+  list("K"=list(starting=5, tuning=0.1, prior=K.prior),
+       "Psi"=list(starting=5, tuning=0.1, prior=Psi.prior),
        "phi"=list(starting=0.1, tuning=0.5, prior=phi.prior)
        )
 
@@ -82,20 +176,20 @@ beta.control <- list(update="GIBBS", prior=prior(dist="FLAT"))
 
 run.control <- list("n.samples"=1000, "sp.effects"=TRUE)
 
-Fit <-
+m.5 <-
   ggt.sp(formula=Y.2~1, run.control=run.control,
          coords=coords, var.update.control=var.update.control,
          beta.update.control=beta.control,
          cov.model="exponential")
 
-##Now with the ggt.sp object, Fit, calculate the DIC
+##Now with the ggt.sp object, m.5, calculate the DIC
 ##for both the unmarginalized and marginalized models.
 ##The likelihoods for these models are given by equation 6 and 7
 ##within the vignette.
 
-DIC <- sp.DIC(Fit)
+DIC <- sp.DIC(m.5)
 print(DIC)
-
+}
 }
 
 \keyword{misc}

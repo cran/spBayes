@@ -1,7 +1,7 @@
 // Andrew O. Finley
 // Dept. of Forest Resources
 // University of Minnesota
-// afinley@stat.umn.edu 
+// finleya@msu.edu 
 //
 // This software is distributed under the terms of the GNU GENERAL
 // PUBLIC LICENSE Version 2, June 1991.  See the package LICENSE
@@ -34,7 +34,7 @@ void mvrnorm(double *des, double *mu, double * cholCov, int dim, bool upper);
 void showMatrix(double *x, int xnrow, int xncol);
 void writeRMatrix(string outfile, double * a, int nrow, int ncol);
 
-SEXP getListElement (SEXP list, char *str);
+SEXP getListElement (SEXP list, const char *str);
 
 void zeros(double *x, int length);
 
@@ -49,3 +49,5 @@ void setLowerChol(double *A, double *S, int dim);
 string toString(int &x);
 
 double dTNorm(double x, double mu, double sd, double a, double b);
+
+void diagmm(int &nrow_b, int &ncol_b, double *a, double *b, double *c);

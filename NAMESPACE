@@ -6,6 +6,9 @@ export(sp.DIC)
 #export(mk.mv.Y)
 export(mk.mv.X)
 #export(mk.mv.formula.YX)
+export(sp.lm)
 export(bayes.lm.ref)
-
+export(bayes.lm.conjugate)
+#export(bayes.geostat.exp.unmarg)
+export(bayes.geostat.exact)
 

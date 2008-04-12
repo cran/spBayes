@@ -1,6 +1,6 @@
 \name{ggt.sp}
 \alias{ggt.sp}
-\title{General Gaussian Template for fitting univariate and multivariate
+\title{Function for fitting univariate and multivariate
   Bayesian spatial regression models}
 
 \description{
@@ -131,11 +131,11 @@ ggt.sp(formula, data = parent.frame(), coords, run.control,
 \references{
   Banerjee, S., Carlin, B.P., and Gelfand, A.E. (2004). Hierarchical modeling and analysis for spatial data. Chapman and Hall/CRC Press, Boca Raton, Fla.
 
-  Further information on the package \pkg{spBayes} can be found at: \url{http://blue.fr.umn.edu/spatialBayes}.
+  %Further information on the package \pkg{spBayes} can be found at: \url{http://blue.fr.umn.edu/spatialBayes}.
 }
 
 \author{
-  Andrew O. Finley \email{afinley@stat.umn.edu}, \cr
+  Andrew O. Finley \email{finleya@msu.edu}, \cr
   Sudipto Banerjee \email{sudiptob@biostat.umn.edu}, \cr
   Bradley P. Carlin \email{brad@biostat.umn.edu}.
 }
@@ -143,10 +143,10 @@ ggt.sp(formula, data = parent.frame(), coords, run.control,
 \examples{
 \dontrun{
 
-data(FBC07)
-Y.1 <- FBC07[1:100,"Y.1"]
-Y.2 <- FBC07[1:100,"Y.2"]
-coords <- as.matrix(FBC07[1:100,c("coord.X", "coord.Y")])
+data(FBC07.dat)
+Y.1 <- FBC07.dat[1:100,"Y.1"]
+Y.2 <- FBC07.dat[1:100,"Y.2"]
+coords <- as.matrix(FBC07.dat[1:100,c("coord.X", "coord.Y")])
 
 #############################
 ##   Univariate models

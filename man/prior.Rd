@@ -62,12 +62,12 @@ prior(dist, ...)
   hierarchical models 1(3):515-533, Bayesian Analysis.
   
   
-  Further information on the package \pkg{spBayes} can be found
+  %Further information on the package \pkg{spBayes} can be found
   at: \url{http://blue.fr.umn.edu/spatialBayes}.
 }
 
 \author{
-  Andrew O. Finley \email{afinley@stat.umn.edu}, \cr
+  Andrew O. Finley \email{finleya@msu.edu}, \cr
   Sudipto Banerjee \email{sudiptob@biostat.umn.edu}, \cr
   Bradley P. Carlin \email{brad@biostat.umn.edu}
 }

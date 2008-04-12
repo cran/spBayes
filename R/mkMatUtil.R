@@ -25,6 +25,22 @@ mk.X <- function(x){
   X
 }
 
+
+parse.formula.simple <- function(formula, data, na.action = na.fail){
+
+  m <- model.frame(formula, data, na.action = na.action)##kinda fragile
+  Y <- as.matrix(model.response(m))
+  X <- as.matrix(model.matrix(formula, m))
+
+  if(any(is.na(X))){stop("error: parse.formula.simple, NA found in model.matrix")}
+  
+  xvars <- dimnames(X)[[2]]
+  xobs  <- dimnames(X)[[1]]
+  list(Y, X, xvars, xobs)
+  
+}
+
+
 parse.formula <-  function(formula, data, intercept=TRUE, justX=FALSE){
     
     # extract Y, X, and variable names for model formula and frame

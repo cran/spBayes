@@ -127,7 +127,7 @@
 
 \vspace{-.1in} fax: (612) 625-5212
 
-\vspace{-.1in} email: afinley@stat.umn.edu
+\vspace{-.1in} email: finleya@msu.edu
 
 \vspace{1in} \today
 \end{center}
@@ -745,9 +745,9 @@ Figure \ref{SynObsVario}.
 
 \begin{figure}[h!]
   \begin{center}
-    \subfigure[]{\label{SynObs}\includegraphics[width=7cm]{synObsa.pdf}}\\
-    \subfigure[]{\label{SynObsSurf1}\includegraphics[width=7cm]{synObsb.pdf}}
-    \subfigure[]{\label{SynObsSurf2}\includegraphics[width=7cm]{synObsc.pdf}} 
+    \subfigure[]{\label{SynObs}\includegraphics[width=7cm]{synObsa.png}}\\
+    \subfigure[]{\label{SynObsSurf1}\includegraphics[width=7cm]{synObsb.png}}
+    \subfigure[]{\label{SynObsSurf2}\includegraphics[width=7cm]{synObsc.png}} 
   \end{center}
   \caption{(a) Random points used to generate the synthetic data set.  Subsequent parameter estimation is based on 150 ($\bullet$) locations, and prediction at the 100 open triangle locations ($\vartriangle$). Plots (b) and (c) are interpolated surfaces of the first and second response variables, respectivly,  generated with the random points in (a), given parameters, and the marginalized likelihood \ref{marginalizedLikelihood}.}
   \label{Syn}
@@ -755,7 +755,7 @@ Figure \ref{SynObsVario}.
 
 \begin{figure}[h!]
 \centering
-\includegraphics[width=14cm]{synVario.pdf}
+\includegraphics[width=14cm]{synVario.png}
 \caption{Empirical semivariograms and exponential function REML parameter estimates for the two synthetic response surfaces.  The estimates of the nugget (bottom horizontal line), sill (upper horizontal line), and range (vertical line) for the first surface are approximately 7.2, 9.3, and 3.2 respectively.  The corresponding semivariogram estimates of nugget, sill, and range for the second response surface (right plot)  are 4.0, 11.0, and 21.0, respectively.}
 \label{SynObsVario}
 \end{figure}
@@ -1050,7 +1050,7 @@ the observed surfaces Figure \ref{Syn}.
 
 \begin{figure}[h!]
 \centering
-\includegraphics[width=14cm]{synWSurf.pdf}
+\includegraphics[width=14cm]{synWSurf.png}
 \caption{Interpolated surfaces of the recovered random spatial effects for Model~6, $E[\bW |\; Data]$.}
 \label{SynWSurf}
 \end{figure}
@@ -1082,8 +1082,8 @@ Figure \ref{SynPredWSurf} provides an interpolated surface generated from each n
 
 \begin{figure}[h!]
   \begin{center}
-    \subfigure[]{\label{SynPredWSurf}\includegraphics[width=14cm]{synPredWSurf.pdf}}\\
-    \subfigure[]{\label{SynPredYSurf}\includegraphics[width=14cm]{synPredYSurf.pdf}} 
+    \subfigure[]{\label{SynPredWSurf}\includegraphics[width=14cm]{synPredWSurf.png}}\\
+    \subfigure[]{\label{SynPredYSurf}\includegraphics[width=14cm]{synPredYSurf.png}} 
   \end{center}
   \caption{(a) Interpolated surfaces of the predicted random spatial effects for Model~6, $E[\bW^{\ast}\,|\, Data]$. (b) Interpolated surfaces of the posterior predictive distributions for Model~6, $E[\bY^{\ast}|\; Data]$.}
   \label{SymPred}
@@ -1098,9 +1098,9 @@ To demonstrate parameter estimation and prediction, we selected randomly 150 inv
 
 \begin{figure}[h!]
   \begin{center}
-    \subfigure[]{\label{RealObs}\includegraphics[width=7cm]{befObsa.pdf}}\\
-    \subfigure[]{\label{RealObsSurf1}\includegraphics[width=7cm]{befObsb.pdf}}
-    \subfigure[]{\label{RealObsSurf2}\includegraphics[width=7cm]{befObsc.pdf}} 
+    \subfigure[]{\label{RealObs}\includegraphics[width=7cm]{befObsa.png}}\\
+    \subfigure[]{\label{RealObsSurf1}\includegraphics[width=7cm]{befObsb.png}}
+    \subfigure[]{\label{RealObsSurf2}\includegraphics[width=7cm]{befObsc.png}} 
   \end{center}
   \caption{(a) Forest inventory plots across the Bartlett Experimental Forest.  The 300 plots were divided randomly into 150 plots used for parameter estimation denoted with solid dot symbols ($\bullet$) and the remaining 150 used for prediction marked with triangle symbols ($\vartriangle$).  Plots (b) and (c) are interpolated surfaces of basal area per hectare and metric tons of biomass per hectare, respectivly.}
   \label{Real}
@@ -1198,8 +1198,8 @@ The \code{sp.pred} object contains the posterior predictive samples for $\bW^{\a
 
 \begin{figure}[htp]
   \begin{center}
-    \subfigure[]{\label{RealPredWSurf}\includegraphics[width=14cm]{befPredWSurf.pdf}}\\
-    \subfigure[]{\label{RealPredYSurf}\includegraphics[width=14cm]{befPredYSurf.pdf}} 
+    \subfigure[]{\label{RealPredWSurf}\includegraphics[width=14cm]{befPredWSurf.png}}\\
+    \subfigure[]{\label{RealPredYSurf}\includegraphics[width=14cm]{befPredYSurf.png}} 
   \end{center}
   \caption{(a) Interpolated surfaces of the predicted random spatial effects for basal area per hectare (left plot) and metric tons of biomass per hectare (right plot), $E[\bW^{\ast}\,|\, Data]$. (b) Interpolated surfaces of the posterior predictive distributions for basal area per hectare (left plot) and metric tons of biomass per hectare (right plot), $E[\bY^{\ast}|\; Data]$.}
   \label{RealPred}

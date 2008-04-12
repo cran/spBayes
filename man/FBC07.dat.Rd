@@ -1,29 +1,28 @@
-\name{FBC07}
+\name{FBC07.dat}
 \docType{data}
 
-\alias{FBC07}
+\alias{FBC07.dat}
 
 
-\title{Simulated multivariate data with spatial and non-spatial variance
+\title{Synthetic multivariate data with spatial and non-spatial variance
 structures}
 
 \description{
-The synthetic data set describes a stationary, isotropic, non-separable
-bivariate process. Please refer to the vignette Section 4.2 for specifics.
+The synthetic dataset describes a stationary and isotropic bivariate process. Please refer to the vignette Section 4.2 for specifics.
 
 }
 
 \usage{
-data(FBC07)
+data(FBC07.dat)
 }
  
 \format{
- A data frame of 250 rows and 4 columns.  Columns 1 and 2 are
+ A data frame of 250 rows and 4 columns. Columns 1 and 2 are
  coordinates and columns 3 and 4 are response variables.
 }
 
 \source{
-  Finley A.O., S. Banerjee, and B.P. Carlin (In review) spBayes: R package for Univariate and Multivariate
+  Finley A.O., S. Banerjee, and B.P. Carlin (2007) spBayes: R package for Univariate and Multivariate
   Hierarchical Point-referenced Spatial Models. Journal of Statistical Software.
 }
 
@@ -31,17 +30,17 @@ data(FBC07)
 
 \dontrun{
 
-data(FBC07)
+data(FBC07.dat)
 library(geoR)
 
 max <- 40
 bins <- 20
 pts <- 1:150
 
-vario.1 <- variog(coords=FBC07[pts,1:2], data=FBC07[pts,3],
+vario.1 <- variog(coords=FBC07.dat[pts,1:2], data=FBC07.dat[pts,3],
           uvec=(seq(0, max, length=bins)))
 
-vario.2 <- variog(coords=FBC07[pts,1:2], data=FBC07[pts,4],
+vario.2 <- variog(coords=FBC07.dat[pts,1:2], data=FBC07.dat[pts,4],
                   uvec=(seq(0,max, length=bins)))
 
 vario.fit.1 <-variofit(vario.1, ini.cov.pars=c(5.0, 1.0),
