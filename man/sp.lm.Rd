@@ -11,7 +11,7 @@
 \usage{
 sp.lm(formula, data = parent.frame(), coords, knots,
       fixed, starting, sp.tuning, priors, cov.model,
-      sp.effects=TRUE, n.samples, verbose=TRUE, n.report=100, ...)
+      sp.effects=TRUE, modified.pp = TRUE, n.samples, verbose=TRUE, n.report=100, ...)
 }
 
 \arguments{
@@ -23,7 +23,7 @@ sp.lm(formula, data = parent.frame(), coords, knots,
   \item{coords}{an \eqn{n \times 2}{n x 2} matrix of the observation coordinates
     in \eqn{R^2}{R^2} (e.g., easting and northing). }
   \item{knots}{Either a \eqn{m \times 2}{m x 2} matrix of the
-  \emph{modified predictive process} knot coordinates in \eqn{R^2}{R^2} (e.g., easting and northing)
+  \emph{predictive process} knot coordinates in \eqn{R^2}{R^2} (e.g., easting and northing)
     or a vector of length two or three with the first and second elements recoding the
     number of columns and rows in the desired knot grid. The third,
     optional, element sets the offset of the outermost knots from the
@@ -41,6 +41,10 @@ sp.lm(formula, data = parent.frame(), coords, knots,
     \code{tau.sq}, \code{phi}, and \code{nu}.  The value portion of each
     of each tag defines the step size of the proposal used in the
     Metropolis-Hastings sampling. }
+  \item{modified.pp}{a logical value indicating if the \emph{modified
+    predictive process} should be used (see references below for
+    details). Note, if a predictive process model is not used (i.e., \code{knots} is not specified) then
+    this argument is ignored. }
   \item{priors}{a list with each tag corresponding to a
     parameter name (not already present in the \code{fixed} list). Valid list tags are \code{sigma.sq.ig},
     \code{tau.sq.ig}, \code{phi.unif}, and \code{nu.unif} (\code{Beta} priors are

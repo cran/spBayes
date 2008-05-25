@@ -1,11 +1,11 @@
 \name{sp.DIC}
 \alias{sp.DIC}          
-\title{Calculates model DIC and associated statistics given a ggt.sp,
+\title{Calculates model DIC and associated statistics given a bayes.lm.ref, bayes.lm.conjugate, ggt.sp,
   sp.lm, or bayes.geostat.exact object}
 
 \description{
   The function \code{sp.DIC} calculates model DIC and associated
-  statistics given a \code{\link{ggt.sp}}, \code{\link{sp.lm}}, or 
+  statistics given a \code{\link{bayes.lm.ref}}, \code{\link{bayes.lm.conjugate}}, \code{\link{ggt.sp}}, \code{\link{sp.lm}}, or 
   \code{\link{bayes.geostat.exact}} object.
 }
 
@@ -15,11 +15,14 @@
 }
 
 \arguments{
-  \item{sp.obj}{an object returned by \code{\link{ggt.sp}}, \code{\link{bayes.geostat.exact}}, \code{\link{sp.lm}}}
+  \item{sp.obj}{an object returned by \code{\link{bayes.lm.ref}}, \code{\link{bayes.lm.conjugate}}, \code{\link{ggt.sp}},
+  \code{\link{bayes.geostat.exact}}, or \code{\link{sp.lm}}}
   \item{DIC.marg}{a logical value indicating if marginalized DIC and
-    associated statistics should be calculated. }
+    associated statistics should be calculated. Note, this argument is ignored
+    when \code{sp.obj} specifies a non-spatial model. }
   \item{DIC.unmarg}{a logical value indicating if unmarginalized DIC and
-    associated statistics should be calculated. }
+    associated statistics should be calculated. Note, this argument is ignored
+    when \code{sp.obj} specifies a non-spatial model.}
   \item{start}{specifies the first sample included in the DIC calculation.
     This is useful for those who choose to acknowledge chain burn-in.  }
   \item{end}{specifies the last sample included  in the prediction calculation.
@@ -34,19 +37,23 @@
 }
 
 \value{
+  A list with some of the following tags:
+  \item{DIC}{a matrix holding DIC and associated statistics when
+  \code{sp.obj} specifies a non-spatial model.  }
   \item{DIC.marg}{a matrix holding marginalized DIC and associated
     statistics.  }
   \item{DIC.unmarg}{a matrix holding unmarginalized DIC and associated
     statistics.  }
-  \item{sp.effects}{if DIC.ummarg is true and if the \code{sp.obj} then \code{sp.DIC} calculates the
-    random spatial effects and includes them in the return object. }
+  \item{sp.effects}{if DIC.ummarg is true and if \code{sp.obj}
+  specifies a spatial model without pre-calculated spatial effects then \code{sp.DIC} calculates the
+    spatial effects. }
 }
 
 \details{
   Please refer to Section 3.3 in the vignette.
 }
 
-\seealso{\code{\link{ggt.sp}}, \code{\link{bayes.geostat.exact}}, \code{\link{sp.lm}}}
+\seealso{\code{\link{bayes.lm.ref}}, \code{\link{bayes.lm.conjugate}}, \code{\link{ggt.sp}}, \code{\link{bayes.geostat.exact}}, \code{\link{sp.lm}}}
 
 \references{
   Banerjee, S., Carlin, B.P., and Gelfand, A.E. (2004). Hierarchical modeling and analysis for spatial data. Chapman and Hall/CRC Press, Boca Raton, Fla.

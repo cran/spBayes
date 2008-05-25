@@ -12,16 +12,134 @@ sp.DIC <- function(sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE, start=1, end, thin=1,
 
   
   if(missing(sp.obj)){stop("error: sp.DIC expects sp.obj\n")}
-  if(!class(sp.obj) %in% c("ggt.sp","sp.lm","bayes.geostat.exact")){
-    stop("error: sp.DIC requires an output object of class ggt.sp, sp.lm, or bayes.geostat.exact\n")}
+  if(!class(sp.obj) %in% c("ggt.sp","sp.lm","bayes.geostat.exact","bayes.lm.conjugate", "bayes.lm.ref")){
+    stop("error: sp.DIC requires an output object of class bayes.lm.conjugate, bayes.lm.ref, ggt.sp, sp.lm, bayes.geostat.exact\n")}
   if(!is.logical(DIC.marg)){stop("error: DIC.marg must be of type logical\n")}
   if(!is.logical(DIC.unmarg)){stop("error: DIC.unmarg must be of type logical\n")}
   if(!is.logical(verbose)){stop("error: verbose must be of type logical\n")}
 
-  
-  if(class(sp.obj) == "sp.lm"){
+  if(class(sp.obj) == "bayes.lm.ref"){
+    
+    cat("-------------------------------------------------\n\t\tCalculating DIC\n-------------------------------------------------\n")
+          
+    X <- sp.obj$X
+    n <- nrow(X)
+    p <- ncol(X)
+    Y <- sp.obj$Y
+    samples <- sp.obj$p.samples
+    n.samples <- sp.obj$n.samples
+
+    ##thin
+    if(missing(end))
+      end <- n.samples
+    
+    if(!is.numeric(start) || start >= n.samples)
+      stop("error: invalid start")
+    if(!is.numeric(end) || end > n.samples) 
+      stop("error: invalid end")
+    if(!is.numeric(thin) || thin >= n.samples) 
+      stop("error: invalid thin")
+    
+    samples <- samples[seq(start, end, by=as.integer(thin)),]
+    n.samples <- nrow(samples)
+    
+    ##get samples
+    beta <- as.matrix(samples[,1:p])
+    sigma.sq <- samples[,"sigma.sq"]    
+    
+    d <- rep(0, n.samples)
+    
+    ##
+    ##DIC
+    ##
+    
+    DIC <- matrix(0,4,1)
+    
+    for(s in 1:n.samples){
+      d[s] <- n*log(sigma.sq[s])+1/(sigma.sq[s])*(t(Y-X%*%beta[s,])%*%(Y-X%*%beta[s,]))
+    }
+    cat(paste("Sampled: ",n.samples," of ",n.samples,", ",100,"%\n", sep=""))
+    
+    d.bar <- mean(d)
+    
+    sigma.sq.mu <- mean(sigma.sq)
+    beta.mu <- as.matrix(colMeans(beta))
+    
+    d.bar.omega <- n*log(sigma.sq.mu)+1/(sigma.sq.mu)*(t(Y-X%*%beta.mu)%*%(Y-X%*%beta.mu))
+    pd <- d.bar - d.bar.omega
+    dic <- d.bar - pd
+    
+    rownames(DIC) <- c("bar.D", "D.bar.Omega", "pD", "DIC")
+    DIC[1,1] <- d.bar
+    DIC[2,1] <- d.bar.omega
+    DIC[3,1] <- pd
+    DIC[4,1] <- dic
+
+    DIC
+    
+  }else if(class(sp.obj) == "bayes.lm.conjugate"){
+
+    cat("-------------------------------------------------\n\t\tCalculating DIC\n-------------------------------------------------\n")
+          
+    X <- sp.obj$X
+    n <- nrow(X)
+    p <- ncol(X)
+    Y <- sp.obj$Y
+    samples <- sp.obj$p.samples
+    n.samples <- sp.obj$n.samples
+
+    ##thin
+    if(missing(end))
+      end <- n.samples
+    
+    if(!is.numeric(start) || start >= n.samples)
+      stop("error: invalid start")
+    if(!is.numeric(end) || end > n.samples) 
+      stop("error: invalid end")
+    if(!is.numeric(thin) || thin >= n.samples) 
+      stop("error: invalid thin")
+    
+    samples <- samples[seq(start, end, by=as.integer(thin)),]
+    n.samples <- nrow(samples)
+    
+    ##get samples
+    beta <- as.matrix(samples[,1:p])
+    sigma.sq <- samples[,"sigma.sq"]    
+    
+    d <- rep(0, n.samples)
+    
+    ##
+    ##DIC
+    ##
+    
+    DIC <- matrix(0,4,1)
+    
+    for(s in 1:n.samples){
+      d[s] <- n*log(sigma.sq[s])+1/(sigma.sq[s])*(t(Y-X%*%beta[s,])%*%(Y-X%*%beta[s,]))
+    }
+    cat(paste("Sampled: ",n.samples," of ",n.samples,", ",100,"%\n", sep=""))
+    
+    d.bar <- mean(d)
+    
+    sigma.sq.mu <- mean(sigma.sq)
+    beta.mu <- as.matrix(colMeans(beta))
+    
+    d.bar.omega <- n*log(sigma.sq.mu)+1/(sigma.sq.mu)*(t(Y-X%*%beta.mu)%*%(Y-X%*%beta.mu))
+    pd <- d.bar - d.bar.omega
+    dic <- d.bar - pd
+    
+    rownames(DIC) <- c("bar.D", "D.bar.Omega", "pD", "DIC")
+    DIC[1,1] <- d.bar
+    DIC[2,1] <- d.bar.omega
+    DIC[3,1] <- pd
+    DIC[4,1] <- dic
+
+    DIC
+    
+  }else if(class(sp.obj) == "sp.lm"){
 
     is.pp <- sp.obj$is.pp
+    modified.pp <- sp.obj$modified.pp
     
     if(is.pp)
       knot.coords <- sp.obj$knot.coords
@@ -107,6 +225,7 @@ sp.DIC <- function(sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE, start=1, end, thin=1,
     storage.mode(X) <- "double"
     storage.mode(Y) <- "double"
     storage.mode(is.pp) <- "integer"
+    storage.mode(modified.pp) <- "integer"
     storage.mode(n) <- "integer"
     storage.mode(m) <- "integer"
     storage.mode(p) <- "integer"
@@ -126,7 +245,7 @@ sp.DIC <- function(sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE, start=1, end, thin=1,
     storage.mode(DIC.marg) <- "integer"
     storage.mode(DIC.unmarg) <- "integer"
     
-    out <- .Call("splmDIC",X, Y, is.pp, n, m, p, nugget, beta, sigma.sq, tau.sq, phi, nu,
+    out <- .Call("splmDIC",X, Y, is.pp, modified.pp, n, m, p, nugget, beta, sigma.sq, tau.sq, phi, nu,
                  obs.D, obs.knots.D, knots.D, cov.model, n.samples, w, w.str, sp.effects,
                  DIC.marg, DIC.unmarg, verbose)
     out
@@ -196,15 +315,27 @@ sp.DIC <- function(sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE, start=1, end, thin=1,
     ##
     ##marginalized
     ##
+    status <- 0
     
     marg.DIC <- matrix(0,4,1)
     if(DIC.marg){
+
+      cat("-------------------------------------------------\n\tCalculating marginalized DIC\n-------------------------------------------------\n")
       
       for(s in 1:n.samples){
         R.inv <- R.vecs%*%diag(1/(sigma.sq[s]*R.vals+tau.sq[s]))%*%R.vects.t
         R.log.det <- sum(log(sigma.sq[s]*R.vals+tau.sq[s]))
         d[s] <- R.log.det+(t(Y-X%*%beta[s,])%*%R.inv%*%(Y-X%*%beta[s,]))
+
+        if(verbose){
+          if(status == 10){
+            cat(paste("Sampled: ",s," of ",n.samples,", ",round(100*s/n.samples,2),"%\n", sep=""))
+            status <- 0
+          }
+          status <- status+1
+        }
       }
+      cat(paste("Sampled: ",n.samples," of ",n.samples,", ",100,"%\n", sep=""))
       
       d.bar <- mean(d)
       
@@ -235,9 +366,10 @@ sp.DIC <- function(sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE, start=1, end, thin=1,
     ##recover spatial effects
     ##
     unmarg.DIC <- matrix(0,4,1)
+    status <- 0
     
     if(DIC.unmarg){
-      cat(paste("\nRecovering spatial effects ... \n", sep=""))
+      cat("-------------------------------------------------\n\tRecovering spatial effects\n-------------------------------------------------\n")
       
 ##      w <- matrix(0, n, n.samples)
 ##      
@@ -270,13 +402,23 @@ sp.DIC <- function(sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE, start=1, end, thin=1,
         ## Instead use the pre-computed V.sp.root
         z <- rnorm(nrow(V.sp), 0, 1)
         w[,s] <- sp.posterior.mean[s,] + sqrt(sigma.sq[s])*V.sp.root%*%z
-        
+
+        if(verbose){
+          if(status == 10){
+            cat(paste("Sampled: ",s," of ",n.samples,", ",round(100*s/n.samples,2),"%\n", sep=""))
+            status <- 0
+          }
+          status <- status+1
+        }
       }
-         
+      cat(paste("Sampled: ",n.samples," of ",n.samples,", ",100,"%\n", sep=""))
+
+      cat("-------------------------------------------------\n\tCalculating unmarginalized DIC\n-------------------------------------------------\n")
       
       for(s in 1:n.samples){
         d[s] <- n*log(tau.sq[s])+1/(tau.sq[s])*(t(Y-X%*%beta[s,]-w[,s])%*%(Y-X%*%beta[s,]-w[,s]))
       }
+      cat(paste("Sampled: ",n.samples," of ",n.samples,", ",100,"%\n", sep=""))
       
       d.bar <- mean(d)
       
@@ -308,6 +450,9 @@ sp.DIC <- function(sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE, start=1, end, thin=1,
     out
 
   }else if(class(sp.obj) == "ggt.sp"){
+
+    cat("Computing DIC and associated statistics ...")
+      
     
     ##subsample if specified
     samples <- as.matrix(sp.obj$p.samples)

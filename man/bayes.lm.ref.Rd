@@ -18,8 +18,10 @@
 }
 
 \value{
-  A \pkg{CODA} \code{mcmc} matrix object with columns corresponding to each
-  parameter and posterior samples held in the rows.
+  An object of class \code{bayes.lm.ref}, which is a list with at
+  least the following tag:
+  \item{p.samples}{a \code{coda} object of posterior samples for the defined
+    parameters. }
 }
 
 \details{
@@ -46,9 +48,9 @@ summary(lm.obj)
 ##Now with bayes.lm.ref
 n.samples <- 500
 
-out.bayes.lm.ref <- bayes.lm.ref(lm.obj, n.samples)
+m.1 <- bayes.lm.ref(lm.obj, n.samples)
 
-summary(out.bayes.lm.ref)
+summary(m.1$p.sample)
 
 }
 

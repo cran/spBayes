@@ -40,7 +40,7 @@ void proposeIG(double *paramVec, double &tuning, int &indx, double &candParam, d
 extern "C" {
 
   SEXP splm(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP coordsD_r,
-	    SEXP isPp_r, SEXP m_r, SEXP knotsD_r, SEXP coordsKnotsD_r, SEXP nugget_r, 
+	    SEXP isPp_r, SEXP isModPp_r, SEXP m_r, SEXP knotsD_r, SEXP coordsKnotsD_r, SEXP nugget_r, 
 	    SEXP betaFixed_r, SEXP sigmaSqFixed_r, SEXP tauSqFixed_r, SEXP phiFixed_r, SEXP nuFixed_r,
 	    SEXP sigmaSqIG_r, SEXP tauSqIG_r, SEXP nuUnif_r, SEXP phiUnif_r,
 	    SEXP phiStarting_r, SEXP sigmaSqStarting_r, SEXP tauSqStarting_r, SEXP nuStarting_r, SEXP betaStarting_r,
@@ -79,6 +79,7 @@ extern "C" {
 
     //if predictive process
     bool isPp = static_cast<bool>(INTEGER(isPp_r)[0]);
+    bool isModPp = static_cast<bool>(INTEGER(isModPp_r)[0]);
     int m = 0;
     double *knotsD = NULL;
     double *coordsKnotsD = NULL;
@@ -153,7 +154,10 @@ extern "C" {
       Rprintf("Using the %s spatial correlation model.\n\n", covModel.c_str());
       
       if(isPp){
-	Rprintf("Using predictive process with %i knots.\n\n", m);
+	if(isModPp)
+	  Rprintf("Using modified predictive process with %i knots.\n\n", m);
+	else
+	  Rprintf("Using non-modified predictive process with %i knots.\n\n", m);
       }
       Rprintf("Number of MCMC samples %i.\n\n", nSamples);
 
@@ -358,7 +362,9 @@ extern "C" {
       ct = (double *) R_alloc(nm, sizeof(double));
       C_str = (double *) R_alloc(mm, sizeof(double));
       w_strMu = (double *) R_alloc(m, sizeof(double));
-      tmp_nn = (double *) R_alloc(nn, sizeof(double));
+      if(isModPp){//not needed for the non-modified pp
+	tmp_nn = (double *) R_alloc(nn, sizeof(double));
+      }
       E = (double *) R_alloc(n, sizeof(double));
       Einv = (double *) R_alloc(n, sizeof(double));
     }else{
@@ -501,94 +507,96 @@ extern "C" {
 	/******************************
            Sherman-Woodbury-Morrison
 	*******************************/
-// 	//Unmodified predictive process
-// 	if(!nugget) tauSq = 1e-10;//ridge the matrix if no nugget model
+	if(!nugget) tauSq = 1e-10;//ridge the matrix if no nugget model
 	
-// 	tauSqInv = 1.0/tauSq;
-// 	negTauSqInv = -1.0*tauSqInv;
-	
-// 	//t(ct) 1/tau^2  ct = tmp_mm
-// 	F77_NAME(dgemm)(ytran, ntran, &m, &m, &n, &tauSqInv, ct, &n, ct, &n, &zero, tmp_mm, &m);
-	
-// 	//[C* + t(ct) 1/tau^2  ct]^{-1} = tmp_mm, and get the det on the way
-// 	F77_NAME(daxpy)(&mm, &one, C_str, &incOne, tmp_mm, &incOne);
-	
-// 	F77_NAME(dpotrf)(upper, &m, tmp_mm, &m, &info); if(info != 0){error("c++ error: Cholesky failed in sp.lm\n");}
-	
-// 	//get log det cov
-// 	detCand = 0;
-// 	for(i = 0; i < m; i++) detCand += 2.0*log(tmp_mm[i*m+i]);
-	
-// 	F77_NAME(dpotri)(upper, &m, tmp_mm, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in sp.lm\n");}
-
-// 	//-1/tau^2 ct  tmp_mm = tmp_nm
-// 	F77_NAME(dsymm)(rside, upper, &n, &m, &negTauSqInv, tmp_mm, &m, ct, &n, &zero, tmp_nm, &n);
-
-// 	//diag(1/tau^2) + tmp_nm ct 1/tau^2 = C
-// 	F77_NAME(dgemm)(ntran, ytran, &n, &n, &m, &tauSqInv, tmp_nm, &n, ct, &n, &zero, C, &n);
-// 	for(i = 0; i < n; i++) C[i*n+i] = tauSqInv+C[i*n+i];
-
-// 	//finish getting the log det cov 
-// 	detCand += n*log(tauSq);
-// 	F77_NAME(dpotrf)(upper, &m, C_str, &m, &info); if(info != 0){cout << "c++ error: Cholesky failed\n" << endl;}
-// 	for(i = 0; i < m; i++) detCand -= 2.0*log(C_str[i*m+i]);
-
-        //Modified predictive process
-	if(!nugget) 
-	  tauSq = 1e-10;//ridge the matrix if no nugget model
-
-	//make ct C
-	F77_NAME(dcopy)(&mm, C_str, &incOne, tmp_mm, &incOne);
-	F77_NAME(dpotrf)(upper, &m, tmp_mm, &m, &info); if(info != 0){error("c++ error: Cholesky failed in sp.lm\n");}
-
-	detCandC_str = 0;
-	for(i = 0; i < m; i++) 
-	  detCandC_str += 2.0*log(tmp_mm[i*m+i]);
-
-	F77_NAME(dpotri)(upper, &m, tmp_mm, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in sp.lm\n");}
-
-	F77_NAME(dsymm)(rside, upper, &n, &m, &one, tmp_mm, &m, ct, &n, &zero, tmp_nm, &n);
-	F77_NAME(dgemm)(ntran, ytran, &n, &n, &m, &one, tmp_nm, &n, ct, &n, &zero, tmp_nn, &n);
-
-	detCandE = 0;
-	for(i = 0; i < n; i++){ 
-	  E[i] = tauSq+sigmaSq-tmp_nn[i*n+i];
-	  Einv[i] = 1.0/E[i];
-	  detCandE += 2.0*log(sqrt(E[i]));
+ 	//Unmodified predictive process
+	if(!isModPp){  
+	  tauSqInv = 1.0/tauSq;
+	  negTauSqInv = -1.0*tauSqInv;
+	  
+	  //t(ct) 1/tau^2  ct = tmp_mm
+	  F77_NAME(dgemm)(ytran, ntran, &m, &m, &n, &tauSqInv, ct, &n, ct, &n, &zero, tmp_mm, &m);
+	  
+	  //[C* + t(ct) 1/tau^2  ct]^{-1} = tmp_mm, and get the det on the way
+	  F77_NAME(daxpy)(&mm, &one, C_str, &incOne, tmp_mm, &incOne);
+	  
+	  F77_NAME(dpotrf)(upper, &m, tmp_mm, &m, &info); if(info != 0){error("c++ error: Cholesky failed in sp.lm\n");}
+	  
+	  //get log det cov
+	  detCand = 0;
+	  for(i = 0; i < m; i++) detCand += 2.0*log(tmp_mm[i*m+i]);
+	  
+	  F77_NAME(dpotri)(upper, &m, tmp_mm, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in sp.lm\n");}
+	  
+	  //-1/tau^2 ct  tmp_mm = tmp_nm
+	  F77_NAME(dsymm)(rside, upper, &n, &m, &negTauSqInv, tmp_mm, &m, ct, &n, &zero, tmp_nm, &n);
+	  
+	  //diag(1/tau^2) + tmp_nm ct 1/tau^2 = C
+	  F77_NAME(dgemm)(ntran, ytran, &n, &n, &m, &tauSqInv, tmp_nm, &n, ct, &n, &zero, C, &n);
+	  for(i = 0; i < n; i++) C[i*n+i] = tauSqInv+C[i*n+i];
+	  
+	  //finish getting the log det cov 
+	  detCand += n*log(tauSq);
+	  F77_NAME(dpotrf)(upper, &m, C_str, &m, &info); if(info != 0){cout << "c++ error: Cholesky failed\n" << endl;}
+	  for(i = 0; i < m; i++) detCand -= 2.0*log(C_str[i*m+i]);
+	  
+	}else{//Modified predictive process
+	  
+	  if(!nugget) 
+	    tauSq = 1e-10;//ridge the matrix if no nugget model
+	  
+	  //make ct C
+	  F77_NAME(dcopy)(&mm, C_str, &incOne, tmp_mm, &incOne);
+	  F77_NAME(dpotrf)(upper, &m, tmp_mm, &m, &info); if(info != 0){error("c++ error: Cholesky failed in sp.lm\n");}
+	  
+	  detCandC_str = 0;
+	  for(i = 0; i < m; i++) 
+	    detCandC_str += 2.0*log(tmp_mm[i*m+i]);
+	  
+	  F77_NAME(dpotri)(upper, &m, tmp_mm, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in sp.lm\n");}
+	  
+	  F77_NAME(dsymm)(rside, upper, &n, &m, &one, tmp_mm, &m, ct, &n, &zero, tmp_nm, &n);
+	  F77_NAME(dgemm)(ntran, ytran, &n, &n, &m, &one, tmp_nm, &n, ct, &n, &zero, tmp_nn, &n);
+	  
+	  detCandE = 0;
+	  for(i = 0; i < n; i++){ 
+	    E[i] = tauSq+sigmaSq-tmp_nn[i*n+i];
+	    Einv[i] = 1.0/E[i];
+	    detCandE += 2.0*log(sqrt(E[i]));
+	  }
+	  
+	  //make Einv Ct
+	  //F77_NAME(dsymm)(lside, upper, &n, &m, &one, Einv, &n, ct, &n, &zero, tmp_nm, &n);
+	  diagmm(n, m, Einv, ct, tmp_nm);
+	  
+	  //make C* + t(Ct) E.inv Ct
+	  F77_NAME(dgemm)(ytran, ntran, &m, &m, &n, &one, ct, &n, tmp_nm, &n, &zero, tmp_mm, &m);
+	  F77_NAME(daxpy)(&mm, &one, C_str, &incOne, tmp_mm, &incOne);
+	  
+	  //get log(|tmp_mm|) then tmp_mm^{-1}
+	  detCand = 0.0;
+	  F77_NAME(dpotrf)(upper, &m, tmp_mm, &m, &info); if(info != 0){error("c++ error: Cholesky failed in sp.lm\n");}
+	  for(i = 0; i < m; i++) detCand += 2.0*log(tmp_mm[i*m+i]);
+	  F77_NAME(dpotri)(upper, &m, tmp_mm, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in sp.lm\n");}
+	  
+	  detCand = detCandE+detCand-detCandC_str;
+	  
+	  //C = Einv - Einv ct (C* + t(ct) Einv ct)^{-1} t(ct) Einv
+	  F77_NAME(dsymm)(rside, upper, &n, &m, &one, tmp_mm, &m, tmp_nm, &n, &zero, tmp_nm1, &n);
+	  F77_NAME(dgemm)(ntran, ytran, &n, &n, &m, &one, tmp_nm1, &n, tmp_nm, &n, &zero, C, &n);
+	  
+	  F77_NAME(dscal)(&nn, &negOne, C, &incOne);
+	  for(i = 0; i < n; i++) 
+	    C[i*n+i] = Einv[i]+C[i*n+i];
 	}
-	
-	//make Einv Ct
-	//F77_NAME(dsymm)(lside, upper, &n, &m, &one, Einv, &n, ct, &n, &zero, tmp_nm, &n);
-	diagmm(n, m, Einv, ct, tmp_nm);
-
-	//make C* + t(Ct) E.inv Ct
-	F77_NAME(dgemm)(ytran, ntran, &m, &m, &n, &one, ct, &n, tmp_nm, &n, &zero, tmp_mm, &m);
-	F77_NAME(daxpy)(&mm, &one, C_str, &incOne, tmp_mm, &incOne);
-	
-	//get log(|tmp_mm|) then tmp_mm^{-1}
-	detCand = 0.0;
-	F77_NAME(dpotrf)(upper, &m, tmp_mm, &m, &info); if(info != 0){error("c++ error: Cholesky failed in sp.lm\n");}
-	for(i = 0; i < m; i++) detCand += 2.0*log(tmp_mm[i*m+i]);
-	F77_NAME(dpotri)(upper, &m, tmp_mm, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in sp.lm\n");}
-
-	detCand = detCandE+detCand-detCandC_str;
-	
-	//C = Einv - Einv ct (C* + t(ct) Einv ct)^{-1} t(ct) Einv
-	F77_NAME(dsymm)(rside, upper, &n, &m, &one, tmp_mm, &m, tmp_nm, &n, &zero, tmp_nm1, &n);
-	F77_NAME(dgemm)(ntran, ytran, &n, &n, &m, &one, tmp_nm1, &n, tmp_nm, &n, &zero, C, &n);
-
-	F77_NAME(dscal)(&nn, &negOne, C, &incOne);
-	for(i = 0; i < n; i++) 
-	  C[i*n+i] = Einv[i]+C[i*n+i];
-
       }//finish PP
-
+      
       /******************************
            Likelihood and MH
       *******************************/
       //Likelihood with Jacobian
       logPostCand = 0.0;
-
+      
       if(!sigmaSqFixed)
 	logPostCand = -1.0*(1.0+sigmaSqIGa)*log(sigmaSq)-sigmaSqIGb/sigmaSq+log(sigmaSq);
       
@@ -680,7 +688,7 @@ extern "C" {
          Recover w and w* if needed
       *******************************/
       if(spEffects){
-
+	
 	//Get previously accepted sample
 	sigmaSq = exp(spParams[sigmaSqIndx]);
 	
@@ -738,12 +746,6 @@ extern "C" {
 	  }
 	}else{//using pp
 	  
-	  //w* ~ MVN(mu_w, Sigma_w)
-	  //Sigma_w = [C^{*-1} + C^{*-1} C (1/E) C' C^{*-1}]^{-1}
-	  //mu_w = Sigma_w [C^{*-1} C (1/E) (Y-XB)]
-	  //where E = I \otimes (Psi + A'A) - Diag[C'(s_i) C^{*-1} C(s_i)]^n_{i=1}
-	  //then w = C' C^{*-1} w*
-
 	  if(!nugget) tauSq = 1e-10;//ridge the matrix if no nugget model
 	  
 	  //make the correlation matrix
@@ -773,11 +775,30 @@ extern "C" {
 	  //ct C^{*-1}
 	  F77_NAME(dsymm)(rside, upper, &n, &m, &one, C_str, &m, ct, &n, &zero, tmp_nm, &n);
 	  
-	  //ct C^{*-1} c
-	  F77_NAME(dgemm)(ntran, ytran, &n, &n, &m, &one, tmp_nm, &n, ct, &n, &zero, tmp_nn, &n);
 	  
-	  for(i = 0; i < n; i++) Einv[i] = 1.0/(tauSq+sigmaSq-tmp_nn[i*n+i]);
-	  diagmm(n, m, Einv, tmp_nm, tmp_nm1);
+	  //w* ~ MVN(mu_w, Sigma_w)
+	  //unmodified
+	  //Sigma_w = [C^{*-1} + C^{*-1} C (1/tau^2 I_n) C' C^{*-1}]^{-1}
+	  //mu_w = Sigma_w [C^{*-1} C (1/tau^2 I_n) (Y-XB)]
+	  
+	  //modified			      
+	  //Sigma_w = [C^{*-1} + C^{*-1} C (1/E) C' C^{*-1}]^{-1}
+	  //mu_w = Sigma_w [C^{*-1} C (1/E) (Y-XB)]
+	  //where E = I \otimes (Psi + A'A) - Diag[C'(s_i) C^{*-1} C(s_i)]^n_{i=1}
+	
+	  //then w = C' C^{*-1} w*
+
+	  //Unmodified predictive process
+	  if(!isModPp){
+	    for(i = 0; i < n; i++) Einv[i] = 1.0/(tauSq);
+	  }else{//Modified predictive process
+	    //ct C^{*-1} c
+	    F77_NAME(dgemm)(ntran, ytran, &n, &n, &m, &one, tmp_nm, &n, ct, &n, &zero, tmp_nn, &n);
+
+	    for(i = 0; i < n; i++) Einv[i] = 1.0/(tauSq+sigmaSq-tmp_nn[i*n+i]);
+	  }
+	  
+	  diagmm(n, m, Einv, tmp_nm, tmp_nm1); //(1/E ct C^{*-1})
 
 	  //(C^{*-1} c) (1/E ct C^{*-1})
 	  F77_NAME(dgemm)(ytran, ntran, &m, &m, &n, &one, tmp_nm, &n, tmp_nm1, &n, &zero, tmp_mm, &m);
@@ -803,7 +824,7 @@ extern "C" {
 	  
 	  //make \tild{w}
 	  F77_NAME(dgemv)(ntran, &n, &m, &one, tmp_nm, &n, &w_str[s*m], &incOne, &zero, &w[s*n], &incOne);
-	}
+	}//fi pp
       }//end spEffects
       
           

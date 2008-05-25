@@ -31,8 +31,10 @@
 }
 
 \value{
-  A \pkg{CODA} \code{mcmc} matrix object with columns corresponding to each
-  parameter and posterior samples held in the rows.
+  An object of class \code{bayes.lm.conjugate}, which is a list with at
+  least the following tag:
+  \item{p.samples}{a \code{coda} object of posterior samples for the defined
+    parameters. }
 }
 
 %\references{
@@ -69,7 +71,7 @@ m.1 <-
                      beta.prior.precision,
                      prior.shape, prior.rate)
 
-summary(m.1)
+summary(m.1$p.samples)
 }
 }
 

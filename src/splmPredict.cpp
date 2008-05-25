@@ -30,7 +30,7 @@ void report(int &s, int &nSamples, int &status, int &nReport, bool &verbose){
 
 extern "C" {
 
-  SEXP splmPredict(SEXP X_r, SEXP Y_r, SEXP isPp_r, SEXP n_r, SEXP m_r, SEXP p_r, SEXP nugget_r, SEXP beta_r, SEXP sigmaSq_r, 
+  SEXP splmPredict(SEXP X_r, SEXP Y_r, SEXP isPp_r, SEXP isModPp_r, SEXP n_r, SEXP m_r, SEXP p_r, SEXP nugget_r, SEXP beta_r, SEXP sigmaSq_r, 
 		   SEXP tauSq_r, SEXP phi_r, SEXP nu_r,
 		   SEXP nPred_r, SEXP predX_r, SEXP obsD_r, SEXP predD_r, SEXP predObsD_r, SEXP obsKnotsD_r, SEXP knotsD_r, SEXP predKnotsD_r,
 		   SEXP covModel_r, SEXP nSamples_r, SEXP w_r, SEXP w_str_r, SEXP spEffects_r, SEXP verbose_r){
@@ -74,6 +74,8 @@ extern "C" {
 
     //if predictive process
     bool isPp = static_cast<bool>(INTEGER(isPp_r)[0]);
+    bool isModPp = static_cast<bool>(INTEGER(isModPp_r)[0]);
+
     int m = 0;
     double *knotsD = NULL;
     double *obsKnotsD = NULL;
@@ -306,11 +308,16 @@ extern "C" {
 	   //make w* Sigma
 	   //ct C^{*-1}
 	   F77_NAME(dsymm)(rside, upper, &n, &m, &one, C_str, &m, ct, &n, &zero, tmp_nm, &n);
-	   
-	   //ct C^{*-1} c
-	   F77_NAME(dgemm)(ntran, ytran, &n, &n, &m, &one, tmp_nm, &n, ct, &n, &zero, tmp_nn, &n);
-	   
-	   for(i = 0; i < n; i++) Einv[i] = 1.0/(tauSq[s]+sigmaSq[s]-tmp_nn[i*n+i]);
+	   	   
+	   if(!isModPp){
+	     for(i = 0; i < n; i++) Einv[i] = 1.0/(tauSq[s]);
+	   }else{
+	     //ct C^{*-1} c
+	     F77_NAME(dgemm)(ntran, ytran, &n, &n, &m, &one, tmp_nm, &n, ct, &n, &zero, tmp_nn, &n);
+
+	     for(i = 0; i < n; i++) Einv[i] = 1.0/(tauSq[s]+sigmaSq[s]-tmp_nn[i*n+i]);
+	   }
+
 	   diagmm(n, m, Einv, tmp_nm, tmp_nm1);
 	   
 	   //(C^{*-1} c) (1/E ct C^{*-1})
@@ -448,13 +455,20 @@ extern "C" {
 	 F77_NAME(dgemv)(ntran, &q, &m, &one, tmp_qm1, &q, &w_str[s*m], &incOne, &zero, &w_pred[s*q], &incOne);
 
 	 //\tild{\eps}
-	 for(i = 0; i < q; i++) tmp_q[i] = rnorm(0.0, sqrt(sigmaSq[s]-tmp_qq[i*q+i]));
+	 
+	 if(isModPp){
+	   for(i = 0; i < q; i++) tmp_q[i] = rnorm(0.0, sqrt(sigmaSq[s]-tmp_qq[i*q+i]));
+	 }
 
 	 //XB
 	 F77_NAME(dgemv)(ntran, &q, &p, &one, predX, &q, &beta[s*p], &incOne, &zero, tmp_q2, &incOne);
 	
-	 for(i = 0; i < q; i++) y_pred[s*q+i] = rnorm(tmp_q2[i]+w_pred[s*q+i]+tmp_q[i], sqrt(tauSq[s]));
-	 
+	 if(isModPp){
+	   for(i = 0; i < q; i++) y_pred[s*q+i] = rnorm(tmp_q2[i]+w_pred[s*q+i]+tmp_q[i], sqrt(tauSq[s]));
+	 }else{
+	   for(i = 0; i < q; i++) y_pred[s*q+i] = rnorm(tmp_q2[i]+w_pred[s*q+i], sqrt(tauSq[s]));
+	 }
+
 	 report(s, nSamples, status, nReport, verbose);
        } //end sample loop
      }

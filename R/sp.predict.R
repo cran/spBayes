@@ -32,6 +32,7 @@ sp.predict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, v
   if(obj.class == "sp.lm"){
 
     is.pp <- sp.obj$is.pp
+    modified.pp <- sp.obj$modified.pp
     
     if(is.pp)
       knot.coords <- sp.obj$knot.coords
@@ -144,6 +145,7 @@ sp.predict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, v
     storage.mode(X) <- "double"
     storage.mode(Y) <- "double"
     storage.mode(is.pp) <- "integer"
+    storage.mode(modified.pp) <- "integer"
     storage.mode(n) <- "integer"
     storage.mode(m) <- "integer"
     storage.mode(p) <- "integer"
@@ -167,7 +169,7 @@ sp.predict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, v
     storage.mode(sp.effects) <- "integer"
     storage.mode(verbose) <- "integer"
 
-    out <- .Call("splmPredict",X, Y, is.pp, n, m, p, nugget, beta, sigma.sq, tau.sq, phi, nu,
+    out <- .Call("splmPredict",X, Y, is.pp, modified.pp, n, m, p, nugget, beta, sigma.sq, tau.sq, phi, nu,
                  n.pred, pred.covars, obs.D, pred.D, pred.obs.D, obs.knots.D, knots.D, pred.knots.D,
                  cov.model, n.samples, w, w.str, sp.effects, verbose)
     out

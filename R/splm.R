@@ -1,5 +1,5 @@
 sp.lm <- function(formula, data = parent.frame(), coords, knots,
-                  fixed, starting, sp.tuning, priors, cov.model, sp.effects=TRUE, n.samples, verbose=TRUE, n.report=100, ...){
+                  fixed, starting, sp.tuning, priors, cov.model, sp.effects=TRUE, modified.pp = TRUE, n.samples, verbose=TRUE, n.report=100, ...){
 
   ####################################################
   ##Check for unused args
@@ -129,6 +129,7 @@ sp.lm <- function(formula, data = parent.frame(), coords, knots,
     }
 
     storage.mode(is.pp) <- "integer"
+    storage.mode(modified.pp) <- "integer"
     storage.mode(m) <- "integer"
     storage.mode(knots.D) <- "double"
     storage.mode(coords.knots.D) <- "double"
@@ -376,7 +377,7 @@ sp.lm <- function(formula, data = parent.frame(), coords, knots,
   ####################################################
   
   out <- .Call("splm", Y, X, p, n, coords.D,
-               is.pp, m, knots.D, coords.knots.D, nugget, 
+               is.pp, modified.pp, m, knots.D, coords.knots.D, nugget, 
                beta.fixed,sigma.sq.fixed,tau.sq.fixed,phi.fixed,nu.fixed,
                sigma.sq.IG, tau.sq.IG, nu.Unif, phi.Unif,
                phi.starting, sigma.sq.starting, tau.sq.starting, nu.starting, beta.starting,
@@ -385,6 +386,7 @@ sp.lm <- function(formula, data = parent.frame(), coords, knots,
 
   out$coords <- coords
   out$is.pp <- is.pp
+  out$modified.pp <- modified.pp
   
   if(is.pp)
     out$knot.coords <- knot.coords

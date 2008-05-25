@@ -114,6 +114,7 @@ bayes.lm.ref <- function(lm.obj, n.samples, ...) {
   }
 
   if(missing(lm.obj)){stop("error: lm.obj must be specified")}
+  if(class(lm.obj) != "lm"){stop("error: lm.obj must be of class lm")}
   if(missing(n.samples)){stop("error: n.samples must be specified")} 
   
   lm.obj.data <- model.frame(lm.obj)
@@ -141,10 +142,22 @@ bayes.lm.ref <- function(lm.obj, n.samples, ...) {
 
   Parameter.post <- cbind(coeff.post, sigmasq.post)
   colnames(Parameter.post) <- c(names(coefficients(lm.obj)),"sigma.sq")
-  mcmc(Parameter.post)
+  ##mcmc(Parameter.post)
   ##Parameter.summary <- data.frame(param.quantiles(Parameter.post),row.names=c(names(coefficients(lm.obj)),"sigma.sq")) 
   ##names(Parameter.summary) <- c("50%","2.5%","97.5%")
   ##Parameter.summary
+
+
+  ##
+  ##return
+  ##
+  out <- list()
+  out$p.samples <- mcmc(Parameter.post)
+  out$X <- as.matrix(model.matrix(lm.obj))
+  out$Y <- as.matrix(model.extract(model.frame(lm.obj), "response"))
+  out$n.samples <- n.samples
+  class(out) <- "bayes.lm.ref"
+  out
 }
  
 
@@ -228,13 +241,23 @@ bayes.lm.conjugate <- function(formula, data = parent.frame(), n.samples, beta.p
 
   posterior.samples <- as.matrix(normal.igamma.sampler(n.samples, posterior.mean, posterior.variance, posterior.shape, posterior.rate))
   colnames(posterior.samples) <- c(x.names,"sigma.sq")
-  mcmc(posterior.samples)
+  ##mcmc(posterior.samples)
   
   
   #Parameter.summary = data.frame(param.quantiles(posterior.samples),row.names=c(names(coefficients(lm.obj)),"sigma.sq")) 
   #names(Parameter.summary) =  c("50%","2.5%","97.5%")
   #Parameter.summary
-  
+
+  ##
+  ##return
+  ##
+  out <- list()
+  out$p.samples <- mcmc(posterior.samples)
+  out$X <- as.matrix(X)
+  out$Y <- as.matrix(Y)
+  out$n.samples <- n.samples
+  class(out) <- "bayes.lm.conjugate"
+  out
 }
 
 ##bayes.geostat.exp.unmarg <- function (lm.obj, n.samples, beta.prior.mean, beta.prior.precision, coords, phi, alpha,
@@ -344,13 +367,15 @@ bayes.geostat.exact <- function (formula, data = parent.frame(), n.samples, beta
   ##show summary of stuff
   ##
   if(verbose){
-    cat("----------------------------------------\n")
+    cat("-------------------------------------------------\n")
     cat("\tGeneral model description\n")
-    cat("----------------------------------------\n")
+    cat("-------------------------------------------------\n")
     cat(paste("Model fit with ",n," observations.\n", sep=""))
     cat(paste("Number of covariates ",p," (including intercept if specified).\n", sep=""))
-    cat(paste("Using the ",cov.model," spatial correlation model.\n", sep=""))
-    cat(paste("\nSampling ... \n", sep=""))
+    cat(paste("Using the ",cov.model," spatial correlation model.\n\n", sep=""))
+    cat("-------------------------------------------------\n")
+    cat("\t\tSampling\n")
+    cat("-------------------------------------------------\n")
   }
 
 
@@ -395,8 +420,12 @@ bayes.geostat.exact <- function (formula, data = parent.frame(), n.samples, beta
   posterior.samples <- cbind(beta.posterior.samples, sigma.sq.posterior.samples, tau.sq.posterior.samples)
   colnames(posterior.samples) <- c(x.names,"sigma.sq", "tau.sq")
 
+  cat(paste("Sampled: ",n.samples," of ",n.samples,", ",100,"%\n", sep=""))
+  
   if(sp.effects){
-    cat(paste("\nRecovering spatial effects ... \n", sep=""))
+    cat("-------------------------------------------------\n")
+    cat("\tRecovering spatial effects\n")
+    cat("-------------------------------------------------\n")
 
     w <- matrix(0, n, n.samples)
 
