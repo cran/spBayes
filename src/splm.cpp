@@ -542,9 +542,6 @@ extern "C" {
 	  
 	}else{//Modified predictive process
 	  
-	  if(!nugget) 
-	    tauSq = 1e-10;//ridge the matrix if no nugget model
-	  
 	  //make ct C
 	  F77_NAME(dcopy)(&mm, C_str, &incOne, tmp_mm, &incOne);
 	  F77_NAME(dpotrf)(upper, &m, tmp_mm, &m, &info); if(info != 0){error("c++ error: Cholesky failed in sp.lm\n");}

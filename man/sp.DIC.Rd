@@ -196,6 +196,66 @@ m.5 <-
 
 DIC <- sp.DIC(m.5)
 print(DIC)
+
+
+###########################################
+##     Compare DIC between non-spatial
+##           and spatial models
+###########################################
+
+data(FBC07.dat)
+Y.2 <- FBC07.dat[1:150,"Y.2"]
+coords <- as.matrix(FBC07.dat[1:150,c("coord.X", "coord.Y")])
+
+##############################
+##Non-spatial model
+##############################
+m.1 <- bayes.lm.conjugate(Y.2~1, n.samples = 2000,
+                          beta.prior.mean=0, beta.prior.precision=0,
+                          prior.shape=-0.5, prior.rate=0)
+
+summary(m.1$p.samples)
+
+dic.m1 <- sp.DIC(m.1)
+
+##> dic.m1
+##                  [,1]
+##bar.D       503.069362
+##D.bar.Omega 501.058448
+##pD            2.010914
+##DIC         501.058448
+
+##############################
+##Spatial model
+##############################
+m.2 <- sp.lm(Y.2~1, coords=coords, knots=c(6,6,0),
+             starting=list("phi"=0.1,"sigma.sq"=5, "tau.sq"=5),
+             sp.tuning=list("phi"=0.03, "sigma.sq"=0.03, "tau.sq"=0.03),
+             priors=list("phi.Unif"=c(0.06, 3), "sigma.sq.IG"=c(2, 5),
+               "tau.sq.IG"=c(2, 5)),
+             cov.model="exponential",
+             n.samples=2000, verbose=TRUE, n.report=100, sp.effects=TRUE)
+
+summary(m.2$p.samples)
+
+dic.m2 <- sp.DIC(m.2)
+
+##> dic.m2
+##$DIC.marg
+##                 value
+##bar.D       479.904433
+##D.bar.Omega 476.856815
+##pD            3.047617
+##DIC         482.952050
+
+##$DIC.unmarg
+##                value
+##bar.D       330.50408
+##D.bar.Omega 258.64266
+##pD           71.86142
+##DIC         402.36550
+
+
 }
 }
 

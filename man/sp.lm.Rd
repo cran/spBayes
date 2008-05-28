@@ -11,7 +11,8 @@
 \usage{
 sp.lm(formula, data = parent.frame(), coords, knots,
       fixed, starting, sp.tuning, priors, cov.model,
-      sp.effects=TRUE, modified.pp = TRUE, n.samples, verbose=TRUE, n.report=100, ...)
+      sp.effects=TRUE, modified.pp = TRUE, n.samples,
+      verbose=TRUE, n.report=100, ...)
 }
 
 \arguments{
