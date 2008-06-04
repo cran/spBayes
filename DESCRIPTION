@@ -1,6 +1,6 @@
 Package: spBayes
-Version: 0.0-9
-Date: 2008-5-28
+Version: 0.1-0
+Date: 2008-6-4
 Title: Univariate and Multivariate Spatial Modeling
 Author: Andrew O. Finley <finleya@msu.edu>, Sudipto Banerjee <sudiptob@biostat.umn.edu>, Bradley P. Carlin <brad@biostat.umn.edu>
 Maintainer: Andrew O. Finley <finleya@msu.edu>
@@ -9,4 +9,4 @@ Suggests: MBA, geoR
 Description: spBayes fits Gaussian univariate and multivariate models with Markov chain Monte Carlo (MCMC).
 License: GPL (>= 2)
 URL: http://blue.for.msu.edu/software
-Packaged: Wed May 28 22:15:38 2008; andy
+Packaged: Sun Jun  8 19:55:14 2008; andy

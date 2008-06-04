@@ -67,7 +67,7 @@ sp.DIC <- function(sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE, start=1, end, thin=1,
     
     d.bar.omega <- n*log(sigma.sq.mu)+1/(sigma.sq.mu)*(t(Y-X%*%beta.mu)%*%(Y-X%*%beta.mu))
     pd <- d.bar - d.bar.omega
-    dic <- d.bar - pd
+    dic <- d.bar + pd
     
     rownames(DIC) <- c("bar.D", "D.bar.Omega", "pD", "DIC")
     DIC[1,1] <- d.bar
@@ -126,7 +126,7 @@ sp.DIC <- function(sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE, start=1, end, thin=1,
     
     d.bar.omega <- n*log(sigma.sq.mu)+1/(sigma.sq.mu)*(t(Y-X%*%beta.mu)%*%(Y-X%*%beta.mu))
     pd <- d.bar - d.bar.omega
-    dic <- d.bar - pd
+    dic <- d.bar + pd
     
     rownames(DIC) <- c("bar.D", "D.bar.Omega", "pD", "DIC")
     DIC[1,1] <- d.bar
@@ -348,7 +348,7 @@ sp.DIC <- function(sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE, start=1, end, thin=1,
       
       d.bar.omega <- R.log.det+(t(Y-X%*%beta.mu)%*%R.inv%*%(Y-X%*%beta.mu))
       pd <- d.bar - d.bar.omega
-      dic <- d.bar - pd
+      dic <- d.bar + pd
       
       
       rownames(marg.DIC) <- c("bar.D", "D.bar.Omega", "pD", "DIC")
@@ -429,7 +429,7 @@ sp.DIC <- function(sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE, start=1, end, thin=1,
       
       d.bar.omega <- n*log(tau.sq.mu)+1/(tau.sq.mu)*(t(Y-X%*%beta.mu-w.mu)%*%(Y-X%*%beta.mu-w.mu))
       pd <- d.bar - d.bar.omega
-      dic <- d.bar - pd
+      dic <- d.bar + pd
       
       rownames(unmarg.DIC) <- c("bar.D", "D.bar.Omega", "pD", "DIC")
       unmarg.DIC[1,1] <- d.bar
