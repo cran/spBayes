@@ -145,7 +145,7 @@ prior <- function(dist, ...){
     storage.mode(a) <- "double"
     storage.mode(b) <- "double"
 
-    ##for now any parameter that receives a UNIF in this model ggt.sp must have support > 0
+    ##for now any parameter that receives a UNIF in this model spGGT must have support > 0
     if(a <= 0)
       stop("For this parameter the UNIF prior support must be greater than zero (i.e., 'a' > 0)\n")
     

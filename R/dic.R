@@ -1,4 +1,4 @@
-sp.DIC <- function(sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE, start=1, end, thin=1, verbose=TRUE, ...){
+spDIC <- function(sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE, start=1, end, thin=1, verbose=TRUE, ...){
   
   ####################################################
   ##Check for unused args
@@ -11,14 +11,429 @@ sp.DIC <- function(sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE, start=1, end, thin=1,
   }
 
   
-  if(missing(sp.obj)){stop("error: sp.DIC expects sp.obj\n")}
-  if(!class(sp.obj) %in% c("ggt.sp","sp.lm","bayes.geostat.exact","bayes.lm.conjugate", "bayes.lm.ref")){
-    stop("error: sp.DIC requires an output object of class bayes.lm.conjugate, bayes.lm.ref, ggt.sp, sp.lm, bayes.geostat.exact\n")}
+  if(missing(sp.obj)){stop("error: spDIC expects sp.obj\n")}
+  if(!class(sp.obj) %in% c("spGGT","spLM","bayesGeostatExact","bayesLMConjugate", "bayesLMRef", "spMvLM")){
+    stop("error: spDIC requires an output object of class bayesLMConjugate, bayesLMRef, spGGT, spLM, bayesGeostatExact, or, spMvLM\n")}
   if(!is.logical(DIC.marg)){stop("error: DIC.marg must be of type logical\n")}
   if(!is.logical(DIC.unmarg)){stop("error: DIC.unmarg must be of type logical\n")}
   if(!is.logical(verbose)){stop("error: verbose must be of type logical\n")}
 
-  if(class(sp.obj) == "bayes.lm.ref"){
+ 
+  if(class(sp.obj) == "spMvLM"){
+
+    is.pp <- sp.obj$is.pp
+    modified.pp <- sp.obj$modified.pp
+    
+    if(is.pp)
+      knot.coords <- sp.obj$knot.coords
+    
+    Y <- sp.obj$Y
+    X <- sp.obj$X
+    n <- sp.obj$n
+    m <- sp.obj$m##number or response variables
+    q <- sp.obj$q##number of knots
+    p <- sp.obj$p
+    nltr <- m*(m-1)/2+m
+
+    obs.coords <- sp.obj$coords
+    knots.D <- sp.obj$knots.D
+    obs.D <- sp.obj$coords.D
+    obs.knots.D <- sp.obj$coords.knots.D
+    cov.model <- sp.obj$cov.model
+    nugget <- sp.obj$nugget
+    n.samples <- sp.obj$n.samples
+    samples <- sp.obj$p.samples
+    sp.effects <- sp.obj$recovered.effects
+
+    ##thin samples and spatial effects if pre-computed
+    if(missing(end))
+      end <- n.samples
+    
+    if(!is.numeric(start) || start >= n.samples)
+      stop("error: invalid start")
+    if(!is.numeric(end) || end > n.samples) 
+      stop("error: invalid end")
+    if(!is.numeric(thin) || thin >= n.samples) 
+      stop("error: invalid thin")
+    
+    samples <- samples[seq(start, end, by=as.integer(thin)),]
+    n.samples <- nrow(samples)
+
+    w <- NULL
+    w.mean <- NULL
+    w.str <- NULL
+    w.str.mean <- NULL
+    
+    if(sp.effects){
+      w <- sp.obj$sp.effects[,seq(start, end, by=as.integer(thin))]
+      w.mean <- rowMeans(w)
+      if(is.pp){
+        w.str <- sp.obj$sp.effects.knots[,seq(start, end, by=as.integer(thin))]
+        w.str.mean <- rowMeans(w.str)
+      }
+    }else{##allocate to recieve the computed values
+      w <- matrix(0, n*m, n.samples) #no need to compute w for the pp, but might as well on the way.
+      w.mean <- rep(0, n*m)
+      if(is.pp){
+        w.str <- matrix(0, q*m, n.samples)
+        w.str.mean <- rep(0, q*m)
+      }
+    }
+    
+    ##get samples
+    samples.mean <- colMeans(samples)
+    
+    beta <- t(samples[,1:p])##transpose to simply BLAS call
+    beta.mean <- samples.mean[1:p]
+
+    K <- NULL
+    A <- NULL
+    Psi <- NULL
+    phi <- NULL
+    nu <- NULL
+    K.mean <- NULL
+    A.mean <- NULL
+    Psi.mean <- NULL
+    phi.mean <- NULL
+    nu.mean <- NULL
+
+    A.chol <- function(x, m){
+      A <- matrix(0, m, m)
+      A[lower.tri(A, diag=TRUE)] <- x
+      A[upper.tri(A, diag=FALSE)] <- t(A)[upper.tri(A, diag=FALSE)]
+      t(chol(A))[lower.tri(A, diag=TRUE)]
+    }
+
+    if(!nugget && cov.model != "matern"){
+      
+      K <- t(samples[,paste("K_",1:nltr,sep="")]); A <- t(apply(K, 2, A.chol, m))
+      phi <- t(samples[,paste("phi_",1:m,sep="")])
+  
+      K.mean <- samples.mean[paste("K_",1:nltr,sep="")]; A.mean <- A.chol(K.mean, m) 
+      phi.mean <- samples.mean[paste("phi_",1:m,sep="")]
+      
+    }else if(nugget && cov.model != "matern"){
+      K <- t(samples[,paste("K_",1:nltr,sep="")]); A <- t(apply(K, 2, A.chol, m))
+      Psi <- t(samples[,paste("Psi_",1:nltr,sep="")])
+      phi <- t(samples[,paste("phi_",1:m,sep="")])
+
+      K.mean <- samples.mean[paste("K_",1:nltr,sep="")]; A.mean <- A.chol(K.mean, m)
+      Psi.mean <- samples.mean[paste("Psi_",1:nltr,sep="")]
+      phi.mean <- samples.mean[paste("phi_",1:m,sep="")]
+      
+    }else if(!nugget && cov.model == "matern"){
+      K <- t(samples[,paste("K_",1:nltr,sep="")]); A <- t(apply(K, 2, A.chol, m))
+      phi <- t(samples[,paste("phi_",1:m,sep="")])
+      nu <- t(samples[,paste("nu_",1:m,sep="")])
+
+      K.mean <- samples.mean[paste("K_",1:nltr,sep="")]; A.mean <- A.chol(K.mean, m)
+      phi.mean <- samples.mean[paste("phi_",1:m,sep="")]
+      nu.mean <- samples.mean[paste("nu_",1:m,sep="")]
+
+    }else{
+      K <- t(samples[,paste("K_",1:nltr,sep="")]); A <- t(apply(K, 2, A.chol, m))
+      Psi <- t(samples[,paste("Psi_",1:nltr,sep="")])
+      phi <- t(samples[,paste("phi_",1:m,sep="")])
+      nu <- t(samples[,paste("nu_",1:m,sep="")])
+      
+      K.mean <- samples.mean[paste("K_",1:nltr,sep="")]; A.mean <- A.chol(K.mean, m)
+      Psi.mean <- samples.mean[paste("Psi_",1:nltr,sep="")]
+      phi.mean <- samples.mean[paste("phi_",1:m,sep="")]
+      nu.mean <- samples.mean[paste("nu_",1:m,sep="")]
+    }
+
+
+    lower2full <- function(x, m){
+      A <- matrix(0, m, m)
+      A[lower.tri(A, diag=TRUE)] <- x
+      A[upper.tri(A, diag=FALSE)] <- t(A)[upper.tri(A, diag=FALSE)]
+      A
+    }
+    
+    ##
+    ##marginalized
+    ##
+    status <- 0
+
+    d <- rep(0, n.samples)
+    marg.DIC <- matrix(0,4,1)
+    if(DIC.marg){
+
+      cat("-------------------------------------------------\n\tCalculating marginalized DIC\n-------------------------------------------------\n")
+      
+      for(s in 1:n.samples){
+
+        KK <- lower2full(K[,s], m)
+
+        PP <- matrix(0, m, m)
+        if(nugget){
+          PP <- lower2full(Psi[,s], m)
+        }
+        
+        theta <- phi[,s]
+        
+        if(cov.model=="matern"){
+          theta <- c(phi[,s], nu[,s])
+        }
+
+        
+        if(!is.pp){
+          c1 <- mvCovInvLogDet(coords=obs.coords, cov.model=cov.model, V=KK, Psi=PP, theta=theta)
+          d[s] <- c1$log.det+(t(Y-X%*%beta[,s])%*%c1$C.inv%*%(Y-X%*%beta[,s]))         
+        }else{##predictive process
+
+          if(modified.pp){            
+            c1 <- mvCovInvLogDet(coords=obs.coords, knots=knot.coords,
+                                 cov.model=cov.model,
+                                 V=KK, Psi=PP, theta=theta,
+                                 modified.pp=TRUE, SWM=TRUE)
+            
+            d[s] <- c1$log.det+(t(Y-X%*%beta[,s])%*%c1$C.inv%*%(Y-X%*%beta[,s]))            
+          }else{           
+            c1 <- mvCovInvLogDet(coords=obs.coords, knots=knot.coords,
+                                 cov.model=cov.model,
+                                 V=KK, Psi=PP, theta=theta,
+                                 modified.pp=FALSE, SWM=TRUE)
+            
+            d[s] <- c1$log.det+(t(Y-X%*%beta[,s])%*%c1$C.inv%*%(Y-X%*%beta[,s]))
+          }
+        }
+        
+        if(verbose){
+          if(status == 100){
+            cat(paste("Sampled: ",s," of ",n.samples,", ",round(100*s/n.samples,2),"%\n", sep=""))
+            status <- 0
+          }
+          status <- status+1
+        }
+            
+      }
+      
+      d.bar <- mean(d)
+
+      ##
+      ##Get d.bar.omega
+      ##
+      
+      KK <- lower2full(K.mean, m)
+      PP <- matrix(0, m, m)
+      
+      if(nugget){
+        PP <- lower2full(Psi.mean, m)
+      }
+      
+      theta <- phi.mean
+      
+      if(cov.model=="matern"){
+        theta <- c(phi.mean, nu.mean)
+      }
+      
+      
+      if(!is.pp){
+        c1 <- mvCovInvLogDet(coords=obs.coords, cov.model=cov.model, V=KK, Psi=PP, theta=theta)
+        
+        d.bar.omega <- c1$log.det+(t(Y-X%*%beta.mean)%*%c1$C.inv%*%(Y-X%*%beta.mean))
+        }else{##predictive process
+          if(modified.pp){
+            c1 <- mvCovInvLogDet(coords=obs.coords, knots=knot.coords,
+                                 cov.model=cov.model,
+                                 V=KK, Psi=PP, theta=theta,
+                                 modified.pp=TRUE, SWM=TRUE)
+            
+            d.bar.omega <- c1$log.det+(t(Y-X%*%beta.mean)%*%c1$C.inv%*%(Y-X%*%beta.mean))
+          }else{
+            c1 <- mvCovInvLogDet(coords=obs.coords, knots=knot.coords,
+                                 cov.model=cov.model,
+                                 V=KK, Psi=PP, theta=theta,
+                                 modified.pp=FALSE, SWM=TRUE)
+            
+            d.bar.omega <- c1$log.det+(t(Y-X%*%beta.mean)%*%c1$C.inv%*%(Y-X%*%beta.mean))
+          }
+        }
+      
+      pd <- d.bar - d.bar.omega
+      dic <- d.bar + pd
+      
+      
+      rownames(marg.DIC) <- c("bar.D", "D.bar.Omega", "pD", "DIC")
+      marg.DIC[1,1] <- d.bar
+      marg.DIC[2,1] <- d.bar.omega
+      marg.DIC[3,1] <- pd
+      marg.DIC[4,1] <- dic
+    }
+
+    ##
+    ##unmarginalized
+    ##
+    if(DIC.unmarg && !nugget){
+      warning("Unmarginalized DIC cannot be calculated for a model with Psi=0")
+      DIC.unmarg <- FALSE
+    }
+
+    
+    status <- 0
+
+    d <- rep(0, n.samples)
+    unmarg.DIC <- matrix(0,4,1)
+    if(DIC.unmarg){
+
+      cat("-------------------------------------------------\n\tCalculating unmarginalized DIC\n-------------------------------------------------\n")
+      
+      for(s in 1:n.samples){
+
+        KK <- lower2full(K[,s], m)
+
+        PP <- matrix(0, m, m)
+        if(nugget){
+          PP <- lower2full(Psi[,s], m)
+        }
+        
+        theta <- phi[,s]
+        
+        if(cov.model=="matern"){
+          theta <- c(phi[,s], nu[,s])
+        }
+        
+        Q <- Y-X%*%beta[,s]-w[,s]
+
+        tmp.mm <- matrix(0, m, m)
+        tmp.nm <- matrix(0, n*m, 1)
+        
+        storage.mode(tmp.mm) <- "double"
+        storage.mode(tmp.nm) <- "double"
+        storage.mode(Q) <- "double"
+        storage.mode(KK) <- "double"
+        storage.mode(PP) <- "double"
+        storage.mode(theta) <- "double"
+        storage.mode(knots.D) <- "double"
+        storage.mode(obs.knots.D) <- "double"
+        storage.mode(q) <- "integer"
+        storage.mode(n) <- "integer"
+        storage.mode(m) <- "integer"
+               
+        if(!is.pp){
+ 
+          d[s] <- .Call("spMvDIC", n, m, Q, PP, tmp.mm, tmp.nm)
+               
+        }else{##predictive process
+
+          if(modified.pp){            
+
+            d[s] <- .Call("spMPPMvDIC", Q, knots.D, obs.knots.D, n, m, q, PP, KK, theta, cov.model);
+            
+          }else{
+            
+            d[s] <- .Call("spMvDIC", n, m, Q, PP, tmp.mm, tmp.nm)
+            
+          }
+        }
+        
+        if(verbose){
+          if(status == 100){
+            cat(paste("Sampled: ",s," of ",n.samples,", ",round(100*s/n.samples,2),"%\n", sep=""))
+            status <- 0
+          }
+          status <- status+1
+        }
+            
+      }
+      
+      d.bar <- mean(d)
+
+      ##
+      ##Get d.bar.omega
+      ##
+      
+      KK <- lower2full(K.mean, m)
+      PP <- matrix(0, m, m)
+      
+      if(nugget){
+        PP <- lower2full(Psi.mean, m)
+      }
+      
+      theta <- phi.mean
+      
+      if(cov.model=="matern"){
+        theta <- c(phi.mean, nu.mean)
+      }
+
+      Q <- Y-X%*%beta.mean-w.mean
+      
+      storage.mode(KK) <- "double"
+      storage.mode(PP) <- "double"
+      storage.mode(theta) <- "double"
+      storage.mode(Q) <- "double"
+      
+      if(!is.pp){
+        
+          d.bar.omega <- .Call("spMvDIC", n, m, Q, PP, tmp.mm, tmp.nm)
+        
+      }else{##predictive process
+        if(modified.pp){
+          
+          d.bar.omega <- .Call("spMPPMvDIC", Q, knots.D, obs.knots.D, n, m, q, PP, KK, theta, cov.model);
+
+        }else{
+          
+          d.bar.omega <- .Call("spMvDIC", n, m, Q, PP, tmp.mm, tmp.nm)
+        }
+      }
+      
+      pd <- d.bar - d.bar.omega
+      dic <- d.bar + pd
+            
+      rownames(unmarg.DIC) <- c("bar.D", "D.bar.Omega", "pD", "DIC")
+      unmarg.DIC[1,1] <- d.bar
+      unmarg.DIC[2,1] <- d.bar.omega
+      unmarg.DIC[3,1] <- pd
+      unmarg.DIC[4,1] <- dic
+    }
+
+    out <- list()
+    if(DIC.marg)
+      out$DIC.marg <- marg.DIC
+
+    if(DIC.unmarg)
+      out$DIC.unmarg <- unmarg.DIC
+    
+    out  
+    
+    #storage.mode(X) <- "double"
+    #storage.mode(Y) <- "double"
+    #storage.mode(is.pp) <- "integer"
+    #storage.mode(modified.pp) <- "integer"
+    #storage.mode(n) <- "integer"
+    #storage.mode(m) <- "integer"
+    #storage.mode(p) <- "integer"
+    #storage.mode(nugget) <- "integer"
+    #storage.mode(beta) <- "double"
+    #storage.mode(beta.mean) <- "double"
+    #storage.mode(A) <- "double"
+    #storage.mode(Psi) <- "double"
+    #storage.mode(phi) <- "double"
+    #storage.mode(nu) <- "double"
+    #storage.mode(A.mean) <- "double"
+    #storage.mode(Psi.mean) <- "double"
+    #storage.mode(phi.mean) <- "double"
+    #storage.mode(nu.mean) <- "double"
+    #storage.mode(obs.D) <- "double"
+    #storage.mode(obs.knots.D) <- "double"
+    #storage.mode(knots.D) <- "double"
+    #storage.mode(n.samples) <- "integer"
+    #storage.mode(w) <- "double"
+    #storage.mode(w.mean) <- "double"
+    #storage.mode(w.str) <- "double"
+    #storage.mode(w.str.mean) <- "double"
+    #storage.mode(sp.effects) <- "integer"
+    #storage.mode(DIC.marg) <- "integer"
+    #storage.mode(DIC.unmarg) <- "integer"
+    #
+    #out <- .Call("spMvLMDIC",X, Y, is.pp, modified.pp, n, m, p, q, nugget, beta, beta.mean, A, A.mean, Psi, Psi.mean,
+    #             phi, phi.mean, nu, nu.mean, obs.D, obs.knots.D, knots.D, cov.model, n.samples, w, w.mean, w.str, w.str.mean, sp.effects,
+    #             DIC.marg, DIC.unmarg, verbose)
+    #out
+        
+  }else if(class(sp.obj) == "bayesLMRef"){
     
     cat("-------------------------------------------------\n\t\tCalculating DIC\n-------------------------------------------------\n")
           
@@ -77,7 +492,7 @@ sp.DIC <- function(sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE, start=1, end, thin=1,
 
     DIC
     
-  }else if(class(sp.obj) == "bayes.lm.conjugate"){
+  }else if(class(sp.obj) == "bayesLMConjugate"){
 
     cat("-------------------------------------------------\n\t\tCalculating DIC\n-------------------------------------------------\n")
           
@@ -136,7 +551,7 @@ sp.DIC <- function(sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE, start=1, end, thin=1,
 
     DIC
     
-  }else if(class(sp.obj) == "sp.lm"){
+  }else if(class(sp.obj) == "spLM"){
 
     is.pp <- sp.obj$is.pp
     modified.pp <- sp.obj$modified.pp
@@ -189,7 +604,7 @@ sp.DIC <- function(sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE, start=1, end, thin=1,
     }
     
     ##get samples
-    beta <- t(sp.obj$p.samples[,1:p])##transpose to simply BLAS call
+    beta <- t(samples[,1:p])##transpose to simply BLAS call
     sigma.sq <- NULL
     tau.sq <- NULL
     phi <- NULL
@@ -217,9 +632,14 @@ sp.DIC <- function(sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE, start=1, end, thin=1,
       nu <- samples[,"nu"]
     }
    
-    if(is.pp && !nugget){ ##need to ridge
-      tau.sq <- rep(1e-10, n.samples)
-      nugget <- TRUE;
+    ##if(is.pp && !nugget){ ##need to ridge
+    ##  tau.sq <- rep(1e-10, n.samples)
+    ##  nugget <- TRUE;
+    ##}
+
+    if(DIC.unmarg && !nugget){
+      warning("Unmarginalized DIC cannot be calculated for a model with tau.sq=0")
+      DIC.unmarg <- FALSE
     }
   
     storage.mode(X) <- "double"
@@ -251,7 +671,7 @@ sp.DIC <- function(sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE, start=1, end, thin=1,
     out
     
     
-  }else if(class(sp.obj) == "bayes.geostat.exact"){
+  }else if(class(sp.obj) == "bayesGeostatExact"){
     
     X <- sp.obj$args$X
     n <- sp.obj$args$n
@@ -302,7 +722,7 @@ sp.DIC <- function(sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE, start=1, end, thin=1,
       R[D > 0 & D < 1/phi] <- 1-1.5*phi*D[D > 0 & D <= 1/phi]+0.5*((phi*D[D > 0 & D <= 1/phi])^3)
       R[D >= 1/phi] <- 0   
     }else{
-      stop("error: in sp.predict, specified cov.model '",cov.model,"' is not a valid option; choose, from gaussian, exponential, matern, spherical.")
+      stop("error: in spPredict, specified cov.model '",cov.model,"' is not a valid option; choose, from gaussian, exponential, matern, spherical.")
     }
 
     R.eigen <- eigen(R)
@@ -449,7 +869,7 @@ sp.DIC <- function(sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE, start=1, end, thin=1,
 
     out
 
-  }else if(class(sp.obj) == "ggt.sp"){
+  }else if(class(sp.obj) == "spGGT"){
 
     cat("Computing DIC and associated statistics ...")
       
@@ -614,6 +1034,13 @@ sp.DIC <- function(sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE, start=1, end, thin=1,
     }
     if(sp.effect)
       storage.mode(w) <- "double"
+
+
+    if(DIC.unmarg && no.Psi){
+      warning("Unmarginalized DIC cannot be calculated for a model with Psi=0")
+      DIC.unmarg <- FALSE
+    }
+
     
     args <- list("DIC.marg"=as.integer(DIC.marg), "DIC.unmarg"=as.integer(DIC.unmarg),
                  "X"=X, "xrows"=as.integer(nrow(X)), "xcols"=as.integer(ncol(X)), "Y"=Y, "D"=D, "n"=n,
@@ -632,6 +1059,6 @@ sp.DIC <- function(sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE, start=1, end, thin=1,
     
     out
   }else{
-    stop("error: sp.DIC requires an output object of class ggt.sp or bayes.geostat.exact\n")
+    stop("error: spDIC requires an output object of class spGGT or bayesGeostatExact\n")
   }
 }

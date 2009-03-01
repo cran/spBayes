@@ -4,7 +4,7 @@
 \title{Creates prior distribution definitions}
 
 \description{
-  The function \code{prior} creates a valid prior definition for use in \code{\link{ggt.sp}}.
+  The function \code{prior} creates a valid prior definition for use in \code{\link{spGGT}}.
 }
 
 \usage{
@@ -22,7 +22,7 @@ prior(dist, ...)
 
 \value{
   \item{prior}{a list object of class \code{ggt.prior} which is used for the value portion of the \code{prior} tag in
-  the \code{\link{ggt.sp}} function. }
+  the \code{\link{spGGT}} function. }
 }
 
 
@@ -51,7 +51,7 @@ prior(dist, ...)
       positive definite \eqn{m \times m}{m x m} scale matrix. Use key words
       \code{"df"} and \code{"S"}. }
   }
-  The normal and flat priors can only be used for the regressors specified in \code{\link{ggt.sp}}.
+  The normal and flat priors can only be used for the regressors specified in \code{\link{spGGT}}.
 }
 
 
@@ -61,17 +61,13 @@ prior(dist, ...)
   Gelman, A. (2006). Prior distributions for variance parameters in
   hierarchical models 1(3):515-533, Bayesian Analysis.
   
-  
-  %Further information on the package \pkg{spBayes} can be found
-  at: \url{http://blue.fr.umn.edu/spatialBayes}.
 }
 
 \author{
   Andrew O. Finley \email{finleya@msu.edu}, \cr
-  Sudipto Banerjee \email{sudiptob@biostat.umn.edu}, \cr
-  Bradley P. Carlin \email{brad@biostat.umn.edu}
+  Sudipto Banerjee \email{sudiptob@biostat.umn.edu}.
 }
 
-\seealso{\code{\link{ggt.sp}} }
+\seealso{\code{\link{spGGT}} }
 
 \keyword{misc}

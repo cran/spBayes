@@ -11,26 +11,10 @@ using namespace std;
 #include "covmodel.h"
 
 
-void report(int &s, int &nSamples, int &status, int &nReport, bool &verbose){
-
-  if(verbose){
-    if(status == nReport){
-      Rprintf("Sampled: %i of %i, %3.2f%%\n", s, nSamples, 100.0*s/nSamples);
-      //Rprintf("---------------------------\n");
-      #ifdef Win32
-      R_FlushConsole();
-      #endif
-      status = 0;
-    }
-  }
-  status++;
-  
-  R_CheckUserInterrupt();  
-}
 
 extern "C" {
 
-  SEXP splmPredict(SEXP X_r, SEXP Y_r, SEXP isPp_r, SEXP isModPp_r, SEXP n_r, SEXP m_r, SEXP p_r, SEXP nugget_r, SEXP beta_r, SEXP sigmaSq_r, 
+  SEXP spLMPredict(SEXP X_r, SEXP Y_r, SEXP isPp_r, SEXP isModPp_r, SEXP n_r, SEXP m_r, SEXP p_r, SEXP nugget_r, SEXP beta_r, SEXP sigmaSq_r, 
 		   SEXP tauSq_r, SEXP phi_r, SEXP nu_r,
 		   SEXP nPred_r, SEXP predX_r, SEXP obsD_r, SEXP predD_r, SEXP predObsD_r, SEXP obsKnotsD_r, SEXP knotsD_r, SEXP predKnotsD_r,
 		   SEXP covModel_r, SEXP nSamples_r, SEXP w_r, SEXP w_str_r, SEXP spEffects_r, SEXP verbose_r){
@@ -212,143 +196,7 @@ extern "C" {
     double sigmaSqTmp, tauSqTmp;
 
      GetRNGstate();
-
-     //recover w or w_str if not pre-computed
-     if(!spEffects){
-       
-       
-       if(verbose){
-	 Rprintf("-------------------------------------------------\n");
-	 Rprintf("Recovering random spatial effects for prediction\n");
-	 Rprintf("-------------------------------------------------\n");
-         #ifdef Win32
-	 R_FlushConsole();
-         #endif
-       }
-
-       if(!isPp){
-	 
-	 for(s = 0; s < nSamples; s++){
-	   
-	   if(nugget){
-	     //make the correlation matrix
-	     for(i = 0; i < nn; i++){
-	       if(onePramPtr)
-		 (covModelObj->*cov1ParamPtr)(phi[s], C[i], obsD[i]);
-	       else //i.e., 2 parameter matern
-		 (covModelObj->*cov2ParamPtr)(phi[s], nu[s], C[i], obsD[i]);
-	     }
-	     
-	     //invert C
-	     F77_NAME(dpotrf)(upper, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky failed in sp.lm\n");}
-	     F77_NAME(dpotri)(upper, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky inverse failed in sp.lm\n");}
-	     
-	     //scale correlation matrix with 1/sigmasq and add 1/nugget to diag
-	     sigmaSqTmp = 1.0/sigmaSq[s];
-	     F77_NAME(dscal)(&nn, &sigmaSqTmp, C, &incOne);
-	     
-	     for(i = 0; i < n; i++) C[i*n+i] = C[i*n+i]+1.0/tauSq[s];
-	     
-	     //invert C
-	     F77_NAME(dpotrf)(upper, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky failed in sp.lm\n");}
-	     F77_NAME(dpotri)(upper, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky inverse failed in sp.lm\n");}
-	     
-	     //make w mu
-	     F77_NAME(dgemv)(ntran, &n, &p, &negOne, X, &n, &beta[s*p], &incOne, &zero, tmp_n, &incOne);
-	     F77_NAME(daxpy)(&n, &one, Y, &incOne, tmp_n, &incOne);
-	     
-	     tauSqTmp = 1.0/tauSq[s];
-	     F77_NAME(dscal)(&n, &tauSqTmp, tmp_n, &incOne);
-	     
-	     F77_NAME(dsymv)(upper, &n, &one, C, &n, tmp_n, &incOne, &zero, wMu, &incOne);
-	     
-	     //chol for the mvnorm and draw
-	     F77_NAME(dpotrf)(upper, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky failed in sp.lm\n");}
-	     
-	     mvrnorm(&w[s*n], wMu, C, n, true);
-	     
-	   }else{//no nugget so w is just resids
-	     F77_NAME(dgemv)(ntran, &n, &p, &negOne, X, &n, &beta[s*p], &incOne, &zero, &w[s*n], &incOne);
-	     F77_NAME(daxpy)(&n, &one, Y, &incOne, &w[s*n], &incOne);
-	   }
-
-	   report(s, nSamples, status, nReport, verbose);
-	 } //end sample loop
-	 
-       }else{//is pp
-	 
-	 for(s = 0; s < nSamples; s++){	 
-	   
-	   if(!nugget) 
-	     tauSq[s] = 1e-10;//ridge the matrix if no nugget model
-	   
-	   //make the correlation matrix
-	   for(i = 0; i < mm; i++){
-	     if(onePramPtr)
-	       (covModelObj->*cov1ParamPtr)(phi[s], C_str[i], knotsD[i]);
-	     else //i.e., 2 parameter matern
-	       (covModelObj->*cov2ParamPtr)(phi[s], nu[s], C_str[i], knotsD[i]);
-	   }
-	   
-	   for(i = 0; i < nm; i++){
-	     if(onePramPtr)
-	       (covModelObj->*cov1ParamPtr)(phi[s], ct[i], obsKnotsD[i]);
-	     else //i.e., 2 parameter matern
-	       (covModelObj->*cov2ParamPtr)(phi[s], nu[s], ct[i], obsKnotsD[i]);
-	   }
-	   
-	   //scale by sigma^2
-	   F77_NAME(dscal)(&mm, &sigmaSq[s], C_str, &incOne);	
-	   F77_NAME(dscal)(&nm, &sigmaSq[s], ct, &incOne);
-	   
-	   //invert C_str
-	   F77_NAME(dpotrf)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky failed in sp.lm\n");}
-	   F77_NAME(dpotri)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in sp.lm\n");}
-	   
-	   //make w* Sigma
-	   //ct C^{*-1}
-	   F77_NAME(dsymm)(rside, upper, &n, &m, &one, C_str, &m, ct, &n, &zero, tmp_nm, &n);
-	   	   
-	   if(!isModPp){
-	     for(i = 0; i < n; i++) Einv[i] = 1.0/(tauSq[s]);
-	   }else{
-	     //ct C^{*-1} c
-	     F77_NAME(dgemm)(ntran, ytran, &n, &n, &m, &one, tmp_nm, &n, ct, &n, &zero, tmp_nn, &n);
-
-	     for(i = 0; i < n; i++) Einv[i] = 1.0/(tauSq[s]+sigmaSq[s]-tmp_nn[i*n+i]);
-	   }
-
-	   diagmm(n, m, Einv, tmp_nm, tmp_nm1);
-	   
-	   //(C^{*-1} c) (1/E ct C^{*-1})
-	   F77_NAME(dgemm)(ytran, ntran, &m, &m, &n, &one, tmp_nm, &n, tmp_nm1, &n, &zero, tmp_mm, &m);
-	   
-	   for(i = 0; i < mm; i++) C_str[i] = C_str[i] + tmp_mm[i];
-	   
-	   //invert C_str
-	   F77_NAME(dpotrf)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky failed in sp.lm\n");}
-	   F77_NAME(dpotri)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in sp.lm\n");}
-	   
-	   //make w* mu
-	   F77_NAME(dgemv)(ntran, &n, &p, &negOne, X, &n, &beta[s*p], &incOne, &zero, tmp_n, &incOne);
-	   F77_NAME(daxpy)(&n, &one, Y, &incOne, tmp_n, &incOne);
-	   
-	   //(1/E ct C^{*-1})'(Y-XB)
-	   F77_NAME(dgemv)(ytran, &n, &m, &one, tmp_nm1, &n, tmp_n, &incOne, &zero, tmp_m, &incOne);
-	   F77_NAME(dsymv)(upper, &m, &one, C_str, &m, tmp_m, &incOne, &zero, w_strMu, &incOne);
-	  
-	   //chol for the mvnorm and draw
-	   F77_NAME(dpotrf)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky failed in sp.lm\n");}
-	   mvrnorm(&w_str[s*m], w_strMu, C_str, m, true);
-	  
-	   //make \tild{w}
-	   F77_NAME(dgemv)(ntran, &n, &m, &one, tmp_nm, &n, &w_str[s*m], &incOne, &zero, &w[s*n], &incOne);
-
-	   report(s, nSamples, status, nReport, verbose);
-	 } //end sample loop
-       } 
-     }
-
+     
      if(verbose){
        Rprintf("-------------------------------------------------\n");
        Rprintf("\t\tStarting prediction\n");
@@ -392,8 +240,8 @@ extern "C" {
 	 F77_NAME(dscal)(&qq, &sigmaSq[s], tmp_qq, &incOne);
 	 
 	 //invert C_str
-	 F77_NAME(dpotrf)(upper, &n, tmp_nn, &n, &info); if(info != 0){error("c++ error: Cholesky failed in sp.lm 1\n");}
-	 F77_NAME(dpotri)(upper, &n, tmp_nn, &n, &info); if(info != 0){error("c++ error: Cholesky inverse failed in sp.lm\n");}
+	 F77_NAME(dpotrf)(upper, &n, tmp_nn, &n, &info); if(info != 0){error("c++ error: Cholesky failed in spLMPredict\n");}
+	 F77_NAME(dpotri)(upper, &n, tmp_nn, &n, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spLMPredict\n");}
 	 
 	 //get Mu
 	 F77_NAME(dsymm)(rside, upper, &q, &n, &one, tmp_nn, &n, tmp_qn, &q, &zero, tmp_qn1, &q);
@@ -403,12 +251,16 @@ extern "C" {
 	 F77_NAME(dgemm)(ntran, ytran, &q, &q, &n, &one, tmp_qn1, &q, tmp_qn, &q, &zero, tmp_qq1, &q);
 	 for(i = 0; i < qq; i++) tmp_qq[i] -= tmp_qq1[i];
 
-	 F77_NAME(dpotrf)(upper, &q, tmp_qq, &q, &info); if(info != 0){error("c++ error: Cholesky failed in sp.lm 2\n");}
+	 F77_NAME(dpotrf)(upper, &q, tmp_qq, &q, &info); if(info != 0){error("c++ error: Cholesky failed in spLMPredict\n");}
 	 mvrnorm(&w_pred[s*q], tmp_q, tmp_qq, q, true);
 
 	 F77_NAME(dgemv)(ntran, &q, &p, &one, predX, &q, &beta[s*p], &incOne, &zero, tmp_q, &incOne);
 
-	 for(i = 0; i < q; i++) y_pred[s*q+i] = rnorm(tmp_q[i]+w_pred[s*q+i], sqrt(tauSq[s]));
+	 if(nugget){
+	   for(i = 0; i < q; i++) y_pred[s*q+i] = rnorm(tmp_q[i]+w_pred[s*q+i], sqrt(tauSq[s]));
+	 }else{
+	   for(i = 0; i < q; i++) y_pred[s*q+i] = tmp_q[i]+w_pred[s*q+i];
+	 }
 
 	 report(s, nSamples, status, nReport, verbose);
        } //end sample loop
@@ -418,9 +270,6 @@ extern "C" {
        for(s = 0; s < nSamples; s++){	 
 	 
 	 //got w* above now get the mean components MVN(XB + ct C^{*-1} w* + \tild{\eps}, (sigma^2 - ct C^{*-1} c)^{-1})
-
-	 if(!nugget) 
-	   tauSq[s] = 1e-10;//ridge the matrix if no nugget model
 	 
 	 //make the correlation matrix
 	 for(i = 0; i < mm; i++){
@@ -442,8 +291,8 @@ extern "C" {
 	 F77_NAME(dscal)(&qm, &sigmaSq[s], tmp_qm, &incOne);
 	 
 	 //invert C_str
-	 F77_NAME(dpotrf)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky failed in sp.lm\n");}
-	 F77_NAME(dpotri)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in sp.lm\n");}
+	 F77_NAME(dpotrf)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky failed in spLMPredict\n");}
+	 F77_NAME(dpotri)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spLMPredict\n");}
 	 
 	 //ct C^{*-1}, where ct is now qxm 
 	 F77_NAME(dsymm)(rside, upper, &q, &m, &one, C_str, &m, tmp_qm, &q, &zero, tmp_qm1, &q);
@@ -455,7 +304,6 @@ extern "C" {
 	 F77_NAME(dgemv)(ntran, &q, &m, &one, tmp_qm1, &q, &w_str[s*m], &incOne, &zero, &w_pred[s*q], &incOne);
 
 	 //\tild{\eps}
-	 
 	 if(isModPp){
 	   for(i = 0; i < q; i++) tmp_q[i] = rnorm(0.0, sqrt(sigmaSq[s]-tmp_qq[i*q+i]));
 	 }
@@ -501,3 +349,137 @@ extern "C" {
 
   }
 }
+
+
+//   //recover w or w_str if not pre-computed
+//      if(!spEffects){
+       
+       
+//        if(verbose){
+// 	 Rprintf("-------------------------------------------------\n");
+// 	 Rprintf("Recovering random spatial effects for prediction\n");
+// 	 Rprintf("-------------------------------------------------\n");
+//          #ifdef Win32
+// 	 R_FlushConsole();
+//          #endif
+//        }
+
+//        if(!isPp){
+	 
+// 	 for(s = 0; s < nSamples; s++){
+	   
+// 	   if(nugget){
+// 	     //make the correlation matrix
+// 	     for(i = 0; i < nn; i++){
+// 	       if(onePramPtr)
+// 		 (covModelObj->*cov1ParamPtr)(phi[s], C[i], obsD[i]);
+// 	       else //i.e., 2 parameter matern
+// 		 (covModelObj->*cov2ParamPtr)(phi[s], nu[s], C[i], obsD[i]);
+// 	     }
+	     
+// 	     //invert C
+// 	     F77_NAME(dpotrf)(upper, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky failed in spLMPredict\n");}
+// 	     F77_NAME(dpotri)(upper, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spLMPredict\n");}
+	     
+// 	     //scale correlation matrix with 1/sigmasq and add 1/nugget to diag
+// 	     sigmaSqTmp = 1.0/sigmaSq[s];
+// 	     F77_NAME(dscal)(&nn, &sigmaSqTmp, C, &incOne);
+	     
+// 	     for(i = 0; i < n; i++) C[i*n+i] = C[i*n+i]+1.0/tauSq[s];
+	     
+// 	     //invert C
+// 	     F77_NAME(dpotrf)(upper, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky failed in spLMPredict\n");}
+// 	     F77_NAME(dpotri)(upper, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spLMPredict\n");}
+	     
+// 	     //make w mu
+// 	     F77_NAME(dgemv)(ntran, &n, &p, &negOne, X, &n, &beta[s*p], &incOne, &zero, tmp_n, &incOne);
+// 	     F77_NAME(daxpy)(&n, &one, Y, &incOne, tmp_n, &incOne);
+	     
+// 	     tauSqTmp = 1.0/tauSq[s];
+// 	     F77_NAME(dscal)(&n, &tauSqTmp, tmp_n, &incOne);
+	     
+// 	     F77_NAME(dsymv)(upper, &n, &one, C, &n, tmp_n, &incOne, &zero, wMu, &incOne);
+	     
+// 	     //chol for the mvnorm and draw
+// 	     F77_NAME(dpotrf)(upper, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky failed in spLMPredict\n");}
+	     
+// 	     mvrnorm(&w[s*n], wMu, C, n, true);
+	     
+// 	   }else{//no nugget so w is just resids
+// 	     F77_NAME(dgemv)(ntran, &n, &p, &negOne, X, &n, &beta[s*p], &incOne, &zero, &w[s*n], &incOne);
+// 	     F77_NAME(daxpy)(&n, &one, Y, &incOne, &w[s*n], &incOne);
+// 	   }
+
+// 	   report(s, nSamples, status, nReport, verbose);
+// 	 } //end sample loop
+	 
+//        }else{//is pp
+	 
+// 	 for(s = 0; s < nSamples; s++){	 
+	   
+// 	   //make the correlation matrix
+// 	   for(i = 0; i < mm; i++){
+// 	     if(onePramPtr)
+// 	       (covModelObj->*cov1ParamPtr)(phi[s], C_str[i], knotsD[i]);
+// 	     else //i.e., 2 parameter matern
+// 	       (covModelObj->*cov2ParamPtr)(phi[s], nu[s], C_str[i], knotsD[i]);
+// 	   }
+	   
+// 	   for(i = 0; i < nm; i++){
+// 	     if(onePramPtr)
+// 	       (covModelObj->*cov1ParamPtr)(phi[s], ct[i], obsKnotsD[i]);
+// 	     else //i.e., 2 parameter matern
+// 	       (covModelObj->*cov2ParamPtr)(phi[s], nu[s], ct[i], obsKnotsD[i]);
+// 	   }
+	   
+// 	   //scale by sigma^2
+// 	   F77_NAME(dscal)(&mm, &sigmaSq[s], C_str, &incOne);	
+// 	   F77_NAME(dscal)(&nm, &sigmaSq[s], ct, &incOne);
+	   
+// 	   //invert C_str
+// 	   F77_NAME(dpotrf)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky failed in spLMPredict\n");}
+// 	   F77_NAME(dpotri)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spLMPredict\n");}
+	   
+// 	   //make w* Sigma
+// 	   //ct C^{*-1}
+// 	   F77_NAME(dsymm)(rside, upper, &n, &m, &one, C_str, &m, ct, &n, &zero, tmp_nm, &n);
+	   	   
+// 	   if(!isModPp){
+// 	     for(i = 0; i < n; i++) Einv[i] = 1.0/(tauSq[s]);
+// 	   }else{
+// 	     //ct C^{*-1} c
+// 	     F77_NAME(dgemm)(ntran, ytran, &n, &n, &m, &one, tmp_nm, &n, ct, &n, &zero, tmp_nn, &n);
+
+// 	     for(i = 0; i < n; i++) Einv[i] = 1.0/(tauSq[s]+sigmaSq[s]-tmp_nn[i*n+i]);
+// 	   }
+
+// 	   diagmm(n, m, Einv, tmp_nm, tmp_nm1);
+	   
+// 	   //(C^{*-1} c) (1/E ct C^{*-1})
+// 	   F77_NAME(dgemm)(ytran, ntran, &m, &m, &n, &one, tmp_nm, &n, tmp_nm1, &n, &zero, tmp_mm, &m);
+	   
+// 	   for(i = 0; i < mm; i++) C_str[i] = C_str[i] + tmp_mm[i];
+	   
+// 	   //invert C_str
+// 	   F77_NAME(dpotrf)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky failed in sp.lm\n");}
+// 	   F77_NAME(dpotri)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in sp.lm\n");}
+	   
+// 	   //make w* mu
+// 	   F77_NAME(dgemv)(ntran, &n, &p, &negOne, X, &n, &beta[s*p], &incOne, &zero, tmp_n, &incOne);
+// 	   F77_NAME(daxpy)(&n, &one, Y, &incOne, tmp_n, &incOne);
+	   
+// 	   //(1/E ct C^{*-1})'(Y-XB)
+// 	   F77_NAME(dgemv)(ytran, &n, &m, &one, tmp_nm1, &n, tmp_n, &incOne, &zero, tmp_m, &incOne);
+// 	   F77_NAME(dsymv)(upper, &m, &one, C_str, &m, tmp_m, &incOne, &zero, w_strMu, &incOne);
+	  
+// 	   //chol for the mvnorm and draw
+// 	   F77_NAME(dpotrf)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky failed in sp.lm\n");}
+// 	   mvrnorm(&w_str[s*m], w_strMu, C_str, m, true);
+	  
+// 	   //make \tild{w}
+// 	   F77_NAME(dgemv)(ntran, &n, &m, &one, tmp_nm, &n, &w_str[s*m], &incOne, &zero, &w[s*n], &incOne);
+
+// 	   report(s, nSamples, status, nReport, verbose);
+// 	 } //end sample loop
+//        } 
+//      }

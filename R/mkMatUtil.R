@@ -1,13 +1,13 @@
 library(magic)
 
-mk.Y <- function(y){
+mkY <- function(y){
   m <- length(y)
   n <- nrow(y[[1]])
   Y <- matrix(t(do.call('cbind', y)), n*m, 1)
   Y
 }
 
-mk.X <- function(x){
+mkX <- function(x){
   m <- length(x)
   q <- do.call(sum, lapply(x, ncol))
   n <- nrow(x[[1]])  
@@ -26,13 +26,13 @@ mk.X <- function(x){
 }
 
 
-parse.formula.simple <- function(formula, data, na.action = na.fail){
+parseFormulaSimple <- function(formula, data, na.action = na.fail){
 
   m <- model.frame(formula, data, na.action = na.action)##kinda fragile
   Y <- as.matrix(model.response(m))
   X <- as.matrix(model.matrix(formula, m))
 
-  if(any(is.na(X))){stop("error: parse.formula.simple, NA found in model.matrix")}
+  if(any(is.na(X))){stop("error: parseFormulaSimple, NA found in model.matrix")}
   
   xvars <- dimnames(X)[[2]]
   xobs  <- dimnames(X)[[1]]
@@ -41,7 +41,7 @@ parse.formula.simple <- function(formula, data, na.action = na.fail){
 }
 
 
-parse.formula <-  function(formula, data, intercept=TRUE, justX=FALSE){
+parseFormula <-  function(formula, data, intercept=TRUE, justX=FALSE){
     
     # extract Y, X, and variable names for model formula and frame
     mt <- terms(formula, data=data)
@@ -71,7 +71,7 @@ parse.formula <-  function(formula, data, intercept=TRUE, justX=FALSE){
 
 
 
-mk.mats <- function(mods, data){
+mkMats <- function(mods, data){
 
   Y <- vector("list", length(mods))
   X <- vector("list", length(mods))
@@ -80,7 +80,7 @@ mk.mats <- function(mods, data){
   names(res) <- c("Y", "X", "X.names")
   
   for(i in 1:length(mods)){
-    tmp <- parse.formula(mods[[i]], data)
+    tmp <- parseFormula(mods[[i]], data)
     ##get Y
     Y[[i]] <- tmp[[1]]
 
@@ -92,21 +92,21 @@ mk.mats <- function(mods, data){
     X.names <- c(X.names,tmp[[3]])
   }
 
-  res[[1]] <- mk.Y(Y)
-  res[[2]] <- mk.X(X)
+  res[[1]] <- mkY(Y)
+  res[[2]] <- mkX(X)
   res[[3]] <- X.names
   
   res
 }
 
-mk.mv.Y <- function(y){
-  mk.Y(y)
+mkMvY <- function(y){
+  mkY(y)
 }
 
-mk.mv.X <- function(X){
-  mk.X(X)
+mkMvX <- function(X){
+  mkX(X)
 }
 
-mk.mv.formula.YX <- function(mods, data){
-  mk.mats(mods, data)
+mkMvFormulaYX <- function(mods, data){
+  mkMats(mods, data)
 }

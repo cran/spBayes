@@ -51,3 +51,34 @@ string toString(int &x);
 double dTNorm(double x, double mu, double sd, double a, double b);
 
 void diagmm(int &nrow_b, int &ncol_b, double *a, double *b, double *c);
+
+
+void subsetCovRow(double *x, int n, int p, int begin, int end, double *cov, double *means);
+void subsetCovCol(double *x, int p, int begin, int end, double *cov, double *means);
+
+double mtrxInvLogDet(double *m, int dim, int info);
+
+void mtrxInv(double *m, int dim, int info);
+
+
+double logit(double theta, double a, double b);
+
+double logitInv(double z, double a, double b);
+
+void covTransInv(double *z, double *v, int m);
+
+void covTrans(double *v, double *z, int m);
+
+void covTransInvExpand(double *v, double *z, int m);
+
+void zeroUpperTri(double *v, int m);
+
+void printMtrx(double *m, int nRow, int nCol);
+
+void printVec(double *m, int n);
+
+double logit_logpost(int &n, double *Y, double *eta, double *w);
+
+double poisson_logpost(int &n, double *Y, double *eta, double *w);
+
+void report(int &s, int &nSamples, int &status, int &nReport, bool &verbose);

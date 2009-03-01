@@ -234,3 +234,236 @@ void diagmm(int &nrow_b, int &ncol_b, double *a, double *b, double *c){
   }
 }
 
+
+
+void subsetCovRow(double *x, int n, int p, int begin, int end, double *cov, double *means){
+  
+  int nSubset = end-begin+1;
+  int i,j,k;
+  
+  for(i = 0; i < p; i++){
+    means[i] = 0.0;
+    for(j = 0; j < p; j++){
+      cov[j*p+i] = 0.0;
+    }
+  }
+  
+  
+  for(i = 0; i < p; i++){
+    for(j = 0; j < nSubset; j++){
+      means[i] += x[(i*n)+(begin+j)];
+    }
+    means[i] = means[i]/nSubset;
+  }
+  
+  
+  for(i = 0; i < p; i++){
+    for(j = i; j < p; j++){
+      for(k = 0; k < nSubset; k++){
+	cov[i*p+j] += (x[(i*n)+(begin+k)]-means[i])*(x[(j*n)+(begin+k)]-means[j]);
+      }
+      cov[i*p+j] = cov[i*p+j]/(nSubset-1);
+    }
+  }
+   
+}
+
+
+void subsetCovCol(double *x, int p, int begin, int end, double *cov, double *means){
+  
+  int nSubset = end-begin+1;
+  int i,j,k;
+  
+  for(i = 0; i < p; i++){
+    means[i] = 0.0;
+    for(j = 0; j < p; j++){
+      cov[j*p+i] = 0.0;
+    }
+  }
+  
+  for(i = 0; i < p; i++){
+    for(j = 0; j < nSubset; j++){
+      means[i] += x[(begin+j)*p+i];
+    }
+    means[i] = means[i]/nSubset;
+  }
+  
+  
+  for(i = 0; i < p; i++){
+    for(j = i; j < p; j++){
+      for(k = 0; k < nSubset; k++){
+	cov[i*p+j] += (x[(begin+k)*p+i]-means[i])*(x[(begin+k)*p+j]-means[j]);
+      }
+      cov[i*p+j] = cov[i*p+j]/(nSubset-1);
+    }
+  }
+
+}
+
+  
+
+double mtrxInvLogDet(double *m, int dim, int info){
+
+  double logDet = 0.0;
+  int i,j;
+
+  F77_NAME(dpotrf)("L", &dim, m, &dim, &info); if(info != 0){cout << "c++ error: mtrxInvLogDet Cholesky failed\n" << endl;}
+  for(j = 0; j < dim; j++) logDet += 2.0*log(m[j*dim+j]);
+  F77_NAME(dpotri)("L", &dim, m, &dim, &info); if(info != 0){cout << "c++ error: mtrxInvLogDet Cholesky inverse failed\n" << endl;}
+  
+  for(i = 1; i < dim; i++){
+    for(j = 0; j < i; j++){
+      m[i*dim+j] = m[j*dim+i];
+    }
+  }
+
+  return(logDet);
+}
+
+
+void mtrxInv(double *m, int dim, int info){
+
+  int i,j;
+
+  F77_NAME(dpotrf)("L", &dim, m, &dim, &info); if(info != 0){cout << "c++ error: mtrxInv Cholesky failed\n" << endl;}
+  F77_NAME(dpotri)("L", &dim, m, &dim, &info); if(info != 0){cout << "c++ error: mtrxInv Cholesky inverse failed\n" << endl;}
+  
+  for(i = 1; i < dim; i++){
+    for(j = 0; j < i; j++){
+      m[i*dim+j] = m[j*dim+i];
+    }
+  }
+
+}
+
+double logit(double theta, double a, double b){
+  return log((theta-a)/(b-theta));
+}
+
+double logitInv(double z, double a, double b){
+  return b-(b-a)/(1+exp(z));
+}
+
+
+void covTransInv(double *z, double *v, int m){
+  int i, j, k;
+
+  for(i = 0, k = 0; i < m; i++){
+    for(j = i; j < m; j++, k++){
+      v[k] = z[k];
+      if(i == j)
+	v[k] = exp(z[k]);
+    }
+  }
+
+}
+
+void covTrans(double *v, double *z, int m){
+  int i, j, k;
+
+  for(i = 0, k = 0; i < m; i++){
+    for(j = i; j < m; j++, k++){
+      z[k] = v[k];
+      if(i == j)
+	z[k] = log(v[k]);
+    }
+  }
+
+}
+
+void covTransInvExpand(double *v, double *z, int m){
+  int i, j, k;
+  
+  zeros(z, m*m);
+  for(i = 0, k = 0; i < m; i++){
+    for(j = i; j < m; j++, k++){
+      z[i*m+j] = v[k];
+      if(i == j)
+	z[i*m+j] = exp(z[i*m+j]);
+    }
+  }
+  
+}
+
+void zeroUpperTri(double *v, int m){
+  int i, j;
+
+  for(i = 0; i < m-1; i++){
+    for(j = i+1; j < m; j++){
+      v[j*m+i] = 0.0;
+    }
+  }
+  
+}
+
+
+
+void printMtrx(double *m, int nRow, int nCol){
+
+  int i, j;
+
+  for(i = 0; i < nRow; i++){
+    Rprintf("\t");
+    for(j = 0; j < nCol; j++){
+      Rprintf("%.3f\t", m[j*nRow+i]);
+    }
+    Rprintf("\n");
+  }
+}
+
+void printVec(double *m, int n){
+
+  Rprintf("\t");
+    for(int j = 0; j < n; j++){
+      Rprintf("%.3f\t", m[j]);
+    }
+    Rprintf("\n");
+}
+
+
+
+double logit_logpost(int &n, double *Y, double *eta, double *w){
+  double loglike = 0.0;
+  int i;  
+
+  for(i = 0; i < n; i++)
+    loglike += Y[i]*(eta[i]+w[i]);
+  
+  for(i = 0; i < n; i++)
+    loglike -= log(1.0+exp(eta[i]+w[i]));
+
+  return loglike;
+}
+
+
+double poisson_logpost(int &n, double *Y, double *eta, double *w){
+  double loglike = 0.0;
+  int i;  
+
+  for(i = 0; i < n; i++)
+    loglike += -exp(eta[i]+w[i]);
+
+  for(i = 0; i < n; i++)
+    loglike += Y[i]*(eta[i]+w[i]);
+
+
+  return loglike;
+}
+
+
+void report(int &s, int &nSamples, int &status, int &nReport, bool &verbose){
+
+  if(verbose){
+    if(status == nReport){
+      Rprintf("Sampled: %i of %i, %3.2f%%\n", s, nSamples, 100.0*s/nSamples);
+      //Rprintf("---------------------------\n");
+      #ifdef Win32
+      R_FlushConsole();
+      #endif
+      status = 0;
+    }
+  }
+  status++;
+  
+  R_CheckUserInterrupt();  
+}

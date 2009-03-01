@@ -1,0 +1,37 @@
+find . -name "*.R*" -print | xargs sed -i 's/mk.Y/mkY/g'
+
+find . -name "*.R*" -print | xargs sed -i 's/mk.X/mkX/g'
+
+find . -name "*.R*" -print | xargs sed -i 's/hex.grid/hexGrid/g'
+
+find . -name "*.R*" -print | xargs sed -i 's/parse.formula.simple/parseFormulaSimple/g'
+
+find . -name "*.R*" -print | xargs sed -i 's/parse.formula/parseFormula/g'
+
+find . -name "*.R*" -print | xargs sed -i 's/mk.mats/mkMats/g'
+
+find . -name "*.R*" -print | xargs sed -i 's/mk.mv.Y/mkMvY/g'
+
+find . -name "*.R*" -print | xargs sed -i 's/mk.mv.X/mkMvX/g'
+
+find . -name "*.R*" -print | xargs sed -i 's/mk.mv.formula.YX/mkMvFormulaYX/g'
+
+find . -name "*.R*" -print | xargs sed -i 's/points.in.poly/pointsInPoly/g'
+
+find . -name "*.R*" -print | xargs sed -i 's/sp.lm/spLM/g'
+
+find . -name "*.R*" -print | xargs sed -i 's/ggt.sp/spGGT/g'
+
+find . -name "*.R*" -print | xargs sed -i 's/sp.predict/spPredict/g'
+
+find . -name "*.R*" -print | xargs sed -i 's/bayes.geostat.exact/bayesGeostatExact/g'
+
+find . -name "*.R*" -print | xargs sed -i 's/a.metrop.gibbs/adaptMetropGibbs/g'
+
+find . -name "*.R*" -print | xargs sed -i 's/bayes.lm.ref/bayesLMRef/g'
+
+find . -name "*.R*" -print | xargs sed -i 's/bayes.lm.conjugate/bayesLMConjugate/g'
+
+find . -name "*.R*" -print | xargs sed -i 's/cov.Givens/covGivens/g'
+
+find . -name "*.R*" -print | xargs sed -i 's/sp.DIC/spDIC/g'

@@ -8,7 +8,7 @@
 
 \description{
   Data generated in long-term research studies on the Bartlett
-  Experimental Forest (BEF.dat), Bartlett, NH funded by the U.S. Department
+  Experimental Forest, Bartlett, NH funded by the U.S. Department
   of Agriculture, Forest Service, Northeastern Research Station.
 
   This dataset holds 1991 and 2002 forest inventory data for 437 points
@@ -46,4 +46,3 @@ data(BEF.dat)
 
 
 \keyword{datasets}
-

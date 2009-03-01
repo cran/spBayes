@@ -348,8 +348,9 @@ extern "C" {
       }
           
     }//fi get w
-    PutRNGstate();
 
+
+    PutRNGstate();
  
     /******************************
               DIC setup
@@ -418,8 +419,15 @@ extern "C" {
     
     double *DMarg;
     double *DUnmarg;
-    if(DICMarg){DMarg = (double *) R_alloc(nSamples, sizeof(double));}
-    if(DICUnmarg){DUnmarg = (double *) R_alloc(nSamples, sizeof(double));}
+    if(DICMarg){
+      DMarg = (double *) R_alloc(nSamples, sizeof(double));
+      zeros(DMarg, nSamples);
+    } 
+    
+    if(DICUnmarg){
+      DUnmarg = (double *) R_alloc(nSamples, sizeof(double));
+      zeros(DUnmarg, nSamples);
+    }
   
     double DBarMarg, DBarMargOmega, pDMarg, DBarUnmarg, DBarUnmargOmega, pDUnmarg;
     DBarMarg=DBarMargOmega=pDMarg=DBarUnmarg=DBarUnmargOmega=pDUnmarg = 0.0;
@@ -452,7 +460,7 @@ extern "C" {
 	    
 	    DUnmarg[s] = n*log(tauSq[s])+1.0/tauSq[s]*F77_NAME(ddot)(&n, tmp_n1, &incOne, tmp_n1, &incOne); 
 	
-	  }else{//no such thing as unmarg so just give them the use marginalized
+	  }else{//no such thing as unmarg so just give them the marginalized
 
 	    //make the correlation matrix
 	    for(i = 0; i < nn; i++){
@@ -483,55 +491,54 @@ extern "C" {
 
 
 	}else{
-
-	  //make the correlation matrix
-	  for(i = 0; i < mm; i++){
-	    if(onePramPtr)
-	      (covModelObj->*cov1ParamPtr)(phi[s], C_str[i], knotsD[i]);
-	    else //i.e., 2 parameter matern
-	      (covModelObj->*cov2ParamPtr)(phi[s], nu[s], C_str[i], knotsD[i]);
-	  }
-	  
-	  for(i = 0; i < nm; i++){
-	    if(onePramPtr)
-	      (covModelObj->*cov1ParamPtr)(phi[s], ct[i], obsKnotsD[i]);
-	    else //i.e., 2 parameter matern
-	      (covModelObj->*cov2ParamPtr)(phi[s], nu[s], ct[i], obsKnotsD[i]);
-	  }
-	  
-	  //scale by sigma^2
-	  F77_NAME(dscal)(&mm, &sigmaSq[s], C_str, &incOne);	
-	  F77_NAME(dscal)(&nm, &sigmaSq[s], ct, &incOne);
-	  
-	  //invert C_str
-	  F77_NAME(dpotrf)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky failed in sp.lm\n");}
-	  F77_NAME(dpotri)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in sp.lm\n");}
-	  
-	  //ct C^{*-1}
-	  F77_NAME(dsymm)(rside, upper, &n, &m, &one, C_str, &m, ct, &n, &zero, tmp_nm, &n);
 	  
 	  F77_NAME(dgemv)(ntran, &n, &p, &one, X, &n, &beta[s*p], &incOne, &zero, tmp_n, &incOne);
 	  diff3(n, Y, tmp_n, &w[s*n], tmp_n1);
 	  
-	  if(isModPp){
+	  if(!isModPp){
+	    	    
+	    DUnmarg[s] = n*log(tauSq[s])+1.0/tauSq[s]*F77_NAME(ddot)(&n, tmp_n1, &incOne, tmp_n1, &incOne);
 
+	  }else{
+
+	    //make the correlation matrix
+	    for(i = 0; i < mm; i++){
+	      if(onePramPtr)
+		(covModelObj->*cov1ParamPtr)(phi[s], C_str[i], knotsD[i]);
+	      else //i.e., 2 parameter matern
+		(covModelObj->*cov2ParamPtr)(phi[s], nu[s], C_str[i], knotsD[i]);
+	    }
+	    
+	    for(i = 0; i < nm; i++){
+	      if(onePramPtr)
+		(covModelObj->*cov1ParamPtr)(phi[s], ct[i], obsKnotsD[i]);
+	      else //i.e., 2 parameter matern
+		(covModelObj->*cov2ParamPtr)(phi[s], nu[s], ct[i], obsKnotsD[i]);
+	    }
+	    
+	    //scale by sigma^2
+	    F77_NAME(dscal)(&mm, &sigmaSq[s], C_str, &incOne);	
+	    F77_NAME(dscal)(&nm, &sigmaSq[s], ct, &incOne);
+	    
+	    //invert C_str
+	    F77_NAME(dpotrf)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky failed in sp.lm\n");}
+	    F77_NAME(dpotri)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in sp.lm\n");}
+	    
+	    //ct C^{*-1}
+	    F77_NAME(dsymm)(rside, upper, &n, &m, &one, C_str, &m, ct, &n, &zero, tmp_nm, &n);
+	    
 	    //ct C^{*-1} c
 	    F77_NAME(dgemm)(ntran, ytran, &n, &n, &m, &one, tmp_nm, &n, ct, &n, &zero, tmp_nn, &n);
 	    
-	  //\tild{\eps}
+	    //\tild{\eps}
+	    DUnmarg[s] = 0.0;
 	    for(i = 0; i < n; i++){
 	      
-	      tmp = rnorm(1.0/(1.0/(sigmaSq[s]-tmp_nn[i*n+i]) + 1.0/tauSq[s])*1.0/tauSq[s]*tmp_n1[i], 
-			  sqrt(1.0/(1.0/(sigmaSq[s]-tmp_nn[i*n+i]) + 1.0/tauSq[s])));
-	      
-	      
-	      tildEpsMean[i] += tmp;
-	      tmp_n1[i] = tmp_n1[i]-tmp;
+	      DUnmarg[s] += log(tauSq[s]+sigmaSq[s]-tmp_nn[i*n+i])+1.0/(tauSq[s]+sigmaSq[s]-tmp_nn[i*n+i])*pow(tmp_n1[i],2);
+       
 	    }
 	  }
 	  
-	  DUnmarg[s] = n*log(tauSq[s])+1.0/tauSq[s]*F77_NAME(ddot)(&n, tmp_n1, &incOne, tmp_n1, &incOne);
-
 	}
 
 	if(verbose){
@@ -546,30 +553,22 @@ extern "C" {
 	}
 	R_CheckUserInterrupt();
       }
-      
+
+    
 
       DBarUnmarg = 0;
       for(i = 0; i < nSamples; i++)
 	DBarUnmarg += DUnmarg[i];
       
       DBarUnmarg = DBarUnmarg/nSamples;
-      
-      if(isPp){
-	if(isModPp){
-	  for(i = 0; i < n; i++){
-	    tildEpsMean[i] = tildEpsMean[i]/nSamples;
-	  }
-	}
-      }
-      
+            
       if(!isPp){
 	
-
 	if(nugget){
-	F77_NAME(dgemv)(ntran, &n, &p, &one, X, &n, betaMean, &incOne, &zero, tmp_n, &incOne);
-	diff3(n, Y, tmp_n, wMeans, tmp_n1);
-	
-	DBarUnmargOmega = n*log(tauSqMean)+1.0/tauSqMean*F77_NAME(ddot)(&n, tmp_n1, &incOne, tmp_n1, &incOne); 
+	  F77_NAME(dgemv)(ntran, &n, &p, &one, X, &n, betaMean, &incOne, &zero, tmp_n, &incOne);
+	  diff3(n, Y, tmp_n, wMeans, tmp_n1);
+	  
+	  DBarUnmargOmega = n*log(tauSqMean)+1.0/tauSqMean*F77_NAME(ddot)(&n, tmp_n1, &incOne, tmp_n1, &incOne); 
 
 	}else{
 	  
@@ -601,45 +600,52 @@ extern "C" {
 	}
 
       }else{
-		
-	for(i = 0; i < mm; i++){
-	  if(onePramPtr)
-	    (covModelObj->*cov1ParamPtr)(phiMean, C_str[i], knotsD[i]);
-	  else //i.e., 2 parameter matern
-	    (covModelObj->*cov2ParamPtr)(phiMean, nuMean, C_str[i], knotsD[i]);
-	}
-	
-	for(i = 0; i < nm; i++){
-	  if(onePramPtr)
-	    (covModelObj->*cov1ParamPtr)(phiMean, ct[i], obsKnotsD[i]);
-	  else //i.e., 2 parameter matern
-	    (covModelObj->*cov2ParamPtr)(phiMean, nuMean, ct[i], obsKnotsD[i]);
-	}
-		
-	//scale by sigma^2
-	F77_NAME(dscal)(&mm, &sigmaSqMean, C_str, &incOne);	
-	F77_NAME(dscal)(&nm, &sigmaSqMean, ct, &incOne);
-	
-	//invert C_str
-	F77_NAME(dpotrf)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky failed in sp.lm\n");}
-	F77_NAME(dpotri)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in sp.lm\n");}
-	
-	//ct C^{*-1}
-	F77_NAME(dsymm)(rside, upper, &n, &m, &one, C_str, &m, ct, &n, &zero, tmp_nm, &n);
-	
-	//ct C^{*-1} c
-	F77_NAME(dgemm)(ntran, ytran, &n, &n, &m, &one, tmp_nm, &n, ct, &n, &zero, tmp_nn, &n);
 
 	F77_NAME(dgemv)(ntran, &n, &p, &one, X, &n, betaMean, &incOne, &zero, tmp_n, &incOne);
 	diff3(n, Y, tmp_n, wMeans, tmp_n1);
+		
+	if(!isModPp){
 
-	if(isModPp){
+	  DBarUnmargOmega = n*log(tauSqMean)+1.0/tauSqMean*F77_NAME(ddot)(&n, tmp_n1, &incOne, tmp_n1, &incOne); 
+
+	}else{
+	  
+	  for(i = 0; i < mm; i++){
+	    if(onePramPtr)
+	      (covModelObj->*cov1ParamPtr)(phiMean, C_str[i], knotsD[i]);
+	    else //i.e., 2 parameter matern
+	      (covModelObj->*cov2ParamPtr)(phiMean, nuMean, C_str[i], knotsD[i]);
+	  }
+	  
+	  for(i = 0; i < nm; i++){
+	    if(onePramPtr)
+	      (covModelObj->*cov1ParamPtr)(phiMean, ct[i], obsKnotsD[i]);
+	    else //i.e., 2 parameter matern
+	      (covModelObj->*cov2ParamPtr)(phiMean, nuMean, ct[i], obsKnotsD[i]);
+	  }
+	  
+	  //scale by sigma^2
+	  F77_NAME(dscal)(&mm, &sigmaSqMean, C_str, &incOne);	
+	  F77_NAME(dscal)(&nm, &sigmaSqMean, ct, &incOne);
+	  
+	  //invert C_str
+	  F77_NAME(dpotrf)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky failed in sp.lm\n");}
+	  F77_NAME(dpotri)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in sp.lm\n");}
+	  
+	  //ct C^{*-1}
+	  F77_NAME(dsymm)(rside, upper, &n, &m, &one, C_str, &m, ct, &n, &zero, tmp_nm, &n);
+	  
+	  //ct C^{*-1} c
+	  F77_NAME(dgemm)(ntran, ytran, &n, &n, &m, &one, tmp_nm, &n, ct, &n, &zero, tmp_nn, &n);
+	  
+	  DBarUnmargOmega = 0.0;
+
 	  for(i = 0; i < n; i++){
-	    tmp_n1[i] = tmp_n1[i]-tildEpsMean[i];
+
+	    DBarUnmargOmega += log(tauSqMean+sigmaSqMean-tmp_nn[i*n+i])+1.0/(tauSqMean+sigmaSqMean-tmp_nn[i*n+i])*pow(tmp_n1[i],2); 
+
 	  }
 	}
-
-	DBarUnmargOmega = n*log(tauSqMean)+1.0/tauSqMean*F77_NAME(ddot)(&n, tmp_n1, &incOne, tmp_n1, &incOne); 
       }
       
     }//end Unmarg
@@ -716,8 +722,8 @@ extern "C" {
            Sherman-Woodbury-Morrison
 	  *******************************/
 	  if(!nugget) tauSq[s] = 1e-10;//ridge the matrix if no nugget model
+
 	  //Unmodified predictive process
-	  
 	  if(!isModPp){  
 	    tauSqInv = 1.0/tauSq[s];
 	    negTauSqInv = -1.0*tauSqInv;
