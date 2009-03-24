@@ -115,9 +115,9 @@ extern "C" {
 	REAL(acceptance_r)[b*nTheta+j] = accept[j]/batchLength;
 	
 	if(accept[j]/batchLength > REAL(acceptRate_r)[j]){
-	  tuning[j] += min(0.01, 1.0/sqrt(b));
+	  tuning[j] += min(0.01, 1.0/sqrt(static_cast<double>(b)));
 	}else{
-	  tuning[j] -= min(0.01, 1.0/sqrt(b));
+	  tuning[j] -= min(0.01, 1.0/sqrt(static_cast<double>(b)));
 	}
 	accept[j] = 0.0;
       }

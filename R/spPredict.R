@@ -55,7 +55,7 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, ve
     if(!any(is.data.frame(pred.covars), is.matrix(pred.covars))){stop("error: pred.covars must be a data.frame or matrix\n")}
     
     if(ncol(pred.covars) != ncol(X))
-      stop(paste("error: nrow(pred.coords) must have ",p," columns\n"))
+      stop(paste("error: pred.covars must have ",p," columns\n"))
     
     ##thin samples and spatial effects if pre-computed
     if(missing(end))
@@ -192,7 +192,7 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, ve
     if(!any(is.data.frame(pred.covars), is.matrix(pred.covars))){stop("error: pred.covars must be a data.frame or matrix\n")}
     
     if(ncol(pred.covars) != ncol(X))
-      stop(paste("error: nrow(pred.coords) must have ",p," columns\n"))
+      stop(paste("error: pred.covars must have ",p," columns\n"))
     
     ##thin samples and spatial effects if pre-computed
     if(missing(end))
@@ -318,7 +318,7 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, ve
     if(!any(is.data.frame(pred.covars), is.matrix(pred.covars))){stop("error: pred.covars must be a data.frame or matrix\n")}
     
     if(ncol(pred.covars) != ncol(X))
-      stop(paste("error: nrow(pred.coords) must have ",p," columns\n"))
+      stop(paste("error: pred.covars must have ",p," columns\n"))
     
     ##thin samples and spatial effects if pre-computed
     if(missing(end))
@@ -481,7 +481,7 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, ve
     if(!any(is.data.frame(pred.covars), is.matrix(pred.covars))){stop("error: pred.covars must be a data.frame or matrix\n")}
     
     if(ncol(pred.covars) != ncol(X))
-      stop(paste("error: nrow(pred.coords) must have ",p," columns\n"))
+      stop(paste("error: pred.covars must have ",p," columns\n"))
     
     ##thin samples and spatial effects if pre-computed
     if(missing(end))
@@ -624,7 +624,7 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, ve
     if(!any(is.data.frame(pred.covars), is.matrix(pred.covars))){stop("error: pred.covars must be a data.frame or matrix\n")}
     
     if(ncol(pred.covars) != ncol(X))
-      stop(paste("error: nrow(pred.coords) must have ",p," columns\n"))
+      stop(paste("error: pred.covars must have ",p," columns\n"))
     
     ##thin
     if(missing(end))
