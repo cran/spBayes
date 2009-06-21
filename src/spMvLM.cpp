@@ -109,13 +109,13 @@ extern "C" {
 
       Rprintf("Priors and hyperpriors:\n");
       Rprintf("\tbeta flat.\n\n");   
-      Rprintf("\tK IW hyperpriors df=%.5f\n", KIW_df);
-      Rprintf("\t"); printMtrx(KIW_S, m, m);
+      Rprintf("\tK IW hyperpriors df=%.5f, S=\n", KIW_df);
+      printMtrx(KIW_S, m, m);
       Rprintf("\n"); 
 
       if(nugget){
-	Rprintf("\tPsi IW hyperpriors df=%.5f\n", PsiIW_df);
-	Rprintf("\t"); printMtrx(PsiIW_S, m, m);
+	Rprintf("\tPsi IW hyperpriors df=%.5f, S=\n", PsiIW_df);
+	printMtrx(PsiIW_S, m, m);
 	Rprintf("\n"); 
       }
  

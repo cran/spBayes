@@ -1,6 +1,6 @@
 spLM <- function(formula, data = parent.frame(), coords, knots,
                  starting, sp.tuning, priors, cov.model, 
-                 modified.pp = TRUE, n.samples, verbose=TRUE, n.report=100, ...){
+                 modified.pp = TRUE, n.samples, sub.samples, verbose=TRUE, n.report=100, ...){
 
   ####################################################
   ##Check for unused args
@@ -273,6 +273,10 @@ spLM <- function(formula, data = parent.frame(), coords, knots,
   ##Other stuff
   ####################################################
   if(missing(n.samples)){stop("error: n.samples need to be specified")}
+
+  if(missing(sub.samples)){sub.samples <- c(1, n.samples, 1)}
+  if(length(sub.samples) != 3 || any(sub.samples > n.samples) ){stop("error: sub.samples misspecified")}
+  
   storage.mode(n.samples) <- "integer"
   storage.mode(n.report) <- "integer"
   storage.mode(verbose) <- "integer"
@@ -316,11 +320,8 @@ spLM <- function(formula, data = parent.frame(), coords, knots,
   out$is.pp <- is.pp
   out$modified.pp <- modified.pp
   
-  if(is.pp)
-    out$knot.coords <- knot.coords
+  if(is.pp){out$knot.coords <- knot.coords}
   
-  out$p.samples <- mcmc(t(out$p.samples))
-
   out$Y <- Y
   out$X <- X
   out$n <- n
@@ -332,8 +333,15 @@ spLM <- function(formula, data = parent.frame(), coords, knots,
   out$cov.model <- cov.model
   out$nugget <- nugget
   out$verbose <- verbose
-  out$n.samples <- n.samples
+  #out$n.samples <- n.samples
+  out$sub.samples <- sub.samples
   out$recovered.effects <- TRUE
+
+  ##subsample
+  out$sp.effects <- out$sp.effects[,seq(sub.samples[1], sub.samples[2], by=as.integer(sub.samples[3]))]
+  if(is.pp){out$sp.effects.knots <- out$sp.effects.knots[,seq(sub.samples[1], sub.samples[2], by=as.integer(sub.samples[3]))]}
+  out$p.samples <- mcmc(t(out$p.samples[,seq(sub.samples[1], sub.samples[2], by=as.integer(sub.samples[3]))]))
+  out$n.samples <- nrow(out$p.samples)##get adjusted n.samples
   
   col.names <- rep("null",ncol(out$p.samples))
   

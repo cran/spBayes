@@ -137,7 +137,8 @@ m.1 <- spMvGLM(list(y.1~1,y.2~1,y.3~1), family="poisson", coords=coords,
                list("beta.Flat", "phi.Unif"=rep(c(0.03, 0.3),q),
                     "K.IW"=list(q+1, diag(0.1,q))),
                cov.model="exponential",
-               n.samples=n.samples, verbose=TRUE, n.report=500)
+               n.samples=n.samples, sub.samples=c(2000,n.samples,10),
+               verbose=TRUE, n.report=500)
 
 
 pred.coords <- expand.grid(seq(0,100,10), seq(0,100,10))
@@ -145,7 +146,7 @@ m <- nrow(pred.coords)
 pred.covars <- mkMvX(list(matrix(1,m,1), matrix(1,m,1), matrix(1,m,1)))
 
 out <-
-  spPredict(m.1, start=2000, pred.coords=pred.coords, pred.covars=pred.covars)
+  spPredict(m.1, pred.coords=pred.coords, pred.covars=pred.covars)
 
 y.hat <- rowMeans(out$y.pred)
 
@@ -161,7 +162,7 @@ contour(surf, drawlabels=FALSE, add=TRUE)
 text(coords, labels=y.1, cex=1, col="blue")
 
 surf <- mba.surf(cbind(pred.coords,y.hat.1),no.X=100, no.Y=100, extend=TRUE)$xyz.est
-image(surf, main="Fitted counts")
+image(surf, main="Predicted counts")
 contour(surf, add=TRUE)
 contour(surf, drawlabels=FALSE, add=TRUE)
 text(pred.coords, labels=round(y.hat.1,0), cex=1, col="green")
@@ -223,11 +224,12 @@ m.1 <- spGLM(y~1, family="poisson", coords=coords, knots=c(8,8,0),
              list("beta.Flat", "phi.Unif"=c(0.03, 0.3),
                   "sigma.sq.IG"=c(2, 1)),
              cov.model="exponential",
-             n.samples=n.samples, verbose=TRUE, n.report=500)
+             n.samples=n.samples, sub.samples=c(10000,n.samples,5),
+             verbose=TRUE, n.report=500)
 
 ##Make prediction grid
 pred.coords <- expand.grid(seq(0,100,5), seq(0,100,5))
-out <- spPredict(m.1, start=10000, thin=2, pred.coords=pred.coords,
+out <- spPredict(m.1, pred.coords=pred.coords,
                  pred.covars=as.matrix(rep(1,nrow(pred.coords))))
 
 y.pred <- rowMeans(out$y.pred)

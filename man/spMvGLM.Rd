@@ -10,7 +10,7 @@
 
 \usage{
 spMvGLM(formula, family="binomial", data = parent.frame(), coords, knots,
-      starting, tuning, priors, cov.model, n.samples,
+      starting, tuning, priors, cov.model, n.samples, sub.samples,
       verbose=TRUE, n.report=100, ...)
 }
 
@@ -70,6 +70,9 @@ spMvGLM(formula, family="binomial", data = parent.frame(), coords, knots,
     \code{"exponential"}, \code{"matern"}, \code{"spherical"}, and
     \code{"gaussian"}.  See below for details.  }
   \item{n.samples}{the number of MCMC iterations. }
+  \item{sub.samples}{a vector of length 3 that specifies \emph{start},
+  \emph{end}, and \emph{thin}, respectively, of the MCMC samples. The
+  default is \code{c(1, n.samples, 1)} (i.e., all samples). }
   \item{verbose}{if \code{TRUE}, model specification and progress of the
     sampler is printed to the screen. Otherwise, nothing is printed to
     the screen.  }
@@ -129,7 +132,6 @@ large datasets. \emph{Computational Statistics and Data Analysis}, DOI: 10.1016/
 ################################
 ##Spatial multivariate poisson
 ################################
-
 ##Generate some data
 n <- 100
 q <- 3   
@@ -182,16 +184,16 @@ m.1 <- spMvGLM(list(y.1~1,y.2~1,y.3~1), family="poisson", coords=coords,
                list("beta.Flat", "phi.Unif"=rep(c(0.03, 0.3),q),
                     "K.IW"=list(q+1, diag(0.1,q))),
                cov.model="exponential",
-               n.samples=n.samples, verbose=TRUE, n.report=500)
+               n.samples=n.samples, sub.sample=c(5000,n.samples,10),
+               verbose=TRUE, n.report=500)
 
 m.1$p.samples[,paste("phi_",1:q,sep="")] <-
   3/m.1$p.samples[,paste("phi_",1:q,sep="")]
 
-burn.in <- 0.75*n.samples
-print(summary(mcmc(m.1$p.samples[burn.in:n.samples,])))
+print(summary(mcmc(m.1$p.samples)))
 
-beta.hat <- colMeans(m.1$p.samples[burn.in:n.samples,1:q])
-w.hat <- rowMeans(m.1$sp.effects[,burn.in:n.samples])
+beta.hat <- colMeans(m.1$p.samples[,1:q])
+w.hat <- rowMeans(m.1$sp.effects)
 
 y.hat <- exp(X\%*\%beta.hat+w.hat)
 
@@ -231,10 +233,6 @@ surf <- mba.surf(cbind(coords,y.hat.3),no.X=100, no.Y=100, extend=TRUE)$xyz.est
 image(surf)
 contour(surf, drawlabels=FALSE, add=TRUE)
 text(coords, labels=round(y.hat.3,0), cex=1, col="blue")
-
-
-
-
 }
 }
 

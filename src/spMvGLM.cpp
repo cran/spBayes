@@ -121,7 +121,7 @@ extern "C" {
       }
       Rprintf("\n");
   
-      Rprintf("\tK IW hyperpriors df=%.5f\n", KIW_df);
+      Rprintf("\tK IW hyperpriors df=%.5f, S=\n", KIW_df);
       printMtrx(KIW_S, m, m);
       Rprintf("\n"); 
 

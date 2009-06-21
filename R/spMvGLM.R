@@ -1,6 +1,6 @@
 spMvGLM <- function(formula, family="binomial", data = parent.frame(), coords, knots,
                     starting, tuning, priors, cov.model, 
-                    n.samples, verbose=TRUE, n.report=100, ...){
+                    n.samples, sub.samples, verbose=TRUE, n.report=100, ...){
   
   ####################################################
   ##Check for unused args
@@ -347,6 +347,10 @@ spMvGLM <- function(formula, family="binomial", data = parent.frame(), coords, k
   ##Other stuff
   ####################################################
   if(missing(n.samples)){stop("error: n.samples need to be specified")}
+
+  if(missing(sub.samples)){sub.samples <- c(1, n.samples, 1)}
+  if(length(sub.samples) != 3 || any(sub.samples > n.samples) ){stop("error: sub.samples misspecified")}
+    
   storage.mode(n.samples) <- "integer"
   storage.mode(n.report) <- "integer"
   storage.mode(verbose) <- "integer"
@@ -379,8 +383,7 @@ spMvGLM <- function(formula, family="binomial", data = parent.frame(), coords, k
   out$is.pp <- is.pp
   out$modified.pp <- modified.pp
   
-  if(is.pp)
-    out$knot.coords <- knot.coords
+  if(is.pp){out$knot.coords <- knot.coords}
 
   out$family <- family
   out$Y <- Y
@@ -394,10 +397,15 @@ spMvGLM <- function(formula, family="binomial", data = parent.frame(), coords, k
   out$coords.knots.D <- coords.knots.D
   out$cov.model <- cov.model
   out$verbose <- verbose
-  out$n.samples <- n.samples
+  #out$n.samples <- n.samples
+  out$sub.samples <- sub.samples
   out$recovered.effects <- TRUE ##forced recovery
 
-  out$p.samples <- t(out$p.samples)
+  ##subsample 
+  out$sp.effects <- out$sp.effects[,seq(sub.samples[1], sub.samples[2], by=as.integer(sub.samples[3]))]
+  if(is.pp){out$sp.effects.knots <- out$sp.effects.knots[,seq(sub.samples[1], sub.samples[2], by=as.integer(sub.samples[3]))]}
+  out$p.samples <- mcmc(t(out$p.samples[,seq(sub.samples[1], sub.samples[2], by=as.integer(sub.samples[3]))]))
+  out$n.samples <- nrow(out$p.samples)##get adjusted n.samples
   
   col.names <- rep("null",ncol(out$p.samples))
 
@@ -418,7 +426,9 @@ spMvGLM <- function(formula, family="binomial", data = parent.frame(), coords, k
     (A%*%t(A))[lower.tri(A, diag=TRUE)]
   }
 
-  K.names <- paste("K_",1:nltr,sep="")
+  ##K.names <- paste("K_",1:nltr,sep="")
+  K.names <- paste("K[",matrix(apply(cbind(expand.grid(1:m,1:m)), 1, function(x) paste(x, collapse=",")),m,m)[lower.tri(matrix(0,m,m), diag=TRUE)],"]",sep="")
+
   colnames(out$p.samples)[colnames(out$p.samples)%in%"K"] <- K.names
   out$p.samples[,K.names] <- t(apply(out$p.samples[,K.names], 1, AtA, m))
 

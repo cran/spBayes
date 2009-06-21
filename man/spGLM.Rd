@@ -11,7 +11,7 @@
 \usage{
 spGLM(formula, family="binomial", data = parent.frame(), coords, knots,
       starting, tuning, priors, cov.model,
-      n.samples, verbose=TRUE, n.report=100, ...)
+      n.samples, sub.samples, verbose=TRUE, n.report=100, ...)
 }
 
 \arguments{
@@ -63,6 +63,9 @@ spGLM(formula, family="binomial", data = parent.frame(), coords, knots,
     \code{"exponential"}, \code{"matern"}, \code{"spherical"}, and
     \code{"gaussian"}.  See below for details.  }
   \item{n.samples}{the number of MCMC iterations. }
+  \item{sub.samples}{a vector of length 3 that specifies \emph{start},
+  \emph{end}, and \emph{thin}, respectively, of the MCMC samples. The
+  default is \code{c(1, n.samples, 1)} (i.e., all samples). }
   \item{verbose}{if \code{TRUE}, model specification and progress of the
     sampler is printed to the screen. Otherwise, nothing is printed to
     the screen.  }
@@ -143,16 +146,15 @@ m.1 <- spGLM(y~1, family="poisson", coords=coords,
              priors=
              list("beta.Flat", "phi.Unif"=c(0.03, 0.3), "sigma.sq.IG"=c(2, 1)),
              cov.model="exponential",
-             n.samples=n.samples, verbose=TRUE, n.report=500)
+             n.samples=n.samples, sub.samples=c(10000,n.samples,10),
+             verbose=TRUE, n.report=500)
 
 m.1$p.samples[,"phi"] <- 3/m.1$p.samples[,"phi"]
 
+print(summary(mcmc(m.1$p.samples)))
 
-burn.in <- 0.75*n.samples
-print(summary(mcmc(m.1$p.samples[burn.in:n.samples,])))
-
-beta.hat <- mean(m.1$p.samples[burn.in:n.samples,1])
-w.hat <- rowMeans(m.1$sp.effects[,burn.in:n.samples])
+beta.hat <- mean(m.1$p.samples[,"(Intercept)"])
+w.hat <- rowMeans(m.1$sp.effects)
 
 y.hat <-exp(x\%*\%beta.hat+w.hat)
 
@@ -167,6 +169,7 @@ surf <- mba.surf(cbind(coords,y.hat),no.X=100, no.Y=100, extend=TRUE)$xyz.est
 image(surf, main="Fitted counts")
 contour(surf, drawlabels=FALSE, add=TRUE)
 text(coords, labels=round(y.hat,0), cex=1, col="blue")
+
 
 ###########################
 ##Spatial logistic
@@ -203,15 +206,15 @@ m.1 <- spGLM(y~1, family="binomial", coords=coords,
              list("beta.Normal"=list(0,10), "phi.Unif"=c(0.03, 0.3),
                   "sigma.sq.IG"=c(2, 1)),
              cov.model="exponential",
-             n.samples=n.samples, verbose=TRUE, n.report=500)
+             n.samples=n.samples, sub.samples=c(25000,n.samples,10),
+             verbose=TRUE, n.report=500)
 
 m.1$p.samples[,"phi"] <- 3/m.1$p.samples[,"phi"]
 
-burn.in <- 0.75*n.samples
-print(summary(mcmc(m.1$p.samples[burn.in:n.samples,])))
+print(summary(mcmc(m.1$p.samples)))
 
-beta.hat <- mean(m.1$p.samples[burn.in:n.samples,1])
-w.hat <- rowMeans(m.1$sp.effects[,burn.in:n.samples])
+beta.hat <- mean(m.1$p.samples[,"(Intercept)"])
+w.hat <- rowMeans(m.1$sp.effects)
 
 y.hat <- 1/(1+exp(-(x\%*\%beta.hat+w.hat)))
 
@@ -228,6 +231,71 @@ image(surf, main="Fitted probabilities")
 contour(surf, add=TRUE)
 points(coords[y==1,], pch=19, cex=1)
 points(coords[y==0,], cex=1)
+
+
+##############################
+##Predictive process
+##############################
+
+##Generate binary data
+n <- 500
+
+coords <- cbind(runif(n,1,100),runif(n,1,100))
+
+phi <- 3/50
+sigma.sq <- 1
+
+R <- sigma.sq*exp(-phi*as.matrix(dist(coords)))
+w <- mvrnorm(1, rep(0,n), R)
+
+x <- as.matrix(rep(1,n))
+beta <- 0.1
+p <- 1/(1+exp(-(x\%*\%beta+w)))
+y <- rbinom(n, 1, prob=p)
+
+##Collect samples
+beta.starting <- coefficients(glm(y~x-1, family="binomial"))
+beta.tuning <- t(chol(vcov(glm(y~x-1, family="binomial"))))
+            
+n.samples <- 25000
+
+m.2 <- spGLM(y~1, family="binomial", coords=coords, knots=c(8,8,0),
+             starting=
+             list("beta"=beta.starting, "phi"=0.06,"sigma.sq"=1, "w"=0),
+             tuning=
+             list("beta"=beta.tuning, "phi"=0.1, "sigma.sq"=0.1, "w"=0.01),
+             priors=
+             list("beta.Normal"=list(0,10), "phi.Unif"=c(0.03, 0.3),
+                  "sigma.sq.IG"=c(2, 1)),
+             cov.model="exponential",
+             n.samples=n.samples, sub.samples=c(15000,n.samples,10),
+             verbose=TRUE, n.report=500)
+
+m.2$p.samples[,"phi"] <- 3/m.2$p.samples[,"phi"]
+
+print(summary(mcmc(m.2$p.samples)))
+
+beta.hat <- mean(m.2$p.samples[,"(Intercept)"])
+w.hat <- rowMeans(m.2$sp.effects)
+
+y.hat <- 1/(1+exp(-(x\%*\%beta.hat+w.hat)))
+
+##Take a look
+par(mfrow=c(1,2))
+surf <- mba.surf(cbind(coords,y),no.X=100, no.Y=100, extend=TRUE)$xyz.est
+image(surf, main="Observed")
+contour(surf, add=TRUE)
+points(coords[y==1,], pch=19, cex=1)
+points(coords[y==0,], cex=1)
+
+surf <- mba.surf(cbind(coords,y.hat),no.X=100, no.Y=100, extend=TRUE)$xyz.est
+image(surf, main="Fitted probabilities")
+contour(surf, add=TRUE)
+points(coords[y==1,], pch=19, cex=1)
+points(coords[y==0,], cex=1)
+points(m.2$knot.coords, pch=15, cex=1, col="blue")
+
+
 
 }
 }

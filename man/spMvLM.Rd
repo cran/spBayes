@@ -11,7 +11,7 @@
 \usage{
 spMvLM(formula, data = parent.frame(), coords, knots,
       starting, sp.tuning, priors, cov.model,
-      modified.pp = TRUE, n.samples,
+      modified.pp = TRUE, n.samples, sub.samples,
       verbose=TRUE, n.report=100, ...)
 }
 
@@ -67,6 +67,9 @@ spMvLM(formula, data = parent.frame(), coords, knots,
     \code{"exponential"}, \code{"matern"}, \code{"spherical"}, and
     \code{"gaussian"}.  See below for details.  }
   \item{n.samples}{the number of MCMC iterations. }
+  \item{sub.samples}{a vector of length 3 that specifies \emph{start},
+  \emph{end}, and \emph{thin}, respectively, of the MCMC samples. The
+  default is \code{c(1, n.samples, 1)} (i.e., all samples). }
   \item{verbose}{if \code{TRUE}, model specification and progress of the
     sampler is printed to the screen. Otherwise, nothing is printed to
     the screen.  }
@@ -153,23 +156,20 @@ n.samples <- 5000
 
 m.1 <- spMvLM(list(w.1~1,w.2~1,w.3~1), coords=coords,
               starting=list("beta"=rep(1,q), "phi"=rep(3/0.5,q),
-                "A"=K.starting), 
+                "A"=K.starting, "L"=Psi.starting), 
               sp.tuning=list("phi"=rep(0.1,q),
-                "A"=rep(0.1,nltr)),
+                "A"=rep(0.1,nltr), "L"=rep(0.1,nltr)),
               priors=list("phi.Unif"=rep(c(3/1,3/0.1),q),
-                "K.IW"=list(q+1, diag(1,q))),
+                "K.IW"=list(q+1, diag(1,q)), "Psi.IW"=list(q+1, diag(1,q))),
               modified.pp=TRUE, cov.model="exponential",
-              n.samples=n.samples, verbose=TRUE, n.report=100)
-
+              n.samples=n.samples, sub.samples=c(2500,n.samples,5), verbose=TRUE, n.report=100)
 
 m.1$p.samples[,paste("phi_",1:q,sep="")] <-
   3/m.1$p.samples[,paste("phi_",1:q,sep="")]
 
-burn.in <- 0.50*n.samples
+print(summary(mcmc(m.1$p.samples)))
 
-print(summary(mcmc(m.1$p.samples[burn.in:n.samples,])))
-
-w.hat <- rowMeans(m.1$sp.effects[,burn.in:ncol(m.1$sp.effects)])
+w.hat <- rowMeans(m.1$sp.effects)
 w.hat.1 <- w.hat[seq(1,length(w.hat),q)]
 w.hat.2 <- w.hat[seq(2,length(w.hat),q)]
 w.hat.3 <- w.hat[seq(3,length(w.hat),q)]
@@ -178,31 +178,30 @@ w.hat.3 <- w.hat[seq(3,length(w.hat),q)]
 par(mfrow=c(3,2))
 surf <- mba.surf(cbind(coords,w.1),
                  no.X=100, no.Y=100, extend=T)$xyz.est
-image(surf); contour(surf, add=TRUE)
+image(surf, main="Observed 1"); contour(surf, add=TRUE)
 
 surf <- mba.surf(cbind(coords,w.hat.1),
                  no.X=100, no.Y=100, extend=T)$xyz.est
-image(surf); contour(surf, add=TRUE)
+image(surf, main="Fitted 1"); contour(surf, add=TRUE)
 points(m.1$knot.coords, pch=19, cex=1)
 
 surf <- mba.surf(cbind(coords,w.2),
                  no.X=100, no.Y=100, extend=T)$xyz.est
-image(surf); contour(surf, add=TRUE)
+image(surf, main="Observed 2"); contour(surf, add=TRUE)
 
 surf <- mba.surf(cbind(coords,w.hat.2),
                  no.X=100, no.Y=100, extend=T)$xyz.est
-image(surf); contour(surf, add=TRUE)
+image(surf, main="Fitted 2"); contour(surf, add=TRUE)
 points(m.1$knot.coords, pch=19, cex=1)
 
 surf <- mba.surf(cbind(coords,w.3),
                  no.X=100, no.Y=100, extend=T)$xyz.est
-image(surf); contour(surf, add=TRUE)
+image(surf, main="Observed 3"); contour(surf, add=TRUE)
 
 surf <- mba.surf(cbind(coords,w.hat.3),
                  no.X=100, no.Y=100, extend=T)$xyz.est
-image(surf); contour(surf, add=TRUE)
+image(surf, main="Fitted 3"); contour(surf, add=TRUE)
 points(m.1$knot.coords, pch=19, cex=1)
-
 }
 }
 

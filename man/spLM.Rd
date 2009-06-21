@@ -11,7 +11,7 @@
 \usage{
 spLM(formula, data = parent.frame(), coords, knots,
       starting, sp.tuning, priors, cov.model,
-      modified.pp = TRUE, n.samples,
+      modified.pp = TRUE, n.samples, sub.samples,
       verbose=TRUE, n.report=100, ...)
 }
 
@@ -60,6 +60,9 @@ spLM(formula, data = parent.frame(), coords, knots,
     \code{"exponential"}, \code{"matern"}, \code{"spherical"}, and
     \code{"gaussian"}.  See below for details.  }
   \item{n.samples}{the number of MCMC iterations. }
+  \item{sub.samples}{a vector of length 3 that specifies \emph{start},
+  \emph{end}, and \emph{thin}, respectively, of the MCMC samples. The
+  default is \code{c(1, n.samples, 1)} (i.e., all samples). }
   \item{verbose}{if \code{TRUE}, model specification and progress of the
     sampler is printed to the screen. Otherwise, nothing is printed to
     the screen.  }
