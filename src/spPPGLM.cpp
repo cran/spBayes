@@ -339,7 +339,7 @@ extern "C" {
 	}
       }
 
-      logPostCand = -1.0*(1.0+sigmaSqIGa)*log(sigmaSq)-sigmaSqIGb/sigmaSq+log(sigmaSq); 
+      logPostCand += -1.0*(1.0+sigmaSqIGa)*log(sigmaSq)-sigmaSqIGb/sigmaSq+log(sigmaSq); 
        
       logPostCand += log(phi - phiUnifa) + log(phiUnifb - phi); 
 

@@ -71,7 +71,7 @@ void covTrans(double *v, double *z, int m);
 
 void covTransInvExpand(double *v, double *z, int m);
 
-void zeroUpperTri(double *v, int m);
+void covExpand(double *v, double *z, int m);
 
 void printMtrx(double *m, int nRow, int nCol);
 
@@ -82,3 +82,5 @@ double logit_logpost(int &n, double *Y, double *eta, double *w);
 double poisson_logpost(int &n, double *Y, double *eta, double *w);
 
 void report(int &s, int &nSamples, int &status, int &nReport, bool &verbose);
+
+/* void dnscsr(double *A, int nrowA, int ncolB, double *a, int *indxa, int *pntrb, int *pntre); */

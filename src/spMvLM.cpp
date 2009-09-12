@@ -46,6 +46,9 @@ extern "C" {
     int n = INTEGER(n_r)[0];
     int m = INTEGER(m_r)[0];
     int nLTr = m*(m-1)/2+m;
+    int nn = n*n;
+    int mm = m*m;
+    int nm = n*m;
 
     double *coordsD = REAL(coordsD_r);
 
@@ -95,6 +98,8 @@ extern "C" {
     int verbose = INTEGER(verbose_r)[0];
     int nReport = INTEGER(nReport_r)[0];
 
+    double *A = (double *) R_alloc(mm, sizeof(double));
+    double *L = (double *) R_alloc(mm, sizeof(double));
 
     if(verbose){
       Rprintf("----------------------------------------\n");
@@ -159,14 +164,16 @@ extern "C" {
 
       Rprintf("Metropolis starting values:\n");
   
-      Rprintf("\tA starting:\n");
-      Rprintf("\t"); printVec(AStarting, nLTr);
-      Rprintf("\n"); 
+      covExpand(AStarting, A, m);
+      Rprintf("\tA starting\n");
+      printMtrx(A, m, m);
+      Rprintf("\n");
 
       if(nugget){
-	Rprintf("\tL starting:\n");
-	Rprintf("\t"); printVec(LStarting, nLTr);
-	Rprintf("\n"); 
+	covExpand(LStarting, L, m);
+	Rprintf("\tL starting\n");
+	printMtrx(L, m, m);
+	Rprintf("\n");
       }
 
       Rprintf("\tphi starting\n");
@@ -206,10 +213,6 @@ extern "C" {
     /*****************************************
          Set-up MCMC sample matrices etc.
     *****************************************/
-    int nn = n*n;
-    int mm = m*m;
-    int nm = n*m;
-
     //spatial parameters
     int nSpParams, AIndx, LIndx, phiIndx, nuIndx;
 
@@ -280,9 +283,7 @@ extern "C" {
     double *tmp_nm1 = (double *) R_alloc(nm, sizeof(double));
 
     double *candSpParams = (double *) R_alloc(nSpParams, sizeof(double));
-    double *A = (double *) R_alloc(mm, sizeof(double));
     double *K = (double *) R_alloc(mm, sizeof(double));
-    double *L = (double *) R_alloc(mm, sizeof(double));
     double *Psi = (double *) R_alloc(mm, sizeof(double));
     double *theta = (double *) R_alloc(mm, sizeof(double));
     double logMHRatio;

@@ -3,9 +3,9 @@
 \title{Function for fitting multivariate Bayesian spatial regression models}
 
 \description{
-  The function \code{spMvLM} fits Gaussian multivariate stationary Bayesian
-  spatial regression models. Given a set of knots, \code{spMvLM} fits a
-  \emph{predictive process} model (see references below).
+  The function \code{spMvLM} fits Gaussian multivariate Bayesian
+  spatial regression models. Given a set of knots, \code{spMvLM} will
+  also fit a \emph{predictive process} model (see references below).
 }
 
 \usage{

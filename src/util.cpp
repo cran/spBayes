@@ -385,18 +385,17 @@ void covTransInvExpand(double *v, double *z, int m){
   
 }
 
-void zeroUpperTri(double *v, int m){
-  int i, j;
-
-  for(i = 0; i < m-1; i++){
-    for(j = i+1; j < m; j++){
-      v[j*m+i] = 0.0;
+void covExpand(double *v, double *z, int m){
+  int i, j, k;
+  
+  zeros(z, m*m);
+  for(i = 0, k = 0; i < m; i++){
+    for(j = i; j < m; j++, k++){
+      z[i*m+j] = v[k];
     }
   }
   
 }
-
-
 
 void printMtrx(double *m, int nRow, int nCol){
 
@@ -467,3 +466,45 @@ void report(int &s, int &nSamples, int &status, int &nReport, bool &verbose){
   
   R_CheckUserInterrupt();  
 }
+
+// void dnscsr(double *A, int nrowA, int ncolA, double *a, int *indxa, int *pntrb, int *pntre){
+//   //untested!!!
+//   //int nzmaxa = nrowA*ncolA;
+//   //int *indxa = (int *) R_alloc(nzmaxa, sizeof(int));
+//   //int *pntrb = (int *) R_alloc(nrowA, sizeof(int)); 
+//   //int *pntre = (int *) R_alloc(nrowA, sizeof(int)); 
+//   //double *a = (double *) R_alloc(nzmaxa, sizeof(double));
+  
+//   //Convert dense matrix to NIST one-based indexing (following intel MKL docs)
+//   //todo: add eps if needed
+  
+//   int i, j, k, l, ll;
+//   for(i = 0; i < nrowA; i++){
+//     pntrb[i]=pntre[i]=indxa[i]=0;
+//   }
+  
+//   bool first;
+//   for(i = 0, l = 0, ll = 0; i < nrowA; i++, ll = 0){
+//     first = true;
+//     for(j = 0; j < ncolA; j++){
+//       if(A[j*nrowA+i] != 0.0){
+// 	a[k] = A[j*nrowA+i];
+// 	indxa[k] = j+1;
+// 	if(first){
+// 	  pntrb[l] = k+1;
+// 	  first = false;
+// 	  l++;
+// 	}
+// 	ll++;
+// 	k++;
+//       }
+//     }
+//     if(!first){
+//       pntre[l-1]=pntrb[l-1]+ll;
+//     }else{
+//       pntrb[l] = 0;
+//       pntre[l] = 0;
+//       l++;
+//     }
+//   }
+// }

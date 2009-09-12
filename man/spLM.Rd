@@ -3,9 +3,9 @@
 \title{Function for fitting univariate Bayesian spatial regression models}
 
 \description{
-  The function \code{spLM} fits Gaussian univariate stationary Bayesian
-  spatial regression models. Given a set of knots, \code{spLM} fits a
-  \emph{predictive process} model (see references below).
+  The function \code{spLM} fits Gaussian univariate Bayesian
+  spatial regression models. Given a set of knots, \code{spLM} will also
+  fit a \emph{predictive process} model (see references below).
 }
 
 \usage{

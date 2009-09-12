@@ -1,4 +1,4 @@
-spMvGLM <- function(formula, family="binomial", data = parent.frame(), coords, knots,
+spMvGLM <- function(formula, family="binomial", data = parent.frame(), coords, knots, amcmc,
                     starting, tuning, priors, cov.model, 
                     n.samples, sub.samples, verbose=TRUE, n.report=100, ...){
   
@@ -52,7 +52,51 @@ spMvGLM <- function(formula, family="binomial", data = parent.frame(), coords, k
   ####################################################
   if(!family %in% c("binomial","poisson"))
     stop("error: family must be binomial or poisson")
+
+  ####################################################
+  ##family
+  ####################################################
+  if(!family %in% c("binomial","poisson"))
+    stop("error: family must be binomial or poisson")
+
+  ####################################################
+  ##sampling method
+  ####################################################
+  n.batch <- 0
+  batch.length <- 0
+  accept.rate <- 0
   
+  if(missing(amcmc)){
+    
+    is.amcmc <- FALSE
+    if(missing(n.samples)){stop("error: n.samples need to be specified")}
+    
+  }else{
+    
+    is.amcmc <- TRUE
+
+    names(amcmc) <- tolower(names(amcmc))
+    
+    if(!"n.batch" %in% names(amcmc)){stop("error: n.batch must be specified in amcmc list")}
+    n.batch <- amcmc[["n.batch"]]
+    
+    if(!"batch.length" %in% names(amcmc)){stop("error: batch.length must be specified in amcmc list")}
+    batch.length <- amcmc[["batch.length"]]
+
+    if(!"accept.rate" %in% names(amcmc)){
+      warning("accept.rate was not specified in the amcmc list and was therefore set to the default 0.43")
+      accept.rate <- 0.43
+    }else{
+      accept.rate <- amcmc[["accept.rate"]]
+    }
+
+    n.samples <- n.batch*batch.length
+  }
+  
+  storage.mode(n.samples) <- "integer"
+  storage.mode(n.batch) <- "integer"
+  storage.mode(batch.length) <- "integer"
+  storage.mode(accept.rate) <- "double"
   
   ####################################################
   ##Distance matrices
@@ -215,7 +259,7 @@ spMvGLM <- function(formula, family="binomial", data = parent.frame(), coords, k
       stop(paste("error: w in the starting value list must be a scalar of length 1 or vector of length ",n*m,sep=""))
     }
   }
-    
+  
   storage.mode(beta.starting) <- "double"
   storage.mode(phi.starting) <- "double"
   storage.mode(A.starting) <- "double"
@@ -278,65 +322,86 @@ spMvGLM <- function(formula, family="binomial", data = parent.frame(), coords, k
   nu.tuning <- 0
   w.tuning <- 0
   
-  if(missing(tuning)){stop("error: tuning value vector for the spatial parameters must be specified")}
-  
-  names(tuning) <- tolower(names(tuning))
-
-  if(!"beta" %in% names(tuning)){stop("error: beta must be specified in tuning value list")}
-  beta.tuning <- tuning[["beta"]]
-
-  if(is.matrix(beta.tuning)){
-    if(nrow(beta.tuning) != p || ncol(beta.tuning) != p)
-      stop(paste("error: if beta tuning is a matrix, it must be of dimension ",p,sep=""))
+  if(!missing(tuning)){
     
-  }else if(is.vector(beta.tuning)){
-    if(length(beta.tuning) != p)
-      stop(paste("error: if beta tuning is a vector, it must be of length ",p,sep=""))
-
-    if(length(beta.tuning) > 1)
-      beta.tuning <- diag(beta.tuning)
+    names(tuning) <- tolower(names(tuning))
     
-  }else{
-    stop("error: beta tuning is misspecified")
-  }
-  
-  if(!"a" %in% names(tuning)){stop("error: A must be specified in tuning value list")}
-  A.tuning <- as.vector(tuning[["a"]])
-  if(length(A.tuning) != m*(m-1)/2+m){stop(paste("error: A must be of length ",m*(m-1)/2+m," in tuning value list",sep=""))}
+    if(!"beta" %in% names(tuning)){stop("error: beta must be specified in tuning value list")}
+    beta.tuning <- tuning[["beta"]]
     
-  if(!"phi" %in% names(tuning)){stop("error: phi must be specified in tuning value list")}
-  phi.tuning <- tuning[["phi"]]
-  if(length(phi.tuning) != m){stop(paste("error: phi must be of length ",m," in tuning value list",sep=""))}
-    
-  if(cov.model == "matern"){
-    if(!"nu" %in% names(tuning)){stop("error: nu must be specified in tuning value list")}
-    nu.tuning <- tuning[["nu"]]
-    if(length(nu.tuning) != m){stop(paste("error: nu must be of length ",m," in tuning value list",sep=""))}
-  }    
+    if(is.matrix(beta.tuning)){
+      if(nrow(beta.tuning) != p || ncol(beta.tuning) != p)
+        stop(paste("error: if beta tuning is a matrix, it must be of dimension ",p,sep=""))
 
-  if(!"w" %in% names(tuning)){stop("error: w must be specified in tuning value list")}
-  w.tuning <- tuning[["w"]]
-
-  if(is.pp){
-    if(length(w.tuning) == 1){
-      w.tuning <- tuning[["w"]][1]
-      w.tuning <- rep(w.tuning, q*m)
-    }else if(length(w.tuning) == q*m){
-      w.tuning <- tuning[["w"]]  
+      if(is.amcmc)
+        beta.tuning <- diag(beta.tuning)
+      
+    }else if(is.vector(beta.tuning)){
+      if(length(beta.tuning) != p)
+        stop(paste("error: if beta tuning is a vector, it must be of length ",p,sep=""))
+      
+      if(!is.amcmc)
+        beta.tuning <- diag(beta.tuning)
+      
     }else{
-      stop(paste("error: w in the tuning value list must be a scalar of length 1 or vector of length ",q*m," (i.e., the number of response variables times the number of predictive process knots)",sep=""))
-    }    
-  }else{
-    if(length(w.tuning) == 1){
-      w.tuning <- tuning[["w"]][1]
-      w.tuning <- rep(w.tuning, n*m)
-    }else if(length(w.tuning) == n*m){
-      w.tuning <- tuning[["w"]]  
-    }else{
-      stop(paste("error: w in the tuning value list must be a scalar of length 1 or vector of length ",q*n,sep=""))
+      stop("error: beta tuning is misspecified")
     }
+    
+    if(!"a" %in% names(tuning)){stop("error: A must be specified in tuning value list")}
+    A.tuning <- as.vector(tuning[["a"]])
+    if(length(A.tuning) != m*(m-1)/2+m){stop(paste("error: A must be of length ",m*(m-1)/2+m," in tuning value list",sep=""))}
+    
+    if(!"phi" %in% names(tuning)){stop("error: phi must be specified in tuning value list")}
+    phi.tuning <- tuning[["phi"]]
+    if(length(phi.tuning) != m){stop(paste("error: phi must be of length ",m," in tuning value list",sep=""))}
+    
+    if(cov.model == "matern"){
+      if(!"nu" %in% names(tuning)){stop("error: nu must be specified in tuning value list")}
+      nu.tuning <- tuning[["nu"]]
+      if(length(nu.tuning) != m){stop(paste("error: nu must be of length ",m," in tuning value list",sep=""))}
+    }    
+    
+    if(!"w" %in% names(tuning)){stop("error: w must be specified in tuning value list")}
+    w.tuning <- tuning[["w"]]
+    
+    if(is.pp){
+      if(length(w.tuning) == 1){
+        w.tuning <- tuning[["w"]][1]
+        w.tuning <- rep(w.tuning, q*m)
+      }else if(length(w.tuning) == q*m){
+        w.tuning <- tuning[["w"]]  
+      }else{
+        stop(paste("error: w in the tuning value list must be a scalar of length 1 or vector of length ",q*m," (i.e., the number of response variables times the number of predictive process knots)",sep=""))
+      }    
+    }else{
+      if(length(w.tuning) == 1){
+        w.tuning <- tuning[["w"]][1]
+        w.tuning <- rep(w.tuning, n*m)
+      }else if(length(w.tuning) == n*m){
+        w.tuning <- tuning[["w"]]  
+      }else{
+        stop(paste("error: w in the tuning value list must be a scalar of length 1 or vector of length ",q*n,sep=""))
+      }
+    }
+    
+  }else{##no tuning provided
+    
+    if(!is.amcmc){
+      stop("error: tuning value list must be specified")
+    }
+    
+    beta.tuning <- rep(0.01,p)
+    phi.tuning <- rep(0.01,m)
+    A.tuning <- rep(0.01,m*(m-1)/2+m)
+    nu.tuning <- rep(0.01,m)
+    
+    if(is.pp){
+      w.tuning <- rep(0.01,q*m)
+    }else{
+      w.tuning <- rep(0.01,q*n)
+    }
+    
   }
-  
   
   storage.mode(phi.tuning) <- "double"
   storage.mode(A.tuning) <- "double"
@@ -346,12 +411,9 @@ spMvGLM <- function(formula, family="binomial", data = parent.frame(), coords, k
   ####################################################
   ##Other stuff
   ####################################################
-  if(missing(n.samples)){stop("error: n.samples need to be specified")}
-
   if(missing(sub.samples)){sub.samples <- c(1, n.samples, 1)}
   if(length(sub.samples) != 3 || any(sub.samples > n.samples) ){stop("error: sub.samples misspecified")}
     
-  storage.mode(n.samples) <- "integer"
   storage.mode(n.report) <- "integer"
   storage.mode(verbose) <- "integer"
 
@@ -359,24 +421,42 @@ spMvGLM <- function(formula, family="binomial", data = parent.frame(), coords, k
   ####################################################
   ##Pack it up and off it goes
   ####################################################
-
+  
   if(is.pp){
     
-    out <- .Call("spPPMvGLM", Y, X, p, n, m, coords.D, family,
-                 modified.pp, q, knots.D, coords.knots.D,                
-                 beta.prior, beta.Norm, K.IW, nu.Unif, phi.Unif,
-                 phi.starting, A.starting, nu.starting, beta.starting, w.starting,
-                 phi.tuning, A.tuning, nu.tuning, beta.tuning, w.tuning,
-                 cov.model, n.samples, verbose, n.report)
-    
+    if(!is.amcmc){
+      out <- .Call("spPPMvGLM", Y, X, p, n, m, coords.D, family,
+                   modified.pp, q, knots.D, coords.knots.D,                
+                   beta.prior, beta.Norm, K.IW, nu.Unif, phi.Unif,
+                   phi.starting, A.starting, nu.starting, beta.starting, w.starting,
+                   phi.tuning, A.tuning, nu.tuning, beta.tuning, w.tuning,
+                   cov.model, n.samples, verbose, n.report)
+    }else{
+      out <- .Call("spPPMvGLM_AMCMC", Y, X, p, n, m, coords.D, family,
+                   modified.pp, q, knots.D, coords.knots.D,                
+                   beta.prior, beta.Norm, K.IW, nu.Unif, phi.Unif,
+                   phi.starting, A.starting, nu.starting, beta.starting, w.starting,
+                   phi.tuning, A.tuning, nu.tuning, beta.tuning, w.tuning,
+                   cov.model, n.batch, batch.length, accept.rate, verbose, n.report)
+    }
+        
   }else{
     
-    out <- .Call("spMvGLM", Y, X, p, n, m, coords.D, family,
-                 beta.prior, beta.Norm, K.IW, nu.Unif, phi.Unif,
-                 phi.starting, A.starting, nu.starting, beta.starting, w.starting,
-                 phi.tuning, A.tuning, nu.tuning, beta.tuning, w.tuning,
-                 cov.model, n.samples, verbose, n.report)
-    
+    if(!is.amcmc){
+      out <- .Call("spMvGLM", Y, X, p, n, m, coords.D, family,
+                   beta.prior, beta.Norm, K.IW, nu.Unif, phi.Unif,
+                   phi.starting, A.starting, nu.starting, beta.starting, w.starting,
+                   phi.tuning, A.tuning, nu.tuning, beta.tuning, w.tuning,
+                   cov.model, n.samples, verbose, n.report)
+    }else{
+      
+      out <- .Call("spMvGLM_AMCMC", Y, X, p, n, m, coords.D, family,
+                   beta.prior, beta.Norm, K.IW, nu.Unif, phi.Unif,
+                   phi.starting, A.starting, nu.starting, beta.starting, w.starting,
+                   phi.tuning, A.tuning, nu.tuning, beta.tuning, w.tuning,
+                   cov.model, n.batch, batch.length, accept.rate, verbose, n.report)
+      
+    }
   }
 
   out$coords <- coords
@@ -401,6 +481,11 @@ spMvGLM <- function(formula, family="binomial", data = parent.frame(), coords, k
   out$sub.samples <- sub.samples
   out$recovered.effects <- TRUE ##forced recovery
 
+  if(is.amcmc){
+    out$tuning.w <- exp(out$tuning.w)
+    out$tuning <- exp(out$tuning)
+  }
+  
   ##subsample 
   out$sp.effects <- out$sp.effects[,seq(sub.samples[1], sub.samples[2], by=as.integer(sub.samples[3]))]
   if(is.pp){out$sp.effects.knots <- out$sp.effects.knots[,seq(sub.samples[1], sub.samples[2], by=as.integer(sub.samples[3]))]}

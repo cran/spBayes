@@ -3,14 +3,14 @@
 \title{Function for fitting multivariate Bayesian generalized linear spatial regression models}
 
 \description{
-  The function \code{spMvGLM} fits multivariate stationary Bayesian
-  generalized linear spatial regression models. Given a set of knots, \code{spMvGLM} fits a
-  \emph{predictive process} model (see references below).
+  The function \code{spMvGLM} fits multivariate Bayesian
+  generalized linear spatial regression models. Given a set of knots,
+  \code{spMvGLM} will also fit a \emph{predictive process} model (see references below).
 }
 
 \usage{
 spMvGLM(formula, family="binomial", data = parent.frame(), coords, knots,
-      starting, tuning, priors, cov.model, n.samples, sub.samples,
+      amcmc, starting, tuning, priors, cov.model, n.samples, sub.samples,
       verbose=TRUE, n.report=100, ...)
 }
 
@@ -29,7 +29,9 @@ spMvGLM(formula, family="binomial", data = parent.frame(), coords, knots,
     or a vector of length two or three with the first and second elements recording the
     number of columns and rows in the desired knot grid. The third,
     optional, element sets the offset of the outermost knots from the
-    extent of the \code{coords} extent. } 
+    extent of the \code{coords} extent. }
+  \item{amcmc}{a list with tags \code{n.batch}, \code{batch.length}, and
+    \code{accept.rate}. }
   \item{starting}{a list with each tag corresponding to a
     parameter name. Valid list tags are \code{beta}, \code{A}, \code{phi}, and \code{nu}.  The value portion of each tag
     is a vector of parameter's starting value. For \code{A} the vector
@@ -89,7 +91,15 @@ spMvGLM(formula, family="binomial", data = parent.frame(), coords, knots,
   \item{p.samples}{a \code{coda} object of posterior samples for the defined
     parameters. }
   \item{acceptance}{the Metropolis sampling
-    acceptance rate. }
+    acceptance rate. If \code{amcmc} is used then this will be a matrix of
+    each parameter's acceptance rate at the end of each
+    batch. Otherwise, the sampler is a Metropolis with a joint proposal
+    of all parameters, and the acceptance rate is the average over all proposals.}
+  \item{acceptance.w}{If this is a non-predictive process model and \code{amcmc} is used then this will be a matrix of
+    each random spatial effects acceptance rate at the end of each
+    batch. }
+  \item{acceptance.w.str}{If this is a predictive process model and \code{amcmc} is used then this will be a matrix of
+    each random spatial effects acceptance rate at the end of each batch. }
   \item{sp.effects}{a matrix that holds samples from the posterior
     distribution of the spatial random effects. The rows of this matrix
     correspond to the \eqn{n}{n} point observations and the columns are the
@@ -120,6 +130,8 @@ spMvGLM(formula, family="binomial", data = parent.frame(), coords, knots,
 large datasets. \emph{Computational Statistics and Data Analysis}, DOI: 10.1016/j.csda.2008.09.008    
   
   Banerjee, S., Carlin, B.P., and Gelfand, A.E. (2004). Hierarchical modeling and analysis for spatial data. Chapman and Hall/CRC Press, Boca Raton, Fla.
+  
+   Roberts G.O. and Rosenthal J.S. (2006) Examples of Adaptive MCMC. \url{http://probability.ca/jeff/ftpdir/adaptex.pdf} Preprint. 
 }
 
 \author{
@@ -170,10 +182,9 @@ A.starting <- diag(1,q)[lower.tri(diag(1,q), TRUE)]
 beta.starting <- coefficients(glm(y~X-1, family="poisson"))
 beta.tuning <- t(chol(vcov(glm(y~X-1, family="poisson"))))
 
-n.samples <- 15000
+n.samples <- 5000
 
 m.1 <- spMvGLM(list(y.1~1,y.2~1,y.3~1), family="poisson", coords=coords,
-               knots=c(8,8,0),
                starting=
                list("beta"=beta.starting, "phi"=rep(0.06,q),
                     "A"=A.starting, "w"=0), 

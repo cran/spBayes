@@ -1,7 +1,6 @@
 \name{spPredict}
 \alias{spPredict}          
-\title{Prediction for new points given a spGGT, spLM, spMvLM, spGLM,
-  spMvGLM, or bayesGeostatExact object}
+\title{Prediction for new points given a model object}
 
 \description{
   The function \code{spPredict} collects a posterior predictive sample

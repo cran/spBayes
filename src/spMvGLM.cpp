@@ -328,16 +328,17 @@ extern "C" {
       //Likelihood with Jacobian   
       //
       logPostCand = 0.0;
-      
-      //
-      //Jacobian and IW priors for K = A'A and Psi = L'L
-      //
+
 
       if(betaPrior == "normal"){
 	for(i = 0; i < p; i++){
 	  logPostCand += dnorm(beta[i], betaMu[i], betaSd[i], 1);
 	}
-      }
+      }      
+
+      //
+      //Jacobian and IW priors for K = A'A
+      //
 
       //AtA prior with jacob.
       logDetK = 0.0;

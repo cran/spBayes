@@ -1,28 +1,22 @@
 \name{spDIC}
 \alias{spDIC}          
-\title{Calculates model DIC and associated statistics given a bayesLMRef, bayesLMConjugate, spGGT,
-  spLM, spMvLM, bayesGeostatExact object}
+\title{Calculates DIC and associated statistics given a model object}
 
 \description{
   The function \code{spDIC} calculates model DIC and associated
   statistics given a \code{\link{bayesLMRef}}, \code{\link{bayesLMConjugate}}, \code{\link{spGGT}}, \code{\link{spLM}},  
-  \code{\link{spMvLM}}, or \code{\link{bayesGeostatExact}} object.
+  \code{\link{spMvLM}}, \code{\link{bayesGeostatExact}}, or
+  \code{\link{spGLM}} object.
 }
 
 \usage{
-  spDIC(sp.obj, DIC.marg=TRUE, DIC.unmarg=TRUE,
-         start=1, end, thin=1, verbose=TRUE, ...)
+  spDIC(sp.obj, start=1, end, thin=1, verbose=TRUE, ...)
 }
 
 \arguments{
   \item{sp.obj}{an object returned by \code{\link{bayesLMRef}}, \code{\link{bayesLMConjugate}}, \code{\link{spGGT}},
-  \code{\link{spLM}}, \code{\link{spMvLM}}, or \code{\link{bayesGeostatExact}}}
-  \item{DIC.marg}{a logical value indicating if marginalized DIC and
-    associated statistics should be calculated. Note, this argument is ignored
-    when \code{sp.obj} specifies a non-spatial model. }
-  \item{DIC.unmarg}{a logical value indicating if unmarginalized DIC and
-    associated statistics should be calculated. Note, this argument is ignored
-    when \code{sp.obj} specifies a non-spatial model.}
+    \code{\link{spLM}}, \code{\link{spMvLM}},
+  \code{\link{bayesGeostatExact}}, or \code{\link{spGLM}}}
   \item{start}{specifies the first sample included in the DIC calculation.
     This is useful for those who choose to acknowledge chain burn-in.  }
   \item{end}{specifies the last sample included  in the prediction calculation.
@@ -38,13 +32,8 @@
 
 \value{
   A list with some of the following tags:
-  \item{DIC}{a matrix holding DIC and associated statistics when
-  \code{sp.obj} specifies a non-spatial model.  }
-  \item{DIC.marg}{a matrix holding marginalized DIC and associated
-    statistics.  }
-  \item{DIC.unmarg}{a matrix holding unmarginalized DIC and associated
-    statistics.  }
-  \item{sp.effects}{if DIC.ummarg is true and if \code{sp.obj}
+  \item{DIC}{a matrix holding DIC and associated statistics}
+  \item{sp.effects}{if \code{sp.obj}
   specifies a spatial model without pre-calculated spatial effects then \code{spDIC} calculates the
     spatial effects. }
 }
@@ -53,7 +42,7 @@
   Please refer to Section 3.3 in the vignette.
 }
 
-\seealso{\code{\link{bayesLMRef}}, \code{\link{bayesLMConjugate}}, \code{\link{spGGT}}, \code{\link{bayesGeostatExact}}, \code{\link{spLM}}}
+\seealso{\code{\link{bayesLMRef}}, \code{\link{bayesLMConjugate}}, \code{\link{spGGT}}, \code{\link{bayesGeostatExact}}, \code{\link{spLM}}, \code{\link{spGLM}}}
 
 \references{
   Banerjee, S., Carlin, B.P., and Gelfand, A.E. (2004). Hierarchical modeling and analysis for spatial data. Chapman and Hall/CRC Press, Boca Raton, Fla.
@@ -86,9 +75,9 @@ m.1a <- spLM(Y~1, coords=coords, knots=c(5, 5, 0),
              priors=list("phi.Unif"=c(0.3, 3), "sigma.sq.IG"=c(2, 1),
                "tau.sq.IG"=c(2, 1)),
              cov.model="exponential",
-             n.samples=1000, verbose=TRUE, n.report=100)
+             n.samples=1000, verbose=FALSE, n.report=100)
 
-print(spDIC(m.1a, start=100, thin=2, DIC.marg=TRUE, DIC.unmarg=TRUE))
+print(spDIC(m.1a, start=100, thin=2)$DIC)
 
 m.1b <- spLM(Y~1, coords=coords, knots=c(7, 7, 0),
              starting=list("phi"=0.6,"sigma.sq"=1, "tau.sq"=1),
@@ -96,9 +85,9 @@ m.1b <- spLM(Y~1, coords=coords, knots=c(7, 7, 0),
              priors=list("phi.Unif"=c(0.3, 3), "sigma.sq.IG"=c(2, 1),
                "tau.sq.IG"=c(2, 1)),
              cov.model="exponential",
-             n.samples=1000, verbose=TRUE, n.report=100)
+             n.samples=1000, verbose=FALSE, n.report=100)
 
-print(spDIC(m.1b, start=100, thin=2, DIC.marg=TRUE, DIC.unmarg=TRUE))
+print(spDIC(m.1b, start=100, thin=2)$DIC)
 
 m.2 <- spLM(Y~1, coords=coords, 
              starting=list("phi"=0.6,"sigma.sq"=1, "tau.sq"=1),
@@ -106,9 +95,9 @@ m.2 <- spLM(Y~1, coords=coords,
              priors=list("phi.Unif"=c(0.3, 3), "sigma.sq.IG"=c(2, 1),
                "tau.sq.IG"=c(2, 1)),
              cov.model="exponential",
-             n.samples=1000, verbose=TRUE, n.report=100)
+             n.samples=1000, verbose=FALSE, n.report=100)
 
-print(spDIC(m.2, start=100, thin=2, DIC.marg=TRUE, DIC.unmarg=TRUE))
+print(spDIC(m.2, start=100, thin=2)$DIC)
 
 ###########################################
 ##    DIC for bayesGeostatExact
@@ -141,9 +130,9 @@ m.3 <-
                       coords=coords, phi=phi, alpha=alpha,
                       sigma.sq.prior.shape=sigma.sq.prior.shape,
                       sigma.sq.prior.rate=sigma.sq.prior.rate,
-                      sp.effects=FALSE)
+                      sp.effects=FALSE, verbos=FALSE)
 
-print(spDIC(m.3, DIC.marg=TRUE, DIC.unmarg=FALSE))
+print(spDIC(m.3)$DIC)
 
 ##Without covariates
 p <- 1 ##intercept only
@@ -158,9 +147,9 @@ m.4 <-
                       coords=coords, phi=phi, alpha=alpha,
                       sigma.sq.prior.shape=sigma.sq.prior.shape,
                       sigma.sq.prior.rate=sigma.sq.prior.rate,
-                      sp.effects=FALSE)
+                      sp.effects=FALSE, verbose=FALSE)
 
-print(spDIC(m.4, DIC.marg=TRUE, DIC.unmarg=FALSE))
+print(spDIC(m.4)$DIC)
 
 ##Lower DIC is better, so go with the covariates.
 
@@ -191,21 +180,15 @@ m.5 <-
   spGGT(formula=Y.2~1, run.control=run.control,
          coords=coords, var.update.control=var.update.control,
          beta.update.control=beta.control,
-         cov.model="exponential")
+         cov.model="exponential", verbose=FALSE)
 
-##Now with the spGGT object, m.5, calculate the DIC
-##for both the unmarginalized and marginalized models.
-##The likelihoods for these models are given by equation 6 and 7
-##within the vignette.
-
-DIC <- spDIC(m.5)
+DIC <- spDIC(m.5$DIC)
 print(DIC)
 
 ###########################################
 ##     Compare DIC between non-spatial
 ##           and spatial models
 ###########################################
-
 data(FBC07.dat)
 Y.2 <- FBC07.dat[1:150,"Y.2"]
 coords <- as.matrix(FBC07.dat[1:150,c("coord.X", "coord.Y")])
@@ -215,18 +198,12 @@ coords <- as.matrix(FBC07.dat[1:150,c("coord.X", "coord.Y")])
 ##############################
 m.1 <- bayesLMConjugate(Y.2~1, n.samples = 2000,
                           beta.prior.mean=0, beta.prior.precision=0,
-                          prior.shape=-0.5, prior.rate=0)
+                          prior.shape=-0.5, prior.rate=0, verbose=FALSE)
 
 summary(m.1$p.samples)
 
 dic.m1 <- spDIC(m.1)
-
-##> dic.m1
-##                  [,1]
-##bar.D       503.023678
-##D.bar.Omega 501.059965
-##pD            1.963713
-##DIC         504.987392
+print(dic.m1)
 
 ##############################
 ##Spatial model
@@ -237,29 +214,12 @@ m.2 <- spLM(Y.2~1, coords=coords, knots=c(6,6,0),
              priors=list("phi.Unif"=c(0.06, 3), "sigma.sq.IG"=c(2, 5),
                "tau.sq.IG"=c(2, 5)),
              cov.model="exponential",
-             n.samples=2000, verbose=TRUE, n.report=100)
+             n.samples=2000, verbose=FALSE, n.report=100)
 
 summary(m.2$p.samples)
 
 dic.m2 <- spDIC(m.2)
-
-##> dic.m2
-##$DIC.marg
-##                 value
-##bar.D       479.904433
-##D.bar.Omega 476.856815
-##pD            3.047617
-##DIC         482.952050
-
-##$DIC.unmarg
-##                value
-##bar.D       330.50408
-##D.bar.Omega 258.64266
-##pD           71.86142
-##DIC         402.36550
-
-## End(Not run)
-
+print(dic.m2)
 }
 }
 

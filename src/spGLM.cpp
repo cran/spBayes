@@ -105,7 +105,6 @@ extern "C" {
       Rprintf("Number of covariates %i (including intercept if specified).\n\n", p);
       Rprintf("Using the %s spatial correlation model.\n\n", covModel.c_str());
       
-
       Rprintf("Number of MCMC samples %i.\n\n", nSamples);
 
       Rprintf("Priors and hyperpriors:\n");
@@ -308,7 +307,7 @@ extern "C" {
 	}
       }
 
-      logPostCand = -1.0*(1.0+sigmaSqIGa)*log(sigmaSq)-sigmaSqIGb/sigmaSq+log(sigmaSq); 
+      logPostCand += -1.0*(1.0+sigmaSqIGa)*log(sigmaSq)-sigmaSqIGb/sigmaSq+log(sigmaSq); 
        
       logPostCand += log(phi - phiUnifa) + log(phiUnifb - phi); 
 

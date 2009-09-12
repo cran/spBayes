@@ -40,7 +40,6 @@ extern "C" {
     /*****************************************
                      Set-up
     *****************************************/
-
     double *Y = REAL(Y_r);
     double *X = REAL(X_r);
     int p = INTEGER(p_r)[0];
@@ -130,9 +129,7 @@ extern "C" {
 	Rprintf("\t\tsd:"); printVec(betaSd, p);Rprintf("\n");
       }
       Rprintf("\n");
-
-
-      Rprintf("\tbeta flat.\n\n");   
+ 
       Rprintf("\tK IW hyperpriors df=%.5f\n", KIW_df);
       printMtrx(KIW_S, m, m);
       Rprintf("\n"); 
@@ -405,15 +402,15 @@ extern "C" {
       //
       logPostCand = 0.0;
       
-      //
-      //Jacobian and IW priors for K = A'A and Psi = L'L
-      //
-
       if(betaPrior == "normal"){
 	for(i = 0; i < p; i++){
 	  logPostCand += dnorm(beta[i], betaMu[i], betaSd[i], 1);
 	}
       }
+
+      //
+      //Jacobian and IW priors for K = A'A and Psi = L'L
+      //
 
       //AtA prior with jacob.
       logDetK = 0.0;
@@ -518,7 +515,6 @@ extern "C" {
 	}
       }
     }   
-
 
     //calculate acceptance rate
     REAL(accept_r)[0] = 100.0*accept/s;

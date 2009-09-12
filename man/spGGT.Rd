@@ -4,7 +4,7 @@
   Bayesian spatial regression models}
 
 \description{
-  The function \code{spGGT} fits Gaussian univariate and multivariate stationary Bayesian spatial regression models.
+  The function \code{spGGT} fits Gaussian univariate and multivariate Bayesian spatial regression models.
 }
 
 \usage{
