@@ -453,7 +453,7 @@ extern "C" {
 	    Rprintf("\tbeta[%i]\t\t%3.1f%\t\t%1.5f\n", j, 100.0*REAL(accept_r)[b*nParams+betaIndx+j], exp(spTuning[betaIndx+j]));
 	  }
 	  Rprintf("\tsigma.sq\t%3.1f%\t\t%1.5f\n", 100.0*REAL(accept_r)[b*nParams+sigmaSqIndx], exp(spTuning[sigmaSqIndx]));
-	  Rprintf("\tphi\t\t%3.1f%\t\t%1.5f\n", 100.0*REAL(accept_r)[b*nParams+phiIndx]), exp(spTuning[phiIndx]);
+	  Rprintf("\tphi\t\t%3.1f%\t\t%1.5f\n", 100.0*REAL(accept_r)[b*nParams+phiIndx], exp(spTuning[phiIndx]));
 	  if(covModel == "matern")
 	    Rprintf("\tnu\t\t%3.1f%\t\t%1.5f\n", 100.0*REAL(accept_r)[b*nParams+nuIndx], exp(spTuning[nuIndx]));
 	  Rprintf("-------------------------------------------------\n");
