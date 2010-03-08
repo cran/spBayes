@@ -33,10 +33,13 @@ adaptMetropGibbs <- function(ltd, starting, tuning=1, accept.rate=0.44,
   storage.mode(verbose) <- "integer"
   storage.mode(ntheta) <- "integer"
   storage.mode(report) <- "integer"
- 
+
+  ptm <- proc.time()
+
   out <- .Call("adaptMetropGibbs", fun, starting, tuning, accept.rate, batch, batch.length,
                verbose, ntheta, report, env)
 
+  out$proc.time <- proc.time() - ptm
   out$p.samples <- mcmc(t(out$p.samples))
   out$acceptance <- mcmc(t(out$acceptance))
   out$ltd <- ltd
@@ -44,6 +47,7 @@ adaptMetropGibbs <- function(ltd, starting, tuning=1, accept.rate=0.44,
   out$accept.rate <- accept.rate
   out$batch <- batch
   out$batch.length <- batch.length
+  
     
   out
 }

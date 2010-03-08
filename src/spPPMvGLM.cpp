@@ -14,7 +14,7 @@ using namespace std;
 
 extern "C" {
 
-  SEXP spPPMvGLM(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP m_r, SEXP coordsD_r,SEXP family_r,
+  SEXP spPPMvGLM(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP m_r, SEXP coordsD_r,SEXP family_r, SEXP weights_r,
 		 SEXP isModPp_r, SEXP q_r, SEXP knotsD_r, SEXP coordsKnotsD_r,
 		 SEXP betaPrior_r, SEXP betaNorm_r, SEXP KIW_r, SEXP nuUnif_r, SEXP phiUnif_r,
 		 SEXP phiStarting_r, SEXP AStarting_r, SEXP nuStarting_r, SEXP betaStarting_r, SEXP w_strStarting_r,
@@ -49,6 +49,8 @@ extern "C" {
     int nLTr = m*(m-1)/2+m;
 
     string family = CHAR(STRING_ELT(family_r,0));
+
+    int *weights = INTEGER(weights_r);
 
     //covariance model
     string covModel = CHAR(STRING_ELT(covModel_r,0));
@@ -438,7 +440,7 @@ extern "C" {
       F77_NAME(dgemv)(ntran, &nm, &p, &one, X, &nm, beta, &incOne, &zero, tmp_nm, &incOne);
      
       if(family == "binomial"){
-	logPostCand += logit_logpost(nm, Y, tmp_nm, wCand);
+	logPostCand += binomial_logpost(nm, Y, tmp_nm, wCand, weights);
       }else if(family == "poisson"){
 	logPostCand += poisson_logpost(nm, Y, tmp_nm, wCand);
       }else{

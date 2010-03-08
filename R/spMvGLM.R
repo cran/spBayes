@@ -1,4 +1,4 @@
-spMvGLM <- function(formula, family="binomial", data = parent.frame(), coords, knots, amcmc,
+spMvGLM <- function(formula, family="binomial", weights, data = parent.frame(), coords, knots, amcmc,
                     starting, tuning, priors, cov.model, 
                     n.samples, sub.samples, verbose=TRUE, n.report=100, ...){
   
@@ -53,6 +53,25 @@ spMvGLM <- function(formula, family="binomial", data = parent.frame(), coords, k
   if(!family %in% c("binomial","poisson"))
     stop("error: family must be binomial or poisson")
 
+  ##default for binomial
+  if(family=="binomial"){
+    if(missing(weights)){
+      weights <- rep(1, n*m)
+    }else if(is.matrix(weights)){
+      if(nrow(weights) == n && ncol(weights) == m){
+        weights <- as.vector(t(weights))
+      }else{
+        stop("error: weights matrix must be n-by-m")
+      }
+    }else{
+      stop("error: weights matrix must be n-by-m")
+    }
+  }else{
+    weights <- 0
+  }
+  
+  storage.mode(weights) <- "integer"
+  
   ####################################################
   ##family
   ####################################################
@@ -217,8 +236,16 @@ spMvGLM <- function(formula, family="binomial", data = parent.frame(), coords, k
   
   names(starting) <- tolower(names(starting))   
 
-  if(!"beta" %in% names(starting)){stop("error: beta must be specified in starting value list")}
-  beta.starting <- starting[["beta"]]
+  if("beta" %in% names(starting)){
+    beta.starting <- starting[["beta"]]
+    if(length(beta.starting) != p){stop(paste("error: starting values for beta must be of length ",p,sep=""))}
+  }else{
+    if(family=="poisson"){
+      beta.starting <- coefficients(glm(Y~X-1, family="poisson"))
+    }else{
+      beta.starting <- coefficients(glm((Y/weights)~X-1, weights=weights, family="binomial"))
+    }
+  }
    
   if(!"a" %in% names(starting)){stop("error: A must be specified in starting")}
   A.starting <- starting[["a"]]
@@ -425,14 +452,14 @@ spMvGLM <- function(formula, family="binomial", data = parent.frame(), coords, k
   if(is.pp){
     
     if(!is.amcmc){
-      out <- .Call("spPPMvGLM", Y, X, p, n, m, coords.D, family,
+      out <- .Call("spPPMvGLM", Y, X, p, n, m, coords.D, family, weights,
                    modified.pp, q, knots.D, coords.knots.D,                
                    beta.prior, beta.Norm, K.IW, nu.Unif, phi.Unif,
                    phi.starting, A.starting, nu.starting, beta.starting, w.starting,
                    phi.tuning, A.tuning, nu.tuning, beta.tuning, w.tuning,
                    cov.model, n.samples, verbose, n.report)
     }else{
-      out <- .Call("spPPMvGLM_AMCMC", Y, X, p, n, m, coords.D, family,
+      out <- .Call("spPPMvGLM_AMCMC", Y, X, p, n, m, coords.D, family, weights,
                    modified.pp, q, knots.D, coords.knots.D,                
                    beta.prior, beta.Norm, K.IW, nu.Unif, phi.Unif,
                    phi.starting, A.starting, nu.starting, beta.starting, w.starting,
@@ -443,14 +470,14 @@ spMvGLM <- function(formula, family="binomial", data = parent.frame(), coords, k
   }else{
     
     if(!is.amcmc){
-      out <- .Call("spMvGLM", Y, X, p, n, m, coords.D, family,
+      out <- .Call("spMvGLM", Y, X, p, n, m, coords.D, family, weights,
                    beta.prior, beta.Norm, K.IW, nu.Unif, phi.Unif,
                    phi.starting, A.starting, nu.starting, beta.starting, w.starting,
                    phi.tuning, A.tuning, nu.tuning, beta.tuning, w.tuning,
                    cov.model, n.samples, verbose, n.report)
     }else{
       
-      out <- .Call("spMvGLM_AMCMC", Y, X, p, n, m, coords.D, family,
+      out <- .Call("spMvGLM_AMCMC", Y, X, p, n, m, coords.D, family, weights,
                    beta.prior, beta.Norm, K.IW, nu.Unif, phi.Unif,
                    phi.starting, A.starting, nu.starting, beta.starting, w.starting,
                    phi.tuning, A.tuning, nu.tuning, beta.tuning, w.tuning,
@@ -459,6 +486,7 @@ spMvGLM <- function(formula, family="binomial", data = parent.frame(), coords, k
     }
   }
 
+  out$weights <- matrix(weights,nrow=n,ncol=m)
   out$coords <- coords
   out$is.pp <- is.pp
   out$modified.pp <- modified.pp

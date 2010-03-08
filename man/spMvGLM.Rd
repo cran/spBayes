@@ -9,7 +9,7 @@
 }
 
 \usage{
-spMvGLM(formula, family="binomial", data = parent.frame(), coords, knots,
+spMvGLM(formula, family="binomial", weights, data = parent.frame(), coords, knots,
       amcmc, starting, tuning, priors, cov.model, n.samples, sub.samples,
       verbose=TRUE, n.report=100, ...)
 }
@@ -18,7 +18,13 @@ spMvGLM(formula, family="binomial", data = parent.frame(), coords, knots,
   \item{formula}{for a multivariate model with \eqn{q}{q} response variables, this is a list of univariate formulas.
     See example below. }
   \item{family}{currently only supports \code{binomial} and
-    \code{poisson} data using the logit and log link functions, respectively.}
+    \code{poisson} data using the logit and log link functions,
+    respectively.}
+  \item{weights}{an optional \eqn{n \times q}{n x q} matrix of weights to be used in the fitting
+    process when \code{family} is \code{binomial}. Here the order of the
+  columns correspond to the univariate models in the formula list. Unless otherwise
+    specified a matrix of ones is assumed i.e., one trial at
+    each location.}
   \item{data}{an optional data frame containing the variables in the
     model. If not found in data, the variables are taken from
     \code{environment(formula)}, typically the environment from which \code{spMvGLM} is called.  }
@@ -82,6 +88,12 @@ spMvGLM(formula, family="binomial", data = parent.frame(), coords, knots,
   \item{...}{currently no additional arguments.  }
 }
 
+\details{
+  If a \code{binomial} model is specified the response vector is the
+  number of successful trials at each location. Note, this is different
+  from the \code{glm} argument which is passed as a rate. 
+  }
+
 \value{
   An object of class \code{spMvGLM}, which is a list with the following
   tags:
@@ -141,6 +153,133 @@ large datasets. \emph{Computational Statistics and Data Analysis}, DOI: 10.1016/
 
 \examples{
 \dontrun{
+library(MASS)
+library(MBA)
+library(fields)
+
+################################
+##Spatial multivariate binomial
+################################
+
+##Generate some data
+n <- 50
+q <- 3   
+nltr <- q*(q-1)/2+q
+
+coords <- cbind(runif(n,1,100),runif(n,1,100))
+
+theta <- rep(3/50,q)
+
+A <- matrix(0,q,q)
+A[lower.tri(A,TRUE)] <- rnorm(nltr,1,1)
+K <- A\%*\%t(A)
+
+Psi <- diag(0,q)
+
+c1 <- mvCovInvLogDet(coords=coords, knots=coords,
+                     cov.model="exponential",
+                     V=K, Psi=Psi, theta=theta,
+                     modified.pp=TRUE, SWM=FALSE)
+
+w <- mvrnorm(1,rep(0,nrow(c1$C)),c1$C)
+
+X <- mkMvX(list(matrix(1,n,1), matrix(1,n,1), matrix(1,n,1)))
+beta <- c(-1,0,1)
+
+weight <- 10 ##i.e., trials 
+p <- 1/(1+exp(-(X\%*\%beta+w)))
+y <- rbinom(n*q, rep(weight,n*q), prob=p)
+
+y.1 <- y[seq(1,length(y),q)]
+y.2 <- y[seq(2,length(y),q)]
+y.3 <- y[seq(3,length(y),q)]
+
+##Specify starting values and collect samples
+A.starting <- diag(1,q)[lower.tri(diag(1,q), TRUE)]
+
+fit <- glm((y/weight)~X-1, weights=rep(weight, n*q), family="binomial")
+beta.starting <- coefficients(fit)
+beta.tuning <- t(chol(vcov(fit)))
+
+n.batch <- 200
+batch.length <- 50
+n.samples <- n.batch*batch.length
+
+m.1 <- spMvGLM(list(y.1~1,y.2~1,y.3~1), weights=matrix(weight,n,q),
+               family="binomial", coords=coords, 
+               starting=
+               list("beta"=beta.starting, "phi"=rep(0.06,q),"A"=A.starting, "w"=0), 
+               tuning=
+               list("beta"=beta.tuning, "phi"=rep(0.05,q),"A"=rep(0.01,nltr), "w"=0.001),
+               priors=
+               list("beta.Flat", "phi.Unif"=rep(c(0.03, 0.3),q),"K.IW"=list(q+1, diag(0.1,q))),
+               amcmc=list("n.batch"=n.batch,"batch.length"=batch.length,"accept.rate"=0.43),
+               cov.model="exponential", sub.sample=c(5000,n.samples,10),
+               verbose=TRUE, n.report=100)
+
+print(summary(mcmc(m.1$p.samples)))
+
+beta.hat <- colMeans(m.1$p.samples[,1:q])
+w.hat <- rowMeans(m.1$sp.effects)
+
+p.hat <- 1/(1+exp(-(X\%*\%beta.hat+w.hat)))
+
+p.hat.1 <- p.hat[seq(1,length(p.hat),q)]
+p.hat.2 <- p.hat[seq(2,length(p.hat),q)]
+p.hat.3 <- p.hat[seq(3,length(p.hat),q)]
+
+##Take a look
+par(mfrow=c(3,2))
+surf <- mba.surf(cbind(coords,y.1/weight),no.X=100, no.Y=100, extend=TRUE)$xyz.est
+image.plot(surf, main="Observed rates")
+
+surf <- mba.surf(cbind(coords,p.hat.1),no.X=100, no.Y=100, extend=TRUE)$xyz.est
+image.plot(surf, main="Fitted rates")
+
+surf <- mba.surf(cbind(coords,y.2/weight),no.X=100, no.Y=100, extend=TRUE)$xyz.est
+image.plot(surf)
+
+surf <- mba.surf(cbind(coords,p.hat.2),no.X=100, no.Y=100, extend=TRUE)$xyz.est
+image.plot(surf)
+
+surf <- mba.surf(cbind(coords,y.3/weight),no.X=100, no.Y=100, extend=TRUE)$xyz.est
+image.plot(surf)
+
+surf <- mba.surf(cbind(coords,p.hat.3),no.X=100, no.Y=100, extend=TRUE)$xyz.est
+image.plot(surf)
+
+##Prediction
+m <- 200
+pred.coords <- cbind(runif(m,1,100),runif(m,1,100))
+pred.covars <- mkMvX(list(matrix(1,m,1), matrix(1,m,1), matrix(1,m,1)))
+
+pred <- spPredict(m.1, pred.coords, pred.covars)
+
+pred.p <- rowMeans(pred$y.pred)
+pred.p.1 <- pred.p[seq(1,length(pred.p),q)]
+pred.p.2 <- pred.p[seq(2,length(pred.p),q)]
+pred.p.3 <- pred.p[seq(3,length(pred.p),q)]
+
+##Take a look
+par(mfrow=c(3,2))
+surf <- mba.surf(cbind(coords,y.1/weight),no.X=100, no.Y=100, extend=TRUE)$xyz.est
+image.plot(surf, main="Observed rates")
+
+surf <- mba.surf(cbind(pred.coords,pred.p.1),no.X=100, no.Y=100, extend=TRUE)$xyz.est
+image.plot(surf, main="Fitted rates")
+
+surf <- mba.surf(cbind(coords,y.2/weight),no.X=100, no.Y=100, extend=TRUE)$xyz.est
+image.plot(surf)
+
+surf <- mba.surf(cbind(pred.coords,pred.p.2),no.X=100, no.Y=100, extend=TRUE)$xyz.est
+image.plot(surf)
+
+surf <- mba.surf(cbind(coords,y.3/weight),no.X=100, no.Y=100, extend=TRUE)$xyz.est
+image.plot(surf)
+
+surf <- mba.surf(cbind(pred.coords,pred.p.3),no.X=100, no.Y=100, extend=TRUE)$xyz.est
+image.plot(surf)
+
 ################################
 ##Spatial multivariate poisson
 ################################

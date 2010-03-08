@@ -83,6 +83,8 @@ extern "C" {
       #endif
     }
 
+    ltdCurrent = ltd(ltd_r, theta_r, rho_r);
+
     GetRNGstate();
     
     for(b = 0, s = 0; b < nBatch; b++){
@@ -91,8 +93,6 @@ extern "C" {
 	
 	for(j = 0; j < nTheta; j++){
 	  
-	  ltdCurrent = ltd(ltd_r, theta_r, rho_r);
-	  
 	  thetajCurrent = REAL(theta_r)[j];
 
 	  REAL(theta_r)[j] = rnorm(thetajCurrent, exp(tuning[j]));
@@ -100,6 +100,7 @@ extern "C" {
 	  ltdCand = ltd(ltd_r, theta_r, rho_r);
 
 	  if(runif(0.0, 1.0) <= exp(ltdCand - ltdCurrent)){
+	    ltdCurrent = ltdCand;
 	    accept[j]++;
 	  }else{
 	    REAL(theta_r)[j] = thetajCurrent;

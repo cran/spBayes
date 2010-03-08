@@ -145,6 +145,78 @@ spGLM(formula, family="binomial", weights, data = parent.frame(),
 
 \examples{
 \dontrun{
+
+library(MASS)
+library(MBA)
+library(fields)
+
+################################
+##Spatial binomial
+################################
+
+##Generate binary data
+coords <- as.matrix(expand.grid(seq(0,100,length.out=8), seq(0,100,length.out=8)))
+n <- nrow(coords)
+
+phi <- 3/50
+sigma.sq <- 2
+
+R <- sigma.sq*exp(-phi*as.matrix(dist(coords)))
+w <- mvrnorm(1, rep(0,n), R)
+
+x <- as.matrix(rep(1,n))
+beta <- 0.1
+p <- 1/(1+exp(-(x\%*\%beta+w)))
+
+weights <- rep(1, n)
+weights[coords[,1]>mean(coords[,1])] <- 10
+
+y <- rbinom(n, weights, prob=p)
+
+##Collect samples
+fit <- glm((y/weights)~x-1, weights=weights, family="binomial")
+beta.starting <- coefficients(fit)
+beta.tuning <- t(chol(vcov(fit)))
+
+n.batch <- 500
+batch.length <- 50
+n.samples <- n.batch*batch.length
+
+m.1 <- spGLM(y~1, family="binomial", coords=coords, weights=weights, 
+             starting=
+             list("beta"=beta.starting, "phi"=0.06,"sigma.sq"=1, "w"=0),
+             tuning=
+             list("beta"=beta.tuning, "phi"=0.5, "sigma.sq"=0.1, "w"=0.01),
+             priors=
+             list("beta.Normal"=list(0,10), "phi.Unif"=c(0.03, 0.3),
+                  "sigma.sq.IG"=c(2, 1)),
+             amcmc=
+             list("n.batch"=n.batch,"batch.length"=batch.length,
+                  "accept.rate"=0.43),
+             cov.model="exponential",
+             n.samples=n.samples, sub.samples=c(1000,n.samples,10),
+             verbose=TRUE, n.report=10)
+
+print(summary(mcmc(m.1$p.samples)))
+
+beta.hat <- m.1$p.samples[,"(Intercept)"]
+w.hat <- m.1$sp.effects
+
+y.hat <- 1/(1+exp(-(x\%*\%beta.hat+w.hat)))
+
+y.hat.mu <- apply(y.hat,1,mean)
+y.hat.var <- apply(y.hat,1,var)
+
+##Take a look
+par(mfrow=c(1,2))
+surf <- mba.surf(cbind(coords,y.hat.mu),no.X=100, no.Y=100, extend=TRUE)$xyz.est
+image.plot(surf, main="Interpolated mean of posterior rate\n(observed rate)")
+text(coords, label=paste("(",y/weights,")",sep=""))
+
+surf <- mba.surf(cbind(coords,y.hat.var),no.X=100, no.Y=100, extend=TRUE)$xyz.est
+image.plot(surf, main="Interpolated variance of posterior rate\n(observed # of trials)")
+text(coords, label=paste("(",weights,")",sep=""))
+
 ###########################
 ##Spatial poisson
 ###########################
