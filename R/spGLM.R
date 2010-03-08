@@ -1,6 +1,6 @@
-spGLM <- function(formula, family="binomial", data = parent.frame(), coords, knots, amcmc,
+spGLM <- function(formula, family="binomial", weights, data = parent.frame(), coords, knots, amcmc,
                   starting, tuning, priors, cov.model, 
-                  n.samples, sub.samples, verbose=TRUE, n.report=100, ...){
+                  modified.pp = TRUE, n.samples, sub.samples, verbose=TRUE, n.report=100, ...){
   
   ####################################################
   ##Check for unused args
@@ -30,7 +30,7 @@ spGLM <- function(formula, family="binomial", data = parent.frame(), coords, kno
 
   p <- ncol(X)
   n <- nrow(X)
-  
+    
   ##make sure storage mode is correct
   storage.mode(Y) <- "double"
   storage.mode(X) <- "double"
@@ -43,6 +43,15 @@ spGLM <- function(formula, family="binomial", data = parent.frame(), coords, kno
   if(!family %in% c("binomial","poisson"))
     stop("error: family must be binomial or poisson")
 
+  ##default for binomial
+  if(family=="binomial"){
+    if(missing(weights)){weights <- rep(1, n)}
+    if(length(weights) != n){stop("error: weights vector is misspecified")}
+  }else{
+    weights <- 0
+  }
+  storage.mode(weights) <- "integer"
+  
   ####################################################
   ##sampling method
   ####################################################
@@ -103,8 +112,7 @@ spGLM <- function(formula, family="binomial", data = parent.frame(), coords, kno
   ##Knots
   ####################
   is.pp <- FALSE
-  modified.pp <- FALSE ##fixed for now
-  
+   
   if(!missing(knots)){
     
     if(is.vector(knots) && length(knots) %in% c(2,3)){
@@ -194,12 +202,22 @@ spGLM <- function(formula, family="binomial", data = parent.frame(), coords, kno
   phi.starting <- 0
   nu.starting <- 0
   w.starting <- 0
+  e.starting <- 0
 
   if(missing(starting)){stop("error: starting value list for the parameters must be specified")}
   
   names(starting) <- tolower(names(starting))   
 
-  if("beta" %in% names(starting)) beta.starting <- starting[["beta"]]
+  if("beta" %in% names(starting)){
+    beta.starting <- starting[["beta"]]
+    if(length(beta.starting) != p){stop(paste("error: starting values for beta must be of length ",p,sep=""))}
+  }else{
+    if(family=="poisson"){
+      beta.starting <- coefficients(glm(Y~X-1, family="poisson"))
+    }else{
+      beta.starting <- coefficients(glm((Y/weights)~X-1, weights=weights, family="binomial"))
+    }
+  }
   
   if(!"sigma.sq" %in% names(starting)){stop("error: sigma.sq must be specified in starting value list")}
   sigma.sq.starting <- starting[["sigma.sq"]][1]
@@ -212,30 +230,31 @@ spGLM <- function(formula, family="binomial", data = parent.frame(), coords, kno
     nu.starting <- starting[["nu"]][1]
   }
 
-  if(!"w" %in% names(starting)){stop("error: w must be specified in starting value list")}
-  w.starting <- starting[["w"]]
-
-  if(is.pp){
-
-    if(length(w.starting) == 1){
-      w.starting <- starting[["w"]][1]
-      w.starting <- rep(w.starting, m)
-    }else if(length(w.starting) == m){
-      w.starting <- starting[["w"]]  
-    }else{
-      stop(paste("error: w in the starting value list must be a scalar of length 1 or vector of length ",m," (i.e., the number of predictive process knots)",sep=""))
-    }
-    
+  if(!"w" %in% names(starting)){
+    warning("w is not specified in starting value list. Setting starting value to 0.")
   }else{
-    
-    if(length(w.starting) == 1){
-      w.starting <- starting[["w"]][1]
-      w.starting <- rep(w.starting, n)
-    }else if(length(w.starting) == n){
-      w.starting <- starting[["w"]]  
+    w.starting <- starting[["w"]]
+  }
+
+  if(is.pp && modified.pp){
+    if(!"e" %in% names(starting)){
+      warning("e is not specified in starting value list. Setting starting value to 0.")
     }else{
-      stop(paste("error: w in the starting value list must be a scalar of length 1 or vector of length ",n,sep=""))
+      e.starting <- starting[["e"]]
     }
+  }
+    
+  if(is.pp){
+    if(length(w.starting) == 1){w.starting <- rep(w.starting, m)}  
+    if(length(w.starting) != m){stop(paste("error: w in the starting value list must be a scalar of length 1 or vector of length ",m," (i.e., the number of predictive process knots)",sep=""))}
+  }else{
+    if(length(w.starting) == 1){w.starting <- rep(w.starting, n)}
+    if(length(w.starting) != n){stop(paste("error: w in the starting value list must be a scalar of length 1 or vector of length ",n," (i.e., the number of predictive process knots)",sep=""))}    
+  }
+
+  if(is.pp && modified.pp){
+    if(length(e.starting) == 1){e.starting <- rep(e.starting, n)}   
+    if(length(e.starting) != n){stop(paste("error: e in the starting value list must be a scalar of length 1 or vector of length ",n," (i.e., the number of predictive process knots)",sep=""))}
   }
   
   storage.mode(beta.starting) <- "double"
@@ -243,7 +262,7 @@ spGLM <- function(formula, family="binomial", data = parent.frame(), coords, kno
   storage.mode(sigma.sq.starting) <- "double"
   storage.mode(nu.starting) <- "double"
   storage.mode(w.starting) <- "double"
-  
+  storage.mode(e.starting) <- "double" 
 
   ####################################################
   ##Priors
@@ -266,7 +285,6 @@ spGLM <- function(formula, family="binomial", data = parent.frame(), coords, kno
     beta.prior <- "normal"
   }
 
-  
   if(!"sigma.sq.ig" %in% names(priors)){stop("error: sigma.sq.IG must be specified in priors value list")}
   sigma.sq.IG <- priors[["sigma.sq.ig"]]
   
@@ -300,6 +318,7 @@ spGLM <- function(formula, family="binomial", data = parent.frame(), coords, kno
   sigma.sq.tuning <- 0
   nu.tuning <- 0
   w.tuning <- 0
+  e.tuning <- 0
   
   if(!missing(tuning)){
     
@@ -319,7 +338,7 @@ spGLM <- function(formula, family="binomial", data = parent.frame(), coords, kno
       if(length(beta.tuning) != p)
         stop(paste("error: if beta tuning is a vector, it must be of length ",p,sep=""))
       
-      if(!is.amcmc)
+      if(!is.amcmc && p > 1)
         beta.tuning <- diag(beta.tuning)
       
     }else{
@@ -340,26 +359,31 @@ spGLM <- function(formula, family="binomial", data = parent.frame(), coords, kno
     if(!"w" %in% names(tuning)){stop("error: w must be specified in tuning value list")}
     w.tuning <- tuning[["w"]]
     
-    if(is.pp){
-      if(length(w.tuning) == 1){
-        w.tuning <- tuning[["w"]][1]
-        w.tuning <- rep(w.tuning, m)
-      }else if(length(w.tuning) == m){
-        w.tuning <- tuning[["w"]]  
+   
+    if(!"w" %in% names(tuning)){stop("error: w must be specified in tuning value list")}
+    w.tuning <- tuning[["w"]]
+
+    if(is.pp && modified.pp){
+      if(!"e" %in% names(tuning)){
+        warning("e is not specified in tuning value list. Setting tuning value to 0.")
       }else{
-        stop(paste("error: w in the tuning value list must be a scalar of length 1 or vector of length ",m," (i.e., the number of predictive process knots)",sep=""))
-      }    
-    }else{
-      if(length(w.tuning) == 1){
-        w.tuning <- tuning[["w"]][1]
-        w.tuning <- rep(w.tuning, n)
-      }else if(length(w.tuning) == n){
-        w.tuning <- tuning[["w"]]  
-      }else{
-        stop(paste("error: w in the tuning value list must be a scalar of length 1 or vector of length ",n,sep=""))
+        e.tuning <- tuning[["e"]]
       }
     }
+
+    if(is.pp){
+      if(length(w.tuning) == 1){w.tuning <- rep(w.tuning, m)}  
+      if(length(w.tuning) != m){stop(paste("error: w in the tuning value list must be a scalar of length 1 or vector of length ",m," (i.e., the number of predictive process knots)",sep=""))}
+    }else{
+      if(length(w.tuning) == 1){w.tuning <- rep(w.tuning, n)}
+      if(length(w.tuning) != n){stop(paste("error: w in the tuning value list must be a scalar of length 1 or vector of length ",n," (i.e., the number of predictive process knots)",sep=""))}    
+    }
     
+    if(is.pp && modified.pp){
+      if(length(e.tuning) == 1){e.tuning <- rep(e.tuning, n)}   
+      if(length(e.tuning) != n){stop(paste("error: e in the tuning value list must be a scalar of length 1 or vector of length ",n," (i.e., the number of predictive process knots)",sep=""))}
+    }
+        
   }else{##no tuning provided
     
     if(!is.amcmc){
@@ -376,6 +400,10 @@ spGLM <- function(formula, family="binomial", data = parent.frame(), coords, kno
     }else{
       w.tuning <- rep(0.01,n)
     }
+
+    if(is.pp && modified.pp){
+      e.tuning <- rep(0.0001,n)
+    }
     
   }
   
@@ -384,6 +412,7 @@ spGLM <- function(formula, family="binomial", data = parent.frame(), coords, kno
   storage.mode(sigma.sq.tuning) <- "double"
   storage.mode(nu.tuning) <- "double"
   storage.mode(w.tuning) <- "double"
+  storage.mode(e.tuning) <- "double"
   
   ####################################################
   ##Other stuff
@@ -402,31 +431,42 @@ spGLM <- function(formula, family="binomial", data = parent.frame(), coords, kno
   if(is.pp){
 
     if(!is.amcmc){
-      out <- .Call("spPPGLM", Y, X, p, n, coords.D, family,
+      out <- .Call("spPPGLM", Y, X, p, n, coords.D, family, weights,
                    modified.pp, m, knots.D, coords.knots.D,               
                    beta.prior, beta.Norm, sigma.sq.IG, nu.Unif, phi.Unif,
                    phi.starting, sigma.sq.starting, nu.starting, beta.starting, w.starting,
                    phi.tuning, sigma.sq.tuning, nu.tuning, beta.tuning, w.tuning,
                    cov.model, n.samples, verbose, n.report)  
     }else{
-      out <- .Call("spPPGLM_AMCMC", Y, X, p, n, coords.D, family,
-                   modified.pp, m, knots.D, coords.knots.D,               
-                   beta.prior, beta.Norm, sigma.sq.IG, nu.Unif, phi.Unif,
-                   phi.starting, sigma.sq.starting, nu.starting, beta.starting, w.starting,
-                   phi.tuning, sigma.sq.tuning, nu.tuning, beta.tuning, w.tuning,
-                   cov.model, n.batch, batch.length, accept.rate, verbose, n.report)
+
+      if(modified.pp){
+        
+        out <- .Call("spMPPGLM_AMCMC", Y, X, p, n, coords.D, family, weights,
+                     modified.pp, m, knots.D, coords.knots.D,               
+                     beta.prior, beta.Norm, sigma.sq.IG, nu.Unif, phi.Unif,
+                     phi.starting, sigma.sq.starting, nu.starting, beta.starting, w.starting, e.starting,
+                     phi.tuning, sigma.sq.tuning, nu.tuning, beta.tuning, w.tuning, e.tuning,
+                     cov.model, n.batch, batch.length, accept.rate, verbose, n.report)
+      }else{
+        out <- .Call("spPPGLM_AMCMC", Y, X, p, n, coords.D, family, weights,
+                     modified.pp, m, knots.D, coords.knots.D,               
+                     beta.prior, beta.Norm, sigma.sq.IG, nu.Unif, phi.Unif,
+                     phi.starting, sigma.sq.starting, nu.starting, beta.starting, w.starting,
+                     phi.tuning, sigma.sq.tuning, nu.tuning, beta.tuning, w.tuning,
+                     cov.model, n.batch, batch.length, accept.rate, verbose, n.report)
+      }
     }
     
   }else{
     
     if(!is.amcmc){
-      out <- .Call("spGLM", Y, X, p, n, coords.D, family,
+      out <- .Call("spGLM", Y, X, p, n, coords.D, family, weights,
                    beta.prior, beta.Norm, sigma.sq.IG, nu.Unif, phi.Unif,
                    phi.starting, sigma.sq.starting, nu.starting, beta.starting, w.starting,
                    phi.tuning, sigma.sq.tuning, nu.tuning, beta.tuning, w.tuning,
                    cov.model, n.samples, verbose, n.report)
     }else{
-      out <- .Call("spGLM_AMCMC", Y, X, p, n, coords.D, family,
+      out <- .Call("spGLM_AMCMC", Y, X, p, n, coords.D, family, weights,
                    beta.prior, beta.Norm, sigma.sq.IG, nu.Unif, phi.Unif,
                    phi.starting, sigma.sq.starting, nu.starting, beta.starting, w.starting,
                    phi.tuning, sigma.sq.tuning, nu.tuning, beta.tuning, w.tuning,
@@ -439,7 +479,8 @@ spGLM <- function(formula, family="binomial", data = parent.frame(), coords, kno
   out$modified.pp <- modified.pp
   
   if(is.pp){out$knot.coords <- knot.coords}
-  
+
+  out$weights <- weights
   out$family <- family
   out$Y <- Y
   out$X <- X

@@ -605,18 +605,18 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, ve
     
   }else if(obj.class == "bayesGeostatExact"){
     
-    X <- sp.obj$args$X
-    n <- sp.obj$args$n
-    p <- sp.obj$args$p
-    Y <- sp.obj$args$Y
-    coords <- sp.obj$args$coords
-    cov.model <- sp.obj$args$cov.model
+    X <- sp.obj$X
+    n <- sp.obj$n
+    p <- sp.obj$p
+    Y <- sp.obj$Y
+    coords <- sp.obj$coords
+    cov.model <- sp.obj$cov.model
     samples <- sp.obj$p.samples
-    phi <- sp.obj$args$phi
-    n.samples <- sp.obj$args$n.samples
+    phi <- sp.obj$phi
+    n.samples <- sp.obj$n.samples
     
     if(cov.model == "matern")
-      nu <- sp.obj$args$nu
+      nu <- sp.obj$nu
     
     ##check covars
     if(missing(pred.covars)){stop("error: pred.covars must be specified\n")}
@@ -741,13 +741,6 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, ve
     
     ##subsample if specified
     samples <- as.matrix(sp.obj$p.samples)
-    
-    ##make sure there is not just 2 samples
-    if(nrow(samples) == 2){
-      samples <- t(samples[2:nrow(samples),])##get rid of the starting value row
-    }else{
-      samples <- samples[2:nrow(samples),]##get rid of the starting value row
-    }
     n.samples <- nrow(samples)
     
     if(missing(end))

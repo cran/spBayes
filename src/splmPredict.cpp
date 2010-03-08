@@ -305,18 +305,14 @@ extern "C" {
 
 	 //\tild{\eps}
 	 if(isModPp){
-	   for(i = 0; i < q; i++) tmp_q[i] = rnorm(0.0, sqrt(sigmaSq[s]-tmp_qq[i*q+i]));
+	   for(i = 0; i < q; i++) w_pred[s*q+i] += rnorm(0.0, sqrt(tauSq[s]+sigmaSq[s]-tmp_qq[i*q+i]));
 	 }
 
 	 //XB
 	 F77_NAME(dgemv)(ntran, &q, &p, &one, predX, &q, &beta[s*p], &incOne, &zero, tmp_q2, &incOne);
-	
-	 if(isModPp){
-	   for(i = 0; i < q; i++) y_pred[s*q+i] = rnorm(tmp_q2[i]+w_pred[s*q+i]+tmp_q[i], sqrt(tauSq[s]));
-	 }else{
-	   for(i = 0; i < q; i++) y_pred[s*q+i] = rnorm(tmp_q2[i]+w_pred[s*q+i], sqrt(tauSq[s]));
-	 }
-
+	 
+	 for(i = 0; i < q; i++) y_pred[s*q+i] = rnorm(tmp_q2[i]+w_pred[s*q+i], sqrt(tauSq[s]));
+	 
 	 report(s, nSamples, status, nReport, verbose);
        } //end sample loop
      }

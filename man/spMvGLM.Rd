@@ -35,7 +35,7 @@ spMvGLM(formula, family="binomial", data = parent.frame(), coords, knots,
   \item{starting}{a list with each tag corresponding to a
     parameter name. Valid list tags are \code{beta}, \code{A}, \code{phi}, and \code{nu}.  The value portion of each tag
     is a vector of parameter's starting value. For \code{A} the vector
-    is of length \eqn{\frac{q(q-q)}{2}+q}{q(q-q)/2+q}
+    is of length \eqn{\frac{(q^2-q)}{2}+q}{(q^2-q)/2+q}
     and \code{phi} and \code{nu} are of length \eqn{q}{q}. Here,
     \code{A} holds the the lower-triangle elements in column major ordering of the Cholesky square root
     of the spatial cross-covariance matrix. If the predictive
@@ -47,7 +47,7 @@ spMvGLM(formula, family="binomial", data = parent.frame(), coords, knots,
     \code{phi}, \code{nu}, and \code{w}. The value portion of each tag defines the variance of the Metropolis normal proposal
     distribution. The tuning value for \code{beta} can be a
     vector of length \eqn{p}{p} or the lower-triangle of the
-    \eqn{p\times p}{pxp} Cholesky square-root of the desired proposal variance matrix. For \code{A}, the vector is of length \eqn{\frac{q(q-q)}{2}+q}{q(q-q)/2+q}
+    \eqn{p\times p}{pxp} Cholesky square-root of the desired proposal variance matrix. For \code{A}, the vector is of length \eqn{\frac{(q^2-q)}{2}+q}{(q^2-q)/2+q}
     and \code{phi} and \code{nu} are of length \eqn{q}{q}. If the
     predictive process is used then \code{w} 
     must be of length \eqn{m}{m}; otherwise,

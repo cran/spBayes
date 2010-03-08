@@ -125,7 +125,7 @@ spGGT(formula, data = parent.frame(), coords, run.control,
 }
 
 \seealso{
-  \code{\link{prior}}, \code{\link{spPredict}}, \code{\link{spDIC}}
+  \code{\link{prior}}, \code{\link{spPredict}}
 }
 
 \references{
@@ -210,9 +210,9 @@ plot(Fit.m3$p.samples)
 ##wrong.  An empirical semivariogram is useful
 ##for recognizing that the full model is the correct choice
 ##over the second model.
-print(spDIC(Fit.m1, DIC.unmarg=FALSE))
-print(spDIC(Fit.m2, DIC.unmarg=FALSE))
-print(spDIC(Fit.m3, DIC.unmarg=FALSE))
+print(spDiag(Fit.m1))
+print(spDiag(Fit.m2))
+print(spDiag(Fit.m3))
 
 ##Use akima or MBA to produce interpolated surfaces of
 ##estimated random spatial effects.

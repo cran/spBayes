@@ -306,11 +306,11 @@ extern "C" {
 	
 	 if(family == "binomial"){
 	   for(i = 0; i < gm; i++){
-	     yPred[s*gm+i] =  rbinom(1, 1.0/(1.0+exp(-1.0*(tmp_gm[i]+wPred[s*gm+i]))));
+	     yPred[s*gm+i] =  1.0/(1.0+exp(-1.0*(tmp_gm[i]+wPred[s*gm+i])));//rbinom(1, 1.0/(1.0+exp(-1.0*(tmp_gm[i]+wPred[s*gm+i]))));
 	   }
 	 }else if(family == "poisson"){
 	   for(i = 0; i < gm; i++){
-	     yPred[s*gm+i] =  rpois(exp(tmp_gm[i]+wPred[s*gm+i]));	   
+	     yPred[s*gm+i] =  exp(tmp_gm[i]+wPred[s*gm+i]);//rpois(exp(tmp_gm[i]+wPred[s*gm+i]));	   
 	   }
 	 }else{
 	   error("c++ error: family misspecification in spMvGLMPredict\n");
@@ -426,11 +426,11 @@ extern "C" {
 
 	 if(family == "binomial"){
 	   for(i = 0; i < gm; i++){
-	     yPred[s*gm+i] =  rbinom(1, 1.0/(1.0+exp(-1.0*(tmp_gm[i]+wPred[s*gm+i]))));
+	     yPred[s*gm+i] =  1.0/(1.0+exp(-1.0*(tmp_gm[i]+wPred[s*gm+i])));//rbinom(1, 1.0/(1.0+exp(-1.0*(tmp_gm[i]+wPred[s*gm+i]))));
 	   }
 	 }else if(family == "poisson"){
 	   for(i = 0; i < gm; i++){
-	     yPred[s*gm+i] =  rpois(exp(tmp_gm[i]+wPred[s*gm+i]));	   
+	     yPred[s*gm+i] =  exp(tmp_gm[i]+wPred[s*gm+i]);//rpois(exp(tmp_gm[i]+wPred[s*gm+i]));	   
 	   }
 	 }else{
 	   error("c++ error: family misspecification in spMvGLMPredict\n");

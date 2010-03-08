@@ -1,10 +1,10 @@
 \name{spPredict}
 \alias{spPredict}          
-\title{Prediction for new points given a model object}
+\title{Prediction for new locations given a model object}
 
 \description{
   The function \code{spPredict} collects a posterior predictive sample
-  for a set of new points given a \code{\link{spGGT}},
+  for a set of new locations given a \code{\link{spGGT}},
   \code{\link{spLM}}, \code{\link{spMvLM}}, \code{\link{spGLM}},
   \code{\link{spMvGLM}}, or \code{\link{bayesGeostatExact}} object.
 }
@@ -19,11 +19,12 @@
   \code{\link{bayesGeostatExact}}, \code{\link{spLM}},
   \code{\link{spMvLM}}, \code{\link{spGLM}}, or \code{\link{spMvGLM}}}
   \item{pred.coords}{an \eqn{n \times 2}{n x 2} matrix of \eqn{m} prediction
-    point coordinates in \eqn{R^2}{R^2} (e.g., easting and northing).
+    location coordinates in \eqn{R^2}{R^2} (e.g., easting and northing).
     The first column is assumed to be easting coordinates and the second column
-    northing coordinates. }
+    northing coordinates. Prediction locations cannot coincide with
+  observed locations. }
   \item{pred.covars}{an \eqn{n \times p}{n x p} design matrix associated
-    with the new points.  If this is a multivariate prediction defined
+    with the new locations.  If this is a multivariate prediction defined
     by \eqn{m}{m} models, the multivariate design matrix can be created
     by passing a list of the \eqn{m}{m} univariate design matrices to
     the \code{\link{mkMvX}} function. }
@@ -41,19 +42,27 @@
 }
 
 \value{
-  \item{obs.coords}{the matrix of the observation coordinates.  }
-  \item{pred.coords}{the matrix of prediction point coordinates specified by \code{pred.coords}. }
-  \item{pp.samples}{a matrix that holds samples from the posterior
-    predictive distribution(s). For multivariate models the rows of this matrix
-    correspond to the predicted points and the columns are the posterior
-    predictive samples.  If prediction is for \eqn{m}{m} response variables the \code{pp.samples} matrix has
-    \eqn{mn}{mn} rows.  The predictions for points are held in rows
+  \item{y.pred}{a matrix that holds samples from the posterior
+    predictive distribution. For multivariate models the rows of this matrix
+    correspond to the predicted locations and the columns are the posterior
+    predictive samples.  If prediction is for \eqn{m}{m} response
+  variables the \code{y.pred} matrix has
+    \eqn{mn}{mn} rows.  The predictions for locations are held in rows
     1:m, (m+1):2m, ..., ((i-1)m+1):im, ..., ((n-1)m+1):nm, where i
-    = 1 ... n (e.g., the samples for the first point are in rows 1:m,
-    second point in rows (m+1):2m, etc.). For
-    \code{bayesGeostatExact}, the rows of this matrix
-    correspond to the predicted points and the columns are the posterior
-    predictive samples.}
+    = 1 ... n (e.g., the samples for the first location are in rows 1:m,
+    second location in rows (m+1):2m, etc.). For \code{spGLM} the \code{y.pred} matrix holds
+  posterior predictive samples for
+  \eqn{\frac{1}{1+\exp(-x(s)'\beta-w(s))}}{1/1+(exp(-x(s)'B-w(s)))} and
+  \eqn{\exp(x(s)'\beta+w(s))}{exp(x(s)'B+w(s))} for
+  \code{family} binomial and poisson, respectively. Here \eqn{s}{s} indexes
+  the prediction location, \eqn{\beta}{B} are the regression coefficients, and \eqn{w}{w} is the associated random
+  spatial effect. These values can be fed directly into \code{rbinom}
+  or \code{rpois} to generate the realization from the respective
+  distribution. }
+\item{w.pred}{a matrix that holds samples from the random spatial effects
+  posterior predictive distribution. Again, matrix rows correspond to
+  locations and columns to samples. 
+  }
 }
 
 \seealso{\code{\link{spGGT}}, \code{\link{bayesGeostatExact}},
@@ -81,115 +90,9 @@
 library(MBA)
 
 #########################
-##Prediction for spMvGLM
-#########################
-
-##Generate some count data
-n <- 100
-q <- 3   
-nltr <- q*(q-1)/2+q
-
-coords <- cbind(runif(n,1,100),runif(n,1,100))
-
-theta <- rep(3/50,q)
-
-A <- matrix(0,q,q)
-A[lower.tri(A,TRUE)] <- rnorm(nltr,1,1)
-K <- A\%*\%t(A)
-
-Psi <- diag(0,q)
-
-c1 <- mvCovInvLogDet(coords=coords, knots=coords,
-                     cov.model="exponential",
-                     V=K, Psi=Psi, theta=theta,
-                     modified.pp=TRUE, SWM=FALSE)
-
-w <- mvrnorm(1,rep(0,nrow(c1$C)),c1$C)
-
-X <- mkMvX(list(matrix(1,n,1), matrix(1,n,1), matrix(1,n,1)))
-beta <- c(-1,0,1)
-y <- rpois(n*q, exp(X\%*\%beta+w))
-
-y.1 <- y[seq(1,length(y),q)]
-y.2 <- y[seq(2,length(y),q)]
-y.3 <- y[seq(3,length(y),q)]
-
-##Specify starting values and collect samples. For
-##a true analysis, several longer chains should be
-##run.
-A.starting <- diag(1,q)[lower.tri(diag(1,q), TRUE)]
-
-beta.starting <- coefficients(glm(y~X-1, family="poisson"))
-beta.tuning <- t(chol(vcov(glm(y~X-1, family="poisson"))))
-
-n.samples <- 5000
-
-m.1 <- spMvGLM(list(y.1~1,y.2~1,y.3~1), family="poisson", coords=coords,
-               knots=c(8,8,0),
-               starting=
-               list("beta"=beta.starting, "phi"=rep(0.06,q),
-                    "A"=A.starting, "w"=0), 
-               tuning=
-               list("beta"=beta.tuning, "phi"=rep(0.01,q),
-                    "A"=rep(0.005,nltr), "w"=0.001),
-               priors=
-               list("beta.Flat", "phi.Unif"=rep(c(0.03, 0.3),q),
-                    "K.IW"=list(q+1, diag(0.1,q))),
-               cov.model="exponential",
-               n.samples=n.samples, sub.samples=c(2000,n.samples,10),
-               verbose=TRUE, n.report=500)
-
-
-pred.coords <- expand.grid(seq(0,100,10), seq(0,100,10))
-m <- nrow(pred.coords)
-pred.covars <- mkMvX(list(matrix(1,m,1), matrix(1,m,1), matrix(1,m,1)))
-
-out <-
-  spPredict(m.1, pred.coords=pred.coords, pred.covars=pred.covars)
-
-y.hat <- rowMeans(out$y.pred)
-
-y.hat.1 <- y.hat[seq(1,length(y.hat),q)]
-y.hat.2 <- y.hat[seq(2,length(y.hat),q)]
-y.hat.3 <- y.hat[seq(3,length(y.hat),q)]
-
-##Take a look
-par(mfrow=c(3,2))
-surf <- mba.surf(cbind(coords,y.1),no.X=100, no.Y=100, extend=TRUE)$xyz.est
-image(surf, main="Observed counts")
-contour(surf, drawlabels=FALSE, add=TRUE)
-text(coords, labels=y.1, cex=1, col="blue")
-
-surf <- mba.surf(cbind(pred.coords,y.hat.1),no.X=100, no.Y=100, extend=TRUE)$xyz.est
-image(surf, main="Predicted counts")
-contour(surf, add=TRUE)
-contour(surf, drawlabels=FALSE, add=TRUE)
-text(pred.coords, labels=round(y.hat.1,0), cex=1, col="green")
-
-surf <- mba.surf(cbind(coords,y.2),no.X=100, no.Y=100, extend=TRUE)$xyz.est
-image(surf)
-contour(surf, drawlabels=FALSE, add=TRUE)
-text(coords, labels=y.2, cex=1, col="blue")
-
-surf <- mba.surf(cbind(pred.coords,y.hat.2),no.X=100, no.Y=100, extend=TRUE)$xyz.est
-image(surf)
-contour(surf, drawlabels=FALSE, add=TRUE)
-text(pred.coords, labels=round(y.hat.2,0), cex=1, col="green")
-
-surf <- mba.surf(cbind(coords,y.3),no.X=100, no.Y=100, extend=TRUE)$xyz.est
-image(surf)
-contour(surf, drawlabels=FALSE, add=TRUE)
-text(coords, labels=y.3, cex=1, col="blue")
-
-surf <- mba.surf(cbind(pred.coords,y.hat.3),no.X=100, no.Y=100, extend=TRUE)$xyz.est
-image(surf)
-contour(surf, drawlabels=FALSE, add=TRUE)
-text(pred.coords, labels=round(y.hat.3,0), cex=1, col="green")
-
-
-#########################
 ##Prediction for spGLM
 #########################
+set.seed(1234)
 
 ##Generate count data
 n <- 300
@@ -231,7 +134,9 @@ pred.coords <- expand.grid(seq(0,100,5), seq(0,100,5))
 out <- spPredict(m.1, pred.coords=pred.coords,
                  pred.covars=as.matrix(rep(1,nrow(pred.coords))))
 
-y.pred <- rowMeans(out$y.pred)
+##Get realizations using rpois
+y.pred <-
+  rowMeans(apply(out$y.pred, 2, function(x) rpois(length(x),x)))
 
 ##Take a look
 par(mfrow=c(1,2))
@@ -244,7 +149,7 @@ surf <-
   mba.surf(cbind(pred.coords, y.pred),no.X=100, no.Y=100, extend=TRUE)$xyz.est
 image(surf, main="Predicted counts")
 contour(surf, add=TRUE)
-points(pred.coords, pch=19, cex=0.5, col="blue")
+locations(pred.coords, pch=19, cex=0.5, col="blue")
 
 
 #########################
@@ -325,7 +230,7 @@ image(surf, main="Observed"); contour(surf, add=TRUE)
 surf <- mba.surf(cbind(pred.coords,pred.w.1),
                  no.X=100, no.Y=100, extend=T)$xyz.est
 image(surf, main="Predicted"); contour(surf, add=TRUE)
-points(m.1$knot.coords, pch=19, cex=1)
+locations(m.1$knot.coords, pch=19, cex=1)
 
 surf <- mba.surf(cbind(obs.coords,w.2),
                  no.X=100, no.Y=100, extend=T)$xyz.est
@@ -334,7 +239,7 @@ image(surf); contour(surf, add=TRUE)
 surf <- mba.surf(cbind(pred.coords,pred.w.2),
                  no.X=100, no.Y=100, extend=T)$xyz.est
 image(surf); contour(surf, add=TRUE)
-points(m.1$knot.coords, pch=19, cex=1)
+locations(m.1$knot.coords, pch=19, cex=1)
 
 surf <- mba.surf(cbind(obs.coords,w.3),
                  no.X=100, no.Y=100, extend=T)$xyz.est
@@ -343,7 +248,7 @@ image(surf); contour(surf, add=TRUE)
 surf <- mba.surf(cbind(pred.coords,pred.w.3),
                  no.X=100, no.Y=100, extend=T)$xyz.est
 image(surf); contour(surf, add=TRUE)
-points(m.1$knot.coords, pch=19, cex=1)
+locations(m.1$knot.coords, pch=19, cex=1)
 
 ###########################################
 ##  Prediction for bayesGeostatExact
@@ -392,21 +297,21 @@ par(mfrow=c(2,2))
 obs.surf <-
   mba.surf(cbind(coords, Y), no.X=100, no.Y=100, extend=T)$xyz.est
 image(obs.surf, xaxs = "r", yaxs = "r", main="Observed response")
-points(coords, pch=19, cex=1, col="green")
+locations(coords, pch=19, cex=1, col="green")
 contour(obs.surf, add=T)
 
 w.hat <- rowMeans(m.1$sp.effects)
 w.surf <-
   mba.surf(cbind(coords, w.hat), no.X=100, no.Y=100, extend=T)$xyz.est
 image(w.surf, xaxs = "r", yaxs = "r", main="Random effects")
-points(coords, pch=19, cex=1, col="green")
+locations(coords, pch=19, cex=1, col="green")
 contour(w.surf, add=T)
 
 y.hat <- rowMeans(m.1.pred)
 y.surf <-
   mba.surf(cbind(pred.coords, y.hat), no.X=100, no.Y=100, extend=T)$xyz.est
 image(y.surf, xaxs = "r", yaxs = "r", main="Predicted response")
-points(pred.coords, pch=19, cex=1, col="black")
+locations(pred.coords, pch=19, cex=1, col="black")
 rect(0, 0, 50, 50, col=NA, border="green")
 contour(y.surf, add=T)
 
@@ -414,8 +319,8 @@ y.var <- apply(m.1.pred, 1, var)
 y.surf <-
   mba.surf(cbind(pred.coords, y.var), no.X=100, no.Y=100, extend=T)$xyz.est
 image(y.surf, xaxs = "r", yaxs = "r", main="Predicted response\nvariance")
-points(coords, pch=19, cex=1, col="green")
-points(pred.coords, pch=19, cex=1, col="black")
+locations(coords, pch=19, cex=1, col="green")
+locations(pred.coords, pch=19, cex=1, col="black")
 rect(0, 0, 50, 50, col=NA, border="green")
 contour(y.surf, add=T)
  
@@ -449,15 +354,15 @@ par(mfrow=c(1,2))
 obs.surf <-
   mba.surf(cbind(coords, Y), no.X=100, no.Y=100, extend=TRUE)$xyz.est
 image(obs.surf, xaxs = "r", yaxs = "r", main="Observed response")
-points(coords)
+locations(coords)
 contour(obs.surf, add=T)
 
 y.hat <- rowMeans(pred$y.pred)
 y.pred.surf <-
   mba.surf(cbind(pred.coords, y.hat), no.X=100, no.Y=100, extend=TRUE)$xyz.est
 image(y.pred.surf, xaxs = "r", yaxs = "r", main="Predicted response")
-points(coords, pch=1, cex=1)
-points(pred.coords, pch=19, cex=1)
+locations(coords, pch=1, cex=1)
+locations(pred.coords, pch=19, cex=1)
 contour(y.pred.surf, add=T)
 legend(1.5,2.5, legend=c("Obs.", "Pred."), pch=c(1,19), bg="white")
 
@@ -483,16 +388,16 @@ par(mfrow=c(1,2))
 obs.surf <-
   mba.surf(cbind(coords, Y), no.X=100, no.Y=100, extend=TRUE)$xyz.est
 image(obs.surf, xaxs = "r", yaxs = "r", main="Observed response")
-points(coords)
+locations(coords)
 contour(obs.surf, add=T)
 
 y.hat <- rowMeans(pred$y.pred)
 y.pred.surf <-
   mba.surf(cbind(pred.coords, y.hat), no.X=100, no.Y=100, extend=TRUE)$xyz.est
 image(y.pred.surf, xaxs = "r", yaxs = "r", main="Predicted response")
-points(coords, pch=1, cex=1)
-points(m.3$knot.coords, pch=3, cex=1)
-points(pred.coords, pch=19, cex=1)
+locations(coords, pch=1, cex=1)
+locations(m.3$knot.coords, pch=3, cex=1)
+locations(pred.coords, pch=19, cex=1)
 contour(y.pred.surf, add=T)
 legend(1.5,2.5, legend=c("Obs.", "Knots", "Pred."),
        pch=c(1,3,19), bg="white")
@@ -534,7 +439,7 @@ Fit <- spGGT(formula=Y.2~1, run.control=run.control,
               cov.model="exponential")
 
 ##Now make predictions for the holdout set.
-##Step 1. make the design matrix for the prediction points.
+##Step 1. make the design matrix for the prediction locations.
 pred.covars <- as.matrix(rep(1, nrow(pred.coords)))
 
 ##Step 2. call spPredict.
@@ -594,7 +499,7 @@ Fit.mv <-
          cov.model="exponential")
 
 ##Now make predictions for the holdout set.
-##Step 1. make the design matrix for the prediction points using
+##Step 1. make the design matrix for the prediction locations using
 ##the mkMvX function.
 pred.covars.1 <- as.matrix(rep(1, nrow(pred.coords)))
 pred.covars.2 <- as.matrix(rep(1, nrow(pred.coords)))
@@ -607,7 +512,7 @@ Pred.mv <- spPredict(Fit.mv, pred.covars=pred.covars.mv,
 
 ##Step 3. check out the predicted random effects and
 ##predicted response variables.   Recall, these are
-##organized as m consecutive rows for each point.
+##organized as m consecutive rows for each location.
 Pred.sp.effects.1 <-
   Pred.mv$pred.sp.effects[seq(1, nrow(Pred.mv$pred.sp.effects), 2),]
 
@@ -638,19 +543,19 @@ Pred.Y.2.surf <-
            no.X=100, no.Y=100, extend=TRUE)$xyz.est
 
 par(mfrow=c(2,2))
-image(Pred.sp.effects.surf, xaxs="r", yaxs="r",
+image(Pred.sp.effects.1.surf, xaxs="r", yaxs="r",
       main="Predicted random spatial effects Y.1")
 contour(Pred.sp.effects.1.surf, add=TRUE)
 
-image(Pred.sp.effects.surf, xaxs="r", yaxs="r",
+image(Pred.sp.effects.2.surf, xaxs="r", yaxs="r",
       main="Predicted random spatial effects Y.2")
 contour(Pred.sp.effects.2.surf, add=TRUE)
 
-image(Pred.sp.effects.surf, xaxs="r", yaxs="r",
+image(Pred.Y.1.surf, xaxs="r", yaxs="r",
       main="Predicted Y.1")
 contour(Pred.Y.1.surf, add=TRUE)
 
-image(Pred.sp.effects.surf, xaxs="r", yaxs="r",
+image(Pred.Y.2.surf, xaxs="r", yaxs="r",
       main="Predicted Y.2")
 contour(Pred.Y.2.surf, add=TRUE)
 

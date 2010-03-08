@@ -12,7 +12,7 @@ using namespace std;
 
 extern "C" {
 
-  SEXP spGLM(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP coordsD_r, SEXP family_r,
+  SEXP spGLM(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP coordsD_r, SEXP family_r, SEXP weights_r,
 	     SEXP betaPrior_r, SEXP betaNorm_r, SEXP sigmaSqIG_r, SEXP nuUnif_r, SEXP phiUnif_r,
 	     SEXP phiStarting_r, SEXP sigmaSqStarting_r, SEXP nuStarting_r, SEXP betaStarting_r, SEXP wStarting_r,
 	     SEXP phiTuning_r, SEXP sigmaSqTuning_r, SEXP nuTuning_r, SEXP betaTuning_r, SEXP wTuning_r,
@@ -46,6 +46,8 @@ extern "C" {
     double *coordsD = REAL(coordsD_r);
     
     string family = CHAR(STRING_ELT(family_r,0));
+
+    int *weights = INTEGER(weights_r);
 
     //covariance model
     string covModel = CHAR(STRING_ELT(covModel_r,0));
@@ -318,7 +320,7 @@ extern "C" {
       F77_NAME(dgemv)(ntran, &n, &p, &one, X, &n, beta, &incOne, &zero, tmp_n, &incOne);
       
       if(family == "binomial"){
-	logPostCand += logit_logpost(n, Y, tmp_n, wCand);
+	logPostCand += binomial_logpost(n, Y, tmp_n, wCand, weights);
       }else if(family == "poisson"){
 	logPostCand += poisson_logpost(n, Y, tmp_n, wCand);
       }else{
@@ -375,12 +377,12 @@ extern "C" {
     //final status report
     if(verbose){
       Rprintf("Sampled: %i of %i, %3.2f%%\n", s, nSamples, 100.0*s/nSamples);
+      Rprintf("-------------------------------------------------\n");
+      #ifdef Win32
+      R_FlushConsole();
+      #endif
     }
-    Rprintf("-------------------------------------------------\n");
-    #ifdef Win32
-    R_FlushConsole();
-    #endif
-    
+
     //untransform variance variables
     for(s = 0; s < nSamples; s++){
       samples[s*nParams+sigmaSqIndx] = exp(samples[s*nParams+sigmaSqIndx]);

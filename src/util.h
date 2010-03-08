@@ -79,6 +79,8 @@ void printVec(double *m, int n);
 
 double logit_logpost(int &n, double *Y, double *eta, double *w);
 
+double binomial_logpost(int &n, double *Y, double *eta, double *w, int *r);
+
 double poisson_logpost(int &n, double *Y, double *eta, double *w);
 
 void report(int &s, int &nSamples, int &status, int &nReport, bool &verbose);

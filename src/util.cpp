@@ -434,6 +434,18 @@ double logit_logpost(int &n, double *Y, double *eta, double *w){
   return loglike;
 }
 
+double binomial_logpost(int &n, double *Y, double *eta, double *w, int *weights){
+  double p, loglike = 0.0;
+  int i;  
+
+  for(i = 0; i < n; i++){
+    p = 1.0/(1+exp(-eta[i]-w[i]));
+    loglike += Y[i]*log(p)+(static_cast<double>(weights[i])-Y[i])*log(1.0-p);
+  }
+
+  return loglike;
+}
+
 
 double poisson_logpost(int &n, double *Y, double *eta, double *w){
   double loglike = 0.0;

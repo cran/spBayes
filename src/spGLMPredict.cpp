@@ -250,11 +250,11 @@ extern "C" {
 
 	 if(family == "binomial"){
 	   for(i = 0; i < q; i++){
-	     y_pred[s*q+i] =  rbinom(1, 1.0/(1.0+exp(-1.0*(tmp_q[i]+w_pred[s*q+i]))));
+	     y_pred[s*q+i] =  1.0/(1.0+exp(-1.0*(tmp_q[i]+w_pred[s*q+i])));//rbinom(1, 1.0/(1.0+exp(-1.0*(tmp_q[i]+w_pred[s*q+i]))));
 	   }
 	 }else if(family == "poisson"){
 	   for(i = 0; i < q; i++){
-	     y_pred[s*q+i] =  rpois(exp(tmp_q[i]+w_pred[s*q+i]));	   
+	     y_pred[s*q+i] =  exp(tmp_q[i]+w_pred[s*q+i]);//rpois(exp(tmp_q[i]+w_pred[s*q+i]));	   
 	   }
 	 }else{
 	   error("c++ error: family misspecification in spGLMPredict\n");
@@ -303,7 +303,7 @@ extern "C" {
 
 	 //\tild{\eps}
 	 if(isModPp){
-	   for(i = 0; i < q; i++) tmp_q[i] = rnorm(0.0, sqrt(sigmaSq[s]-tmp_qq[i*q+i]));
+	   for(i = 0; i < q; i++) w_pred[s*q+i] += rnorm(0.0, sqrt(sigmaSq[s]-tmp_qq[i*q+i]));
 	 }
 
 	 //XB
@@ -311,23 +311,16 @@ extern "C" {
 	
 	 if(family == "binomial"){
 	   for(i = 0; i < q; i++){
-	     y_pred[s*q+i] =  rbinom(1, 1.0/(1.0+exp(-1.0*(tmp_q2[i]+w_pred[s*q+i]))));
+	     y_pred[s*q+i] =  1.0/(1.0+exp(-1.0*(tmp_q2[i]+w_pred[s*q+i])));//rbinom(1, 1.0/(1.0+exp(-1.0*(tmp_q2[i]+w_pred[s*q+i]))));
 	   }
 	 }else if(family == "poisson"){
 	   for(i = 0; i < q; i++){
-	     y_pred[s*q+i] =  rpois(exp(tmp_q2[i]+w_pred[s*q+i]));	   
+	     y_pred[s*q+i] =  exp(tmp_q2[i]+w_pred[s*q+i]);//rpois(exp(tmp_q2[i]+w_pred[s*q+i]));
 	   }
 	 }else{
 	   error("c++ error: family misspecification in spGLMPredict\n");
 	 }	 
-
-	 //from normal prediction
-// 	 if(isModPp){
-// 	   for(i = 0; i < q; i++) y_pred[s*q+i] = rnorm(tmp_q2[i]+w_pred[s*q+i]+tmp_q[i], sqrt(tauSq[s]));
-// 	 }else{
-// 	   for(i = 0; i < q; i++) y_pred[s*q+i] = rnorm(tmp_q2[i]+w_pred[s*q+i], sqrt(tauSq[s]));
-// 	 }
-
+	 
 	 report(s, nSamples, status, nReport, verbose);
        } //end sample loop
      }

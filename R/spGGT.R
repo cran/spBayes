@@ -781,7 +781,9 @@ spGGT <- function(formula, data = parent.frame(), coords, run.control, var.updat
     }
   }
 
-  out$p.samples <- mcmc(out$p.samples)
+
+  ##drop the first row of p.samples (it's the starting values)
+  out$p.samples <- mcmc(out$p.samples[-1,])
   out$X <- X
   out$Y <- Y
   out$m <- m

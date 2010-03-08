@@ -183,6 +183,8 @@ extern "C" {
       }
     }
     
+    double *tmp_m = (double *) R_alloc(m, sizeof(double));
+    double *tmp_m1 = (double *) R_alloc(m, sizeof(double));
     double *tmp_mm = (double *) R_alloc(mm, sizeof(double));
     double *tmp_mm1 = (double *) R_alloc(mm, sizeof(double));
     double *tmp_mm2 = (double *) R_alloc(mm, sizeof(double));
@@ -449,19 +451,37 @@ extern "C" {
 
 	 F77_NAME(dgemv)(ntran, &gm, &p, &one, predX, &gm, &beta[s*p], &incOne, &zero, tmp_gm, &incOne);
 	 F77_NAME(dgemv)(ntran, &gm, &qm, &one, tmp_gmqm, &gm, &w_str[s*qm], &incOne, &zero, &wPred[s*gm], &incOne);
+	 
+	 if(isModPp){
+	   zeros(tmp_m1, m);
+	   for(i = 0; i < g; i++){ 
+	     F77_NAME(dpotrf)(lower, &m, &E[i*mm], &m, &info); if(info != 0){error("c++ error: Cholesky failed in spMvLMPredict\n");}
+ 	     mvrnorm(tmp_m, tmp_m1, &E[i*mm], m, false);
+	     F77_NAME(daxpy)(&m, &one, tmp_m, &incOne, &wPred[s*gm+i*m], &incOne);
+	   }	   
+	 }
 
-       	 for(i = 0; i < gm; i++) tmp_gm[i] += wPred[s*gm+i];
+       	 for(i = 0; i < gm; i++){
+	   tmp_gm[i] += wPred[s*gm+i];
+	 }
 	 
 	 for(i = 0; i < g; i++){  
-   
-	   if(isModPp){
-	     F77_NAME(dpotrf)(lower, &m, &E[i*mm], &m, &info); if(info != 0){error("c++ error: Cholesky failed in spMvLMPredict\n");}
-	     mvrnorm(&yPred[s*gm+i*m], &tmp_gm[i*m], &E[i*mm], m, false);
-	   }else{
-	     mvrnorm(&yPred[s*gm+i*m], &tmp_gm[i*m], LL, m, false);
-	   }
-
+	   mvrnorm(&yPred[s*gm+i*m], &tmp_gm[i*m], LL, m, false);
 	 }
+
+
+//        	 for(i = 0; i < gm; i++) tmp_gm[i] += wPred[s*gm+i];
+	 
+// 	 for(i = 0; i < g; i++){  
+   
+// 	   if(isModPp){
+// 	     F77_NAME(dpotrf)(lower, &m, &E[i*mm], &m, &info); if(info != 0){error("c++ error: Cholesky failed in spMvLMPredict\n");}
+// 	     mvrnorm(&yPred[s*gm+i*m], &tmp_gm[i*m], &E[i*mm], m, false);
+// 	   }else{
+// 	     mvrnorm(&yPred[s*gm+i*m], &tmp_gm[i*m], LL, m, false);
+// 	   }
+
+// 	 }
 
 	 //report
 	 if(verbose){

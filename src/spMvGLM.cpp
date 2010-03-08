@@ -422,11 +422,11 @@ extern "C" {
     //final status report
     if(verbose){
       Rprintf("Sampled: %i of %i, %3.2f%%\n", s, nSamples, 100.0*s/nSamples);
+      Rprintf("-------------------------------------------------\n");
+      #ifdef Win32
+      R_FlushConsole();
+      #endif
     }
-    Rprintf("-------------------------------------------------\n");
-    #ifdef Win32
-    R_FlushConsole();
-    #endif
 
     //untransform variance variables
     for(s = 0; s < nSamples; s++){

@@ -12,11 +12,12 @@ using namespace std;
 
 extern "C" {
 
-  SEXP spGLM_AMCMC(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP coordsD_r, SEXP family_r, SEXP weights_r,
-		   SEXP betaPrior_r, SEXP betaNorm_r, SEXP sigmaSqIG_r, SEXP nuUnif_r, SEXP phiUnif_r,
-		   SEXP phiStarting_r, SEXP sigmaSqStarting_r, SEXP nuStarting_r, SEXP betaStarting_r, SEXP wStarting_r,
-		   SEXP phiTuning_r, SEXP sigmaSqTuning_r, SEXP nuTuning_r, SEXP betaTuning_r, SEXP wTuning_r,
-		   SEXP covModel_r, SEXP nBatch_r, SEXP batchLength_r, SEXP acceptRate_r, SEXP verbose_r, SEXP nReport_r){
+  SEXP spMPPGLM_AMCMC(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP coordsD_r, SEXP family_r, SEXP weights_r,
+		      SEXP isModPp_r, SEXP m_r, SEXP knotsD_r, SEXP coordsKnotsD_r, 
+		      SEXP betaPrior_r, SEXP betaNorm_r, SEXP sigmaSqIG_r, SEXP nuUnif_r, SEXP phiUnif_r,
+		      SEXP phiStarting_r, SEXP sigmaSqStarting_r, SEXP nuStarting_r, SEXP betaStarting_r, SEXP w_strStarting_r, SEXP eStarting_r,
+		      SEXP phiTuning_r, SEXP sigmaSqTuning_r, SEXP nuTuning_r, SEXP betaTuning_r, SEXP w_strTuning_r, SEXP eTuning_r,
+		      SEXP covModel_r, SEXP nBatch_r, SEXP batchLength_r, SEXP acceptRate_r, SEXP verbose_r, SEXP nReport_r){
     
     /*****************************************
                 Common variables
@@ -43,14 +44,19 @@ extern "C" {
     int pp = p*p;
     int n = INTEGER(n_r)[0];
 
-    double *coordsD = REAL(coordsD_r);
-
     string family = CHAR(STRING_ELT(family_r,0));
 
     int *weights = INTEGER(weights_r);
 
     //covariance model
     string covModel = CHAR(STRING_ELT(covModel_r,0));
+
+    int m = INTEGER(m_r)[0];
+    double *knotsD = REAL(knotsD_r);
+    double *coordsKnotsD = REAL(coordsKnotsD_r);
+
+    //if predictive process
+    bool isModPp = true; //static_cast<bool>(INTEGER(isModPp_r)[0]);
 
     //priors and starting
     string betaPrior = CHAR(STRING_ELT(betaPrior_r,0));
@@ -69,7 +75,8 @@ extern "C" {
     double phiStarting = REAL(phiStarting_r)[0];
     double sigmaSqStarting = REAL(sigmaSqStarting_r)[0];
     double *betaStarting = REAL(betaStarting_r);
-    double *wStarting = REAL(wStarting_r);
+    double *w_strStarting = REAL(w_strStarting_r);
+    double *eStarting = REAL(eStarting_r);
 
     double sigmaSqIGa = sigmaSqIG[0]; double sigmaSqIGb = sigmaSqIG[1];
     double phiUnifa = phiUnif[0]; double phiUnifb = phiUnif[1];
@@ -86,7 +93,7 @@ extern "C" {
 
     int nBatch = INTEGER(nBatch_r)[0];
     int batchLength = INTEGER(batchLength_r)[0];
-    double acceptRate = REAL(acceptRate_r)[0];
+    double acceptRate  = REAL(acceptRate_r)[0];
     int nSamples = nBatch*batchLength;
 
     int verbose = INTEGER(verbose_r)[0];
@@ -99,7 +106,12 @@ extern "C" {
       Rprintf("Model fit with %i observations.\n\n", n);
       Rprintf("Number of covariates %i (including intercept if specified).\n\n", p);
       Rprintf("Using the %s spatial correlation model.\n\n", covModel.c_str());
- 
+      
+      if(isModPp)
+	Rprintf("Using modified predictive process with %i knots.\n\n", m);
+      else
+	Rprintf("Using non-modified predictive process with %i knots.\n\n", m);
+    
       Rprintf("Number of MCMC samples %i.\n\n", nSamples);
 
       Rprintf("Priors and hyperpriors:\n");
@@ -118,7 +130,7 @@ extern "C" {
       
       Rprintf("\tphi Unif hyperpriors a=%.5f and b=%.5f\n", phiUnifa, phiUnifb);
       Rprintf("\n");
-
+   
       if(covModel == "matern"){
 	Rprintf("\tnu Unif hyperpriors a=%.5f and b=%.5f\n", nuUnifa, nuUnifb);	  
 	Rprintf("\n");
@@ -155,7 +167,7 @@ extern "C" {
     /*****************************************
          Set-up MCMC sample matrices etc.
     *****************************************/
-    int nn = n*n;
+    int nn = n*n, nm = n*m, mm = m*m;
 
     //spatial parameters
     int nParams, betaIndx, sigmaSqIndx, phiIndx, nuIndx;
@@ -180,8 +192,11 @@ extern "C" {
     if(covModel == "matern") 
       spParams[nuIndx] = logit(nuStarting, nuUnifa, nuUnifb);
 
-    double *w = (double *) R_alloc(n, sizeof(double));
-    F77_NAME(dcopy)(&n, wStarting, &incOne, w, &incOne);
+    double *w_str = (double *) R_alloc(m, sizeof(double));
+    F77_NAME(dcopy)(&m, w_strStarting, &incOne, w_str, &incOne);
+
+    double *e = (double *) R_alloc(n, sizeof(double));
+    F77_NAME(dcopy)(&n, eStarting, &incOne, e, &incOne);
 
     //set tuning
     double *spTuning = (double *) R_alloc(nParams, sizeof(double));
@@ -198,38 +213,52 @@ extern "C" {
     for(i = 0; i < nParams; i++)
       spTuning[i] = log(spTuning[i]);
     
-    double *wTuning = (double *) R_alloc(n, sizeof(double));
-    F77_NAME(dcopy)(&n, REAL(wTuning_r), &incOne, wTuning, &incOne);
+    double *w_strTuning = (double *) R_alloc(m, sizeof(double));
+    F77_NAME(dcopy)(&m, REAL(w_strTuning_r), &incOne, w_strTuning, &incOne);
 
-    for(i = 0; i < n; i++)
-      wTuning[i] = log(wTuning[i]);
-    
+    for(i = 0; i < m; i++)
+      w_strTuning[i] = log(w_strTuning[i]);
+
+    double *eTuning = (double *) R_alloc(n, sizeof(double));
+    F77_NAME(dcopy)(&n, REAL(eTuning_r), &incOne, eTuning, &incOne);
+
     //return stuff  
-    SEXP w_r, samples_r, accept_r, accept_w_r, tuning_r, tuning_w_r;
+    SEXP w_r, w_str_r, samples_r, accept_r, accept_w_str_r, tuning_r, tuning_w_str_r, accept_e_r, tuning_e_r;
     
-    PROTECT(w_r = allocMatrix(REALSXP, n, nSamples)); nProtect++;  
+    PROTECT(w_r = allocMatrix(REALSXP, n, nSamples)); nProtect++; 
+    PROTECT(w_str_r = allocMatrix(REALSXP, m, nSamples)); nProtect++; 
     PROTECT(samples_r = allocMatrix(REALSXP, nParams, nSamples)); nProtect++; 
     PROTECT(accept_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++; //just to monitor acceptance rate
-    PROTECT(accept_w_r = allocMatrix(REALSXP, n, nBatch)); nProtect++; //just to monitor acceptance rate
+    PROTECT(accept_w_str_r = allocMatrix(REALSXP, m, nBatch)); nProtect++; //just to monitor acceptance rate
+    PROTECT(accept_e_r = allocMatrix(REALSXP, n, nBatch)); nProtect++; //just to monitor acceptance rate
     PROTECT(tuning_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++; //just to monitor acceptance rate
-    PROTECT(tuning_w_r = allocMatrix(REALSXP, n, nBatch)); nProtect++; //just to monitor acceptance rate
+    PROTECT(tuning_w_str_r = allocMatrix(REALSXP, m, nBatch)); nProtect++; //just to monitor acceptance rate
+    PROTECT(tuning_e_r = allocMatrix(REALSXP, n, nBatch)); nProtect++; //just to monitor acceptance rate
 
     /*****************************************
        Set-up MCMC alg. vars. matrices etc.
     *****************************************/
     int s=0, status=0, rtnStatus=0;
-    double logPostCurrent = 0, logPostCand = 0, detCand = 0, spParamsjCurrent, wjCurrent;
+    double logPostCurrent = 0, logPostCand = 0, detCand = 0, detCandE = 0, spParamsjCurrent, w_strjCurrent, ejCurrent;
 
     double *accept = (double *) R_alloc(nParams, sizeof(double));
-    double *accept_w = (double *) R_alloc(n, sizeof(double));
+    double *accept_w_str = (double *) R_alloc(m, sizeof(double));
+    double *accept_e = (double *) R_alloc(n, sizeof(double));
 
+    double *ct = (double *) R_alloc(nm, sizeof(double));
+    double *C_str = (double *) R_alloc(mm, sizeof(double));
     double *C = (double *) R_alloc(nn, sizeof(double));
+    double *XB = (double *) R_alloc(n, sizeof(double));
     double *tmp_n = (double *) R_alloc(n, sizeof(double));
-    double *tmp_n1 = (double *) R_alloc(n, sizeof(double));
-
+    double *tmp_m = (double *) R_alloc(m, sizeof(double));
+    double *tmp_nm = (double *) R_alloc(nm, sizeof(double));
+     
     double sigmaSq, phi, nu;
     double *beta = (double *) R_alloc(p, sizeof(double));
-
+    double *w = (double *) R_alloc(n, sizeof(double)); zeros(w, n);
+    double *e_var = (double *) R_alloc(n, sizeof(double)); 
+    double *e_varInv = (double *) R_alloc(n, sizeof(double)); 
+    
     double logMHRatio;
 
     if(verbose){
@@ -264,22 +293,44 @@ extern "C" {
 	  }
 	  
 	  //make the correlation matrix
-	  for(k = 0; k < nn; k++){
+	  for(k = 0; k < mm; k++){
 	    if(nPramPtr == 1)
-	      (covModelObj->*cov1ParamPtr)(phi, C[k], coordsD[k]);
+	      (covModelObj->*cov1ParamPtr)(phi, C_str[k], knotsD[k]);
 	    else //i.e., 2 parameter matern
-	      (covModelObj->*cov2ParamPtr)(phi, nu, C[k], coordsD[k]);
+	      (covModelObj->*cov2ParamPtr)(phi, nu, C_str[k], knotsD[k]);
 	  }
-	  	  
+	  
+	  for(k = 0; k < nm; k++){
+	    if(nPramPtr == 1)
+	      (covModelObj->*cov1ParamPtr)(phi, ct[k], coordsKnotsD[k]);
+	    else //i.e., 2 parameter matern
+	      (covModelObj->*cov2ParamPtr)(phi, nu, ct[k], coordsKnotsD[k]);
+	  }
+	  
 	  //scale by sigma^2
-	  F77_NAME(dscal)(&nn, &sigmaSq, C, &incOne);	
+	  F77_NAME(dscal)(&mm, &sigmaSq, C_str, &incOne);	
+	  F77_NAME(dscal)(&nm, &sigmaSq, ct, &incOne);
 	  
 	  //invert C and log det cov
 	  detCand = 0;
-	  F77_NAME(dpotrf)(upper, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
-	  for(k = 0; k < n; k++) detCand += 2*log(C[k*n+k]);
-	  F77_NAME(dpotri)(upper, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
+	  F77_NAME(dpotrf)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
+	  for(k = 0; k < m; k++) detCand += 2*log(C_str[k*m+k]);
+	  F77_NAME(dpotri)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
+	  	  
+	  //get e's log det cov
+	  F77_NAME(dsymm)(rside, upper, &n, &m, &one, C_str, &m, ct, &n, &zero, tmp_nm, &n);
+	  F77_NAME(dgemm)(ntran, ytran, &n, &n, &m, &one, tmp_nm, &n, ct, &n, &zero, C, &n);
 	  
+	  detCandE = 0;
+	  for(k = 0; k < n; k++){
+	    e_varInv[k] = 1.0/(sigmaSq-C[k*n+k]);
+	    detCandE += 2.0*log(sqrt(sigmaSq-C[k*n+k]));
+	  }
+
+	  //make \tild{w}_{\tild{e}} = \tild{w}+\tild{e}
+	  F77_NAME(dgemv)(ntran, &n, &m, &one, tmp_nm, &n, w_str, &incOne, &zero, w, &incOne);
+	  F77_NAME(daxpy)(&n, &one, e, &incOne, w, &incOne);
+
 	  //Likelihood with Jacobian  
 	  logPostCand = 0.0;
 	  
@@ -297,19 +348,22 @@ extern "C" {
 	    logPostCand += log(nu - nuUnifa) + log(nuUnifb - nu);   
 	  }
 	  
-	  F77_NAME(dgemv)(ntran, &n, &p, &one, X, &n, beta, &incOne, &zero, tmp_n, &incOne);
+	  F77_NAME(dgemv)(ntran, &n, &p, &one, X, &n, beta, &incOne, &zero, XB, &incOne);
 	  
 	  if(family == "binomial"){
-	    logPostCand += binomial_logpost(n, Y, tmp_n, w, weights);
+	    logPostCand += binomial_logpost(n, Y, XB, w, weights);
 	  }else if(family == "poisson"){
-	    logPostCand += poisson_logpost(n, Y, tmp_n, w);
+	    logPostCand += poisson_logpost(n, Y, XB, w);
 	  }else{
 	    error("c++ error: family misspecification in spGLM\n");
 	  }
 	  
 	  //(-1/2) * tmp_n` *  C^-1 * tmp_n
-	  F77_NAME(dsymv)(upper, &n, &one,  C, &n, w, &incOne, &zero, tmp_n1, &incOne);
-	  logPostCand += -0.5*detCand-0.5*F77_NAME(ddot)(&n, w, &incOne, tmp_n1, &incOne);
+	  F77_NAME(dsymv)(upper, &m, &one,  C_str, &m, w_str, &incOne, &zero, tmp_m, &incOne);
+	  logPostCand += -0.5*detCand-0.5*F77_NAME(ddot)(&m, w_str, &incOne, tmp_m, &incOne);
+
+	  for(k = 0; k < n; k++){tmp_n[k] = e[k]*e_varInv[k];}
+	  logPostCand += -0.5*detCandE-0.5*F77_NAME(ddot)(&n, e, &incOne, tmp_n, &incOne);
 
 	  //
 	  //MH accept/reject	
@@ -341,28 +395,53 @@ extern "C" {
 	}
 	
 	//make the correlation matrix
-	for(k = 0; k < nn; k++){
+	for(k = 0; k < mm; k++){
 	  if(nPramPtr == 1)
-	    (covModelObj->*cov1ParamPtr)(phi, C[k], coordsD[k]);
+	    (covModelObj->*cov1ParamPtr)(phi, C_str[k], knotsD[k]);
 	  else //i.e., 2 parameter matern
-	    (covModelObj->*cov2ParamPtr)(phi, nu, C[k], coordsD[k]);
+	    (covModelObj->*cov2ParamPtr)(phi, nu, C_str[k], knotsD[k]);
+	}
+	
+	for(k = 0; k < nm; k++){
+	  if(nPramPtr == 1)
+	    (covModelObj->*cov1ParamPtr)(phi, ct[k], coordsKnotsD[k]);
+	  else //i.e., 2 parameter matern
+	    (covModelObj->*cov2ParamPtr)(phi, nu, ct[k], coordsKnotsD[k]);
 	}
 
 	//scale by sigma^2
-	F77_NAME(dscal)(&nn, &sigmaSq, C, &incOne);
+	F77_NAME(dscal)(&mm, &sigmaSq, C_str, &incOne);	
+	F77_NAME(dscal)(&nm, &sigmaSq, ct, &incOne);
 	
 	//invert C and log det cov
 	detCand = 0;
-	F77_NAME(dpotrf)(upper, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
-	for(k = 0; k < n; k++) detCand += 2*log(C[k*n+k]);
-	F77_NAME(dpotri)(upper, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
-		
-	for(j = 0; j < n; j++){
+	F77_NAME(dpotrf)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
+	for(k = 0; k < m; k++) detCand += 2*log(C_str[k*m+k]);
+	F77_NAME(dpotri)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
+	
+	//get e's log det cov
+	F77_NAME(dsymm)(rside, upper, &n, &m, &one, C_str, &m, ct, &n, &zero, tmp_nm, &n);
+	F77_NAME(dgemm)(ntran, ytran, &n, &n, &m, &one, tmp_nm, &n, ct, &n, &zero, C, &n);
+	
+	detCandE = 0;
+	for(k = 0; k < n; k++){
+	  e_varInv[k] = 1.0/(sigmaSq-C[k*n+k]);
+	  detCandE += 2.0*log(sqrt(sigmaSq-C[k*n+k]));
+	}
+
+	F77_NAME(dgemv)(ntran, &n, &p, &one, X, &n, beta, &incOne, &zero, XB, &incOne);
+
+	//update w*
+	for(j = 0; j < m; j++){
 	  
 	  //propose
-	  wjCurrent = w[j];
-	  w[j] = rnorm(wjCurrent, exp(wTuning[j]));
+	  w_strjCurrent = w_str[j];
+	  w_str[j] = rnorm(w_strjCurrent, exp(w_strTuning[j]));
 
+	  //make \tild{w}_{\tild{e}} = \tild{w}+\tild{e}
+	  F77_NAME(dgemv)(ntran, &n, &m, &one, tmp_nm, &n, w_str, &incOne, &zero, w, &incOne);
+	  F77_NAME(daxpy)(&n, &one, e, &incOne, w, &incOne);
+	  
 	  //Likelihood with Jacobian  
 	  logPostCand = 0.0;
 	  
@@ -380,20 +459,21 @@ extern "C" {
 	    logPostCand += log(nu - nuUnifa) + log(nuUnifb - nu);   
 	  }
 	  
-	  F77_NAME(dgemv)(ntran, &n, &p, &one, X, &n, beta, &incOne, &zero, tmp_n, &incOne);
-	  
 	  if(family == "binomial"){
-	    logPostCand += binomial_logpost(n, Y, tmp_n, w, weights);
+	    logPostCand += binomial_logpost(n, Y, XB, w, weights);
 	  }else if(family == "poisson"){
-	    logPostCand += poisson_logpost(n, Y, tmp_n, w);
+	    logPostCand += poisson_logpost(n, Y, XB, w);
 	  }else{
 	    error("c++ error: family misspecification in spGLM\n");
 	  }
 	  
 	  //(-1/2) * tmp_n` *  C^-1 * tmp_n
-	  F77_NAME(dsymv)(upper, &n, &one,  C, &n, w, &incOne, &zero, tmp_n1, &incOne);
-	  logPostCand += -0.5*detCand-0.5*F77_NAME(ddot)(&n, w, &incOne, tmp_n1, &incOne);
+	  F77_NAME(dsymv)(upper, &m, &one,  C_str, &m, w_str, &incOne, &zero, tmp_m, &incOne);
+	  logPostCand += -0.5*detCand-0.5*F77_NAME(ddot)(&m, w_str, &incOne, tmp_m, &incOne);
 	  
+	  for(k = 0; k < n; k++){tmp_n[k] = e[k]*e_varInv[k];}
+	  logPostCand += -0.5*detCandE-0.5*F77_NAME(ddot)(&n, e, &incOne, tmp_n, &incOne);
+
 	  //
 	  //MH accept/reject	
 	  //      
@@ -403,49 +483,124 @@ extern "C" {
 	  
 	  if(runif(0.0,1.0) <= exp(logMHRatio)){
 	    logPostCurrent = logPostCand;
-	    accept_w[j]++;
+	    accept_w_str[j]++;
 	  }else{
-	    w[j] = wjCurrent;
+	    w_str[j] = w_strjCurrent;
+	  }
+	  	
+	}//end w_str
+
+	//update e
+	for(j = 0; j < n; j++){
+	  
+	  //propose
+	  ejCurrent = e[j];
+	  e[j] = rnorm(ejCurrent, exp(eTuning[j]));
+
+	  //make \tild{w}_{\tild{e}} = \tild{w}+\tild{e}
+	  F77_NAME(dgemv)(ntran, &n, &m, &one, tmp_nm, &n, w_str, &incOne, &zero, w, &incOne);
+	  F77_NAME(daxpy)(&n, &one, e, &incOne, w, &incOne);
+	  
+	  //Likelihood with Jacobian  
+	  logPostCand = 0.0;
+	  
+	  if(betaPrior == "normal"){
+	    for(k = 0; k < p; k++){
+	      logPostCand += dnorm(beta[k], betaMu[k], betaSd[k], 1);
+	    }
 	  }
 	  
-	}//end w
-	
-	
+	  logPostCand += -1.0*(1.0+sigmaSqIGa)*log(sigmaSq)-sigmaSqIGb/sigmaSq+log(sigmaSq); 
+	  
+	  logPostCand += log(phi - phiUnifa) + log(phiUnifb - phi); 
+	  
+	  if(covModel == "matern"){
+	    logPostCand += log(nu - nuUnifa) + log(nuUnifb - nu);   
+	  }
+	  	  
+	  if(family == "binomial"){
+	    logPostCand += binomial_logpost(n, Y, XB, w, weights);
+	  }else if(family == "poisson"){
+	    logPostCand += poisson_logpost(n, Y, XB, w);
+	  }else{
+	    error("c++ error: family misspecification in spGLM\n");
+	  }
+	  
+	  //(-1/2) * tmp_n` *  C^-1 * tmp_n
+	  F77_NAME(dsymv)(upper, &m, &one,  C_str, &m, w_str, &incOne, &zero, tmp_m, &incOne);
+	  logPostCand += -0.5*detCand-0.5*F77_NAME(ddot)(&m, w_str, &incOne, tmp_m, &incOne);
+	  
+	  for(k = 0; k < n; k++){tmp_n[k] = e[k]*e_varInv[k];}
+	  logPostCand += -0.5*detCandE-0.5*F77_NAME(ddot)(&n, e, &incOne, tmp_n, &incOne);
+
+	  //
+	  //MH accept/reject	
+	  //      
+	  
+	  //MH ratio with adjustment
+	  logMHRatio = logPostCand - logPostCurrent;
+	  
+	  if(runif(0.0,1.0) <= exp(logMHRatio)){
+	    logPostCurrent = logPostCand;
+	    accept_e[j]++;
+	  }else{
+	    e[j] = ejCurrent;
+	  }
+	  
+	}//end w_str
+
 	/******************************
                Save samples
 	*******************************/
 	F77_NAME(dcopy)(&nParams, spParams, &incOne, &REAL(samples_r)[s*nParams], &incOne);
 	F77_NAME(dcopy)(&n, w, &incOne, &REAL(w_r)[s*n], &incOne);
-	      
+	F77_NAME(dcopy)(&m, w_str, &incOne, &REAL(w_str_r)[s*m], &incOne);
+	
 	R_CheckUserInterrupt();
-
       }//end batch
       
       //adjust tuning
       for(j = 0; j < nParams; j++){
+
+	double tmpTun = spTuning[j];
+
+	if(accept[j] > acceptRate*batchLength){
+	  spTuning[j] += min(0.01, 1.0/sqrt(static_cast<double>(b+1)));
+	}else{
+	  spTuning[j] -= min(0.01, 1.0/sqrt(static_cast<double>(b+1)));
+	}
 	REAL(accept_r)[b*nParams+j] = accept[j]/batchLength;
 	REAL(tuning_r)[b*nParams+j] = spTuning[j];
-	
-	if(accept[j]/batchLength > acceptRate){
-	  spTuning[j] += min(0.01, 1.0/sqrt(static_cast<double>(b)));
-	}else{
-	  spTuning[j] -= min(0.01, 1.0/sqrt(static_cast<double>(b)));
-	}
+
 	accept[j] = 0.0;
       }
       
-      for(j = 0; j < n; j++){
-	REAL(accept_w_r)[b*n+j] = accept_w[j]/batchLength;
-	REAL(tuning_w_r)[b*n+j] = wTuning[j];
-	
-	if(accept_w[j]/batchLength > acceptRate){
-	  wTuning[j] += min(0.01, 1.0/sqrt(static_cast<double>(b)));
+      for(j = 0; j < m; j++){
+
+	if(accept_w_str[j] > acceptRate*batchLength){
+	  w_strTuning[j] += min(0.01, 1.0/sqrt(static_cast<double>(b+1)));
 	}else{
-	  wTuning[j] -= min(0.01, 1.0/sqrt(static_cast<double>(b)));
+	  w_strTuning[j] -= min(0.01, 1.0/sqrt(static_cast<double>(b+1)));
 	}
-	accept_w[j] = 0.0;
+	REAL(accept_w_str_r)[b*m+j] = accept_w_str[j]/batchLength;
+	REAL(tuning_w_str_r)[b*m+j] = w_strTuning[j];
+
+	accept_w_str[j] = 0.0;
       }
     
+      for(j = 0; j < n; j++){
+
+	if(accept_e[j] > acceptRate*batchLength){
+	  eTuning[j] += min(0.01, 1.0/sqrt(static_cast<double>(b+1)));
+	}else{
+	  eTuning[j] -= min(0.01, 1.0/sqrt(static_cast<double>(b+1)));
+	}
+	REAL(accept_e_r)[b*n+j] = accept_e[j]/batchLength;
+	REAL(tuning_e_r)[b*n+j] = eTuning[j];
+
+	accept_e[j] = 0.0;
+      }
+
       //report
       if(verbose){
 	if(status == nReport){
@@ -488,15 +643,15 @@ extern "C" {
       if(covModel == "matern")
 	REAL(samples_r)[s*nParams+nuIndx] = logitInv(REAL(samples_r)[s*nParams+nuIndx], nuUnifa, nuUnifb);
     }
-   
+    
     //make return object
     SEXP result, resultNames;
     
-    int nResultListObjs = 6;
+    int nResultListObjs = 9;
     
     PROTECT(result = allocVector(VECSXP, nResultListObjs)); nProtect++;
     PROTECT(resultNames = allocVector(VECSXP, nResultListObjs)); nProtect++;
-
+    
     //samples
     SET_VECTOR_ELT(result, 0, samples_r);
     SET_VECTOR_ELT(resultNames, 0, mkChar("p.samples")); 
@@ -504,17 +659,26 @@ extern "C" {
     SET_VECTOR_ELT(result, 1, accept_r);
     SET_VECTOR_ELT(resultNames, 1, mkChar("acceptance"));
 
-    SET_VECTOR_ELT(result, 2, accept_w_r);
-    SET_VECTOR_ELT(resultNames, 2, mkChar("acceptance.w"));
+    SET_VECTOR_ELT(result, 2, accept_w_str_r);
+    SET_VECTOR_ELT(resultNames, 2, mkChar("acceptance.w.str"));
     
     SET_VECTOR_ELT(result, 3, w_r);
     SET_VECTOR_ELT(resultNames, 3, mkChar("sp.effects"));
 
-    SET_VECTOR_ELT(result, 4, tuning_r);
-    SET_VECTOR_ELT(resultNames, 4, mkChar("tuning"));
+    SET_VECTOR_ELT(result, 4, w_str_r);
+    SET_VECTOR_ELT(resultNames, 4, mkChar("sp.effects.knots"));
 
-    SET_VECTOR_ELT(result, 5, tuning_w_r);
-    SET_VECTOR_ELT(resultNames, 5, mkChar("tuning.w"));
+    SET_VECTOR_ELT(result, 5, tuning_r);
+    SET_VECTOR_ELT(resultNames, 5, mkChar("tuning"));
+
+    SET_VECTOR_ELT(result, 6, tuning_w_str_r);
+    SET_VECTOR_ELT(resultNames, 6, mkChar("tuning.w.str"));
+
+    SET_VECTOR_ELT(result, 7, accept_e_r);
+    SET_VECTOR_ELT(resultNames, 7, mkChar("acceptance.e"));
+
+    SET_VECTOR_ELT(result, 8, tuning_e_r);
+    SET_VECTOR_ELT(resultNames, 8, mkChar("tuning.e"));
   
     namesgets(result, resultNames);
    
@@ -523,6 +687,5 @@ extern "C" {
     
     return(result);
 
-    
   }
 }

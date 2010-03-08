@@ -12,7 +12,7 @@ using namespace std;
 
 extern "C" {
 
-  SEXP spPPGLM_AMCMC(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP coordsD_r, SEXP family_r,
+  SEXP spPPGLM_AMCMC(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP coordsD_r, SEXP family_r, SEXP weights_r,
 		     SEXP isModPp_r, SEXP m_r, SEXP knotsD_r, SEXP coordsKnotsD_r, 
 		     SEXP betaPrior_r, SEXP betaNorm_r, SEXP sigmaSqIG_r, SEXP nuUnif_r, SEXP phiUnif_r,
 		     SEXP phiStarting_r, SEXP sigmaSqStarting_r, SEXP nuStarting_r, SEXP betaStarting_r, SEXP w_strStarting_r,
@@ -45,6 +45,8 @@ extern "C" {
     int n = INTEGER(n_r)[0];
 
     string family = CHAR(STRING_ELT(family_r,0));
+
+    int *weights = INTEGER(weights_r);
 
     //covariance model
     string covModel = CHAR(STRING_ELT(covModel_r,0));
@@ -326,7 +328,7 @@ extern "C" {
 	  F77_NAME(dgemv)(ntran, &n, &p, &one, X, &n, beta, &incOne, &zero, tmp_n, &incOne);
 	  
 	  if(family == "binomial"){
-	    logPostCand += logit_logpost(n, Y, tmp_n, w);
+	    logPostCand += binomial_logpost(n, Y, tmp_n, w, weights);
 	  }else if(family == "poisson"){
 	    logPostCand += poisson_logpost(n, Y, tmp_n, w);
 	  }else{
@@ -423,7 +425,7 @@ extern "C" {
 	  F77_NAME(dgemv)(ntran, &n, &p, &one, X, &n, beta, &incOne, &zero, tmp_n, &incOne);
 	  
 	  if(family == "binomial"){
-	    logPostCand += logit_logpost(n, Y, tmp_n, w);
+	    logPostCand += binomial_logpost(n, Y, tmp_n, w, weights);
 	  }else if(family == "poisson"){
 	    logPostCand += poisson_logpost(n, Y, tmp_n, w);
 	  }else{

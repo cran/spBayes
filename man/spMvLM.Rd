@@ -33,7 +33,7 @@ spMvLM(formula, data = parent.frame(), coords, knots,
     parameter name. Valid list tags are \code{beta}, \code{A},
     \code{L}, \code{phi}, and \code{nu}.  The value portion of each tag
     is a vector of parameter's starting value. For \code{A} and \code{L}
-    the vectors are of length \eqn{\frac{q(q-q)}{2}+q}{q(q-q)/2+q}
+    the vectors are of length \eqn{\frac{(q^2-q)}{2}+q}{(q^2-q)/2+q}
     and \code{phi} and \code{nu} are of length \eqn{q}{q}. Here,
     \code{A} and \code{L} hold the the lower-triangle elements in column major ordering of the Cholesky square root
     of the spatial and non-spatial cross-covariance matrices, respectively. }
@@ -42,7 +42,7 @@ spMvLM(formula, data = parent.frame(), coords, knots,
     \code{L}, \code{phi}, and \code{nu}. The value portion of each
     of each tag defines the step size of the proposal used in the
     Metropolis sampling. For \code{A} and \code{L}
-    the vectors are of length \eqn{\frac{q(q-q)}{2}+q}{q(q-q)/2+q}
+    the vectors are of length  \eqn{\frac{(q^2-q)}{2}+q}{(q^2-q)/2+q}
     and \code{phi} and \code{nu} are of length \eqn{q}{q}.  }
   \item{modified.pp}{a logical value indicating if the \emph{modified
     predictive process} should be used (see references below for
@@ -162,7 +162,8 @@ m.1 <- spMvLM(list(w.1~1,w.2~1,w.3~1), coords=coords,
               priors=list("phi.Unif"=rep(c(3/1,3/0.1),q),
                 "K.IW"=list(q+1, diag(1,q)), "Psi.IW"=list(q+1, diag(1,q))),
               modified.pp=TRUE, cov.model="exponential",
-              n.samples=n.samples, sub.samples=c(2500,n.samples,5), verbose=TRUE, n.report=100)
+              n.samples=n.samples, sub.samples=c(2500,n.samples,5),
+              verbose=TRUE, n.report=100)
 
 m.1$p.samples[,paste("phi_",1:q,sep="")] <-
   3/m.1$p.samples[,paste("phi_",1:q,sep="")]

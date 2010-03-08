@@ -481,13 +481,24 @@ bayesGeostatExact <- function (formula, data = parent.frame(), n.samples, beta.p
   ##
   out <- list()
 
-  out$args <- list("X"=X, "n"=n, "p"=p, "Y"=Y, "n.samples"=n.samples, "beta.prior.mean"=beta.prior.mean,
-                   "beta.prior.precision"=beta.prior.precision, "coords"=coords, "cov.model"=cov.model,
-                   "phi"=phi, "alpha"=alpha, "sigma.sq.prior.shape"=sigma.sq.prior.shape,
-                   "sigma.sq.prior.rate"=sigma.sq.prior.rate, "sp.effects"=sp.effects, "alpha"=alpha, "verbose"=verbose)
-
+  out$X <- X
+  out$n <- n
+  out$p <- p
+  out$Y <- Y
+  out$n.samples <- n.samples
+  out$beta.prior.mean <- beta.prior.mean
+  out$beta.prior.precision <- beta.prior.precision
+  out$coords <- coords
+  out$cov.model <- cov.model
+  out$phi <- phi
+  out$alpha <- alpha
+  out$sigma.sq.prior.shape <- sigma.sq.prior.shape
+  out$sigma.sq.prior.rate <- sigma.sq.prior.rate
+  out$alpha <- alpha
+  out$verbose <-verbose
+ 
   if(cov.model == "matern")
-    out$args[["nu"]] <- nu
+    out$nu <- nu
   
   out$p.samples <- mcmc(posterior.samples)
   
