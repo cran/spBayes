@@ -38,7 +38,7 @@ SEXP getListElement (SEXP list, const char *str);
 
 void zeros(double *x, int length);
 
-void identity(double *x, int &nrow);
+void iden(double *x, int &nrow);
 
 void kron(double *a, int &dima1, int &dima2, 
 	  double *b, int &dimb1, int &dimb2, 

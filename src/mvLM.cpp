@@ -130,7 +130,7 @@ extern "C" {
     double *candParams = (double *) R_alloc(nMParams, sizeof(double));
     double *Psi = (double *) R_alloc(mm, sizeof(double));
     double *C = (double *) R_alloc(nm*nm, sizeof(double)); zeros(C, nm*nm);
-    double *I_n = (double *) R_alloc(nn, sizeof(double)); identity(I_n, n);
+    double *I_n = (double *) R_alloc(nn, sizeof(double)); iden(I_n, n);
     double logMHRatio;
     
     double *S_beta = (double *) R_alloc(p*p, sizeof(double));

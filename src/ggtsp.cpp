@@ -764,7 +764,7 @@ extern "C" {
     double *R = (double *) R_alloc(rlength, sizeof(double));
     double *RCurrent = (double *) R_alloc(rlength, sizeof(double));
     double *IKPsi = (double *) R_alloc(rlength, sizeof(double)); zeros(IKPsi, rlength);
-    //double *wCov = (double *) R_alloc(rlength, sizeof(double)); identity(wCov, rnrow);
+    //double *wCov = (double *) R_alloc(rlength, sizeof(double)); iden(wCov, rnrow);
     double *wMu = (double *) R_alloc(rnrow, sizeof(double));
     int Alength = m*m;
     double *mmblk = (double *) R_alloc(Alength, sizeof(double));

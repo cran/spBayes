@@ -148,7 +148,7 @@ extern "C" {
     double *tmpXRowCol = (double *) R_alloc(xnrow*xncol, sizeof(double));
     double *tmpXColCol = (double *) R_alloc(xncol*xncol, sizeof(double));
     int status = 0;
-    double *In = (double *) R_alloc(dlength, sizeof(double)); identity(In, dnrow);
+    double *In = (double *) R_alloc(dlength, sizeof(double)); iden(In, dnrow);
 
     
     if(!haveW  && DICUnmarg){
@@ -773,7 +773,7 @@ extern "C" {
       }
       
       //if no Psi then Psi = I and logDetIKPsi = 0.
-      identity(IKPsi, rnrow);
+      iden(IKPsi, rnrow);
       logDetIKPsi = 0.0;
       
       for(s = 0; s < nSamples; s++){

@@ -22,16 +22,16 @@ extern "C" {
     int inc = 1;
     p = INTEGER(p_R)[0];
     pp = p*p;
-    identity(REAL(tmp1), p);
-    identity(REAL(tmp2), p);
-    identity(REAL(cov), p);
+    iden(REAL(tmp1), p);
+    iden(REAL(tmp2), p);
+    iden(REAL(cov), p);
     
 
     //D = P \Lambda P^T
      for(i = 0, k=0; i < p-1; i++){
       for(j = i+1; j < p; j++, k++){
 
-	identity(REAL(cov), p);
+	iden(REAL(cov), p);
  	REAL(cov)[i*p+i] = REAL(cov)[j*p+j] = cos(REAL(theta)[k]);	
 	REAL(cov)[j*p+i] = REAL(cov)[i*p+j] = sin(REAL(theta)[k]);
 	REAL(cov)[i*p+j] *= -1.0;

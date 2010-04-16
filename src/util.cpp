@@ -170,7 +170,7 @@ void zeros(double *x, int length){
     x[i] = 0.0;
 }
 
-void identity(double *x, int &nrow){
+void iden(double *x, int &nrow){
 
   for(int i = 0; i < nrow; i++){
     for(int j = 0; j < nrow; j++){
