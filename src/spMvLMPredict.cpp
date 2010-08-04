@@ -441,7 +441,8 @@ extern "C" {
 	   for(i = 0, j = 0; i < g; i++){
 	     for(k = 0; k < m; k++){
 	       for(l = 0; l < m; l++){
-		 E[j] = Psi[l*m+k]+K[l*m+k]-tmp_gmgm[(i*m+l)*gm+(i*m+k)];
+		 //E[j] = Psi[l*m+k]+K[l*m+k]-tmp_gmgm[(i*m+l)*gm+(i*m+k)]; //changed 8/4/10
+		 E[j] = K[l*m+k]-tmp_gmgm[(i*m+l)*gm+(i*m+k)];
 		 j++;
 	       }
 	     } 

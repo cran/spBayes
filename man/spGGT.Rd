@@ -4,7 +4,10 @@
   Bayesian spatial regression models}
 
 \description{
-  The function \code{spGGT} fits Gaussian univariate and multivariate Bayesian spatial regression models.
+  The function \code{spGGT} fits Gaussian univariate and multivariate
+  Bayesian spatial regression models. In most cases, we encourage users
+  to use \code{\link{spLM}} or \code{\link{spLM}} over
+  \code{spGGT}. These functions offer a simplified interface and additional functionality to handle large data sets.
 }
 
 \usage{

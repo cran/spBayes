@@ -305,7 +305,7 @@ extern "C" {
 
 	 //\tild{\eps}
 	 if(isModPp){
-	   for(i = 0; i < q; i++) w_pred[s*q+i] += rnorm(0.0, sqrt(tauSq[s]+sigmaSq[s]-tmp_qq[i*q+i]));
+	   for(i = 0; i < q; i++) w_pred[s*q+i] += rnorm(0.0, sqrt(sigmaSq[s]-tmp_qq[i*q+i]));
 	 }
 
 	 //XB

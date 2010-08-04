@@ -149,7 +149,7 @@ surf <-
   mba.surf(cbind(pred.coords, y.pred),no.X=100, no.Y=100, extend=TRUE)$xyz.est
 image(surf, main="Predicted counts")
 contour(surf, add=TRUE)
-locations(pred.coords, pch=19, cex=0.5, col="blue")
+points(pred.coords, pch=19, cex=0.5, col="blue")
 
 
 #########################
@@ -230,7 +230,7 @@ image(surf, main="Observed"); contour(surf, add=TRUE)
 surf <- mba.surf(cbind(pred.coords,pred.w.1),
                  no.X=100, no.Y=100, extend=T)$xyz.est
 image(surf, main="Predicted"); contour(surf, add=TRUE)
-locations(m.1$knot.coords, pch=19, cex=1)
+points(m.1$knot.coords, pch=19, cex=1)
 
 surf <- mba.surf(cbind(obs.coords,w.2),
                  no.X=100, no.Y=100, extend=T)$xyz.est
@@ -239,7 +239,7 @@ image(surf); contour(surf, add=TRUE)
 surf <- mba.surf(cbind(pred.coords,pred.w.2),
                  no.X=100, no.Y=100, extend=T)$xyz.est
 image(surf); contour(surf, add=TRUE)
-locations(m.1$knot.coords, pch=19, cex=1)
+points(m.1$knot.coords, pch=19, cex=1)
 
 surf <- mba.surf(cbind(obs.coords,w.3),
                  no.X=100, no.Y=100, extend=T)$xyz.est
@@ -248,7 +248,7 @@ image(surf); contour(surf, add=TRUE)
 surf <- mba.surf(cbind(pred.coords,pred.w.3),
                  no.X=100, no.Y=100, extend=T)$xyz.est
 image(surf); contour(surf, add=TRUE)
-locations(m.1$knot.coords, pch=19, cex=1)
+points(m.1$knot.coords, pch=19, cex=1)
 
 ###########################################
 ##  Prediction for bayesGeostatExact
@@ -297,21 +297,21 @@ par(mfrow=c(2,2))
 obs.surf <-
   mba.surf(cbind(coords, Y), no.X=100, no.Y=100, extend=T)$xyz.est
 image(obs.surf, xaxs = "r", yaxs = "r", main="Observed response")
-locations(coords, pch=19, cex=1, col="green")
+points(coords, pch=19, cex=1, col="green")
 contour(obs.surf, add=T)
 
 w.hat <- rowMeans(m.1$sp.effects)
 w.surf <-
   mba.surf(cbind(coords, w.hat), no.X=100, no.Y=100, extend=T)$xyz.est
 image(w.surf, xaxs = "r", yaxs = "r", main="Random effects")
-locations(coords, pch=19, cex=1, col="green")
+points(coords, pch=19, cex=1, col="green")
 contour(w.surf, add=T)
 
 y.hat <- rowMeans(m.1.pred)
 y.surf <-
   mba.surf(cbind(pred.coords, y.hat), no.X=100, no.Y=100, extend=T)$xyz.est
 image(y.surf, xaxs = "r", yaxs = "r", main="Predicted response")
-locations(pred.coords, pch=19, cex=1, col="black")
+points(pred.coords, pch=19, cex=1, col="black")
 rect(0, 0, 50, 50, col=NA, border="green")
 contour(y.surf, add=T)
 
@@ -319,8 +319,8 @@ y.var <- apply(m.1.pred, 1, var)
 y.surf <-
   mba.surf(cbind(pred.coords, y.var), no.X=100, no.Y=100, extend=T)$xyz.est
 image(y.surf, xaxs = "r", yaxs = "r", main="Predicted response\nvariance")
-locations(coords, pch=19, cex=1, col="green")
-locations(pred.coords, pch=19, cex=1, col="black")
+points(coords, pch=19, cex=1, col="green")
+points(pred.coords, pch=19, cex=1, col="black")
 rect(0, 0, 50, 50, col=NA, border="green")
 contour(y.surf, add=T)
  
@@ -354,15 +354,15 @@ par(mfrow=c(1,2))
 obs.surf <-
   mba.surf(cbind(coords, Y), no.X=100, no.Y=100, extend=TRUE)$xyz.est
 image(obs.surf, xaxs = "r", yaxs = "r", main="Observed response")
-locations(coords)
+points(coords)
 contour(obs.surf, add=T)
 
 y.hat <- rowMeans(pred$y.pred)
 y.pred.surf <-
   mba.surf(cbind(pred.coords, y.hat), no.X=100, no.Y=100, extend=TRUE)$xyz.est
 image(y.pred.surf, xaxs = "r", yaxs = "r", main="Predicted response")
-locations(coords, pch=1, cex=1)
-locations(pred.coords, pch=19, cex=1)
+points(coords, pch=1, cex=1)
+points(pred.coords, pch=19, cex=1)
 contour(y.pred.surf, add=T)
 legend(1.5,2.5, legend=c("Obs.", "Pred."), pch=c(1,19), bg="white")
 
@@ -388,16 +388,16 @@ par(mfrow=c(1,2))
 obs.surf <-
   mba.surf(cbind(coords, Y), no.X=100, no.Y=100, extend=TRUE)$xyz.est
 image(obs.surf, xaxs = "r", yaxs = "r", main="Observed response")
-locations(coords)
+points(coords)
 contour(obs.surf, add=T)
 
 y.hat <- rowMeans(pred$y.pred)
 y.pred.surf <-
   mba.surf(cbind(pred.coords, y.hat), no.X=100, no.Y=100, extend=TRUE)$xyz.est
 image(y.pred.surf, xaxs = "r", yaxs = "r", main="Predicted response")
-locations(coords, pch=1, cex=1)
-locations(m.3$knot.coords, pch=3, cex=1)
-locations(pred.coords, pch=19, cex=1)
+points(coords, pch=1, cex=1)
+points(m.3$knot.coords, pch=3, cex=1)
+points(pred.coords, pch=19, cex=1)
 contour(y.pred.surf, add=T)
 legend(1.5,2.5, legend=c("Obs.", "Knots", "Pred."),
        pch=c(1,3,19), bg="white")
