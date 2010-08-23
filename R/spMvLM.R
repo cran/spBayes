@@ -242,8 +242,8 @@ spMvLM <- function(formula, data = parent.frame(), coords, knots,
     if(any(nu.Unif[seq(2,2*m,2)]-nu.Unif[seq(1,2*m,2)] <= 0)){stop("error: nu.Unif has zero support")}
   }
   
-  #storage.mode(K.IW) <- "double"
-  #storage.mode(Psi.IW) <- "double"
+  storage.mode(K.IW[[1]]) <- "double"; storage.mode(K.IW[[2]]) <- "double"
+  storage.mode(Psi.IW[[1]]) <- "double"; storage.mode(Psi.IW[[2]]) <- "double"
   storage.mode(nu.Unif) <- "double"
   storage.mode(phi.Unif) <- "double"
 
