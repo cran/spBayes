@@ -689,7 +689,6 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, ve
         gamma <- exp(-phi*D.pred)
       }else if(cov.model == "matern"){
         gamma <- (D.pred*phi)^nu/(2^(nu-1)*gamma(nu))*besselK(x=D.pred*phi, nu=nu)
-        diag(gamma) <- 1
       }else if(cov.model == "gaussian"){
         gamma <- exp(-1*((phi*D.pred)^2))
       }else if(cov.model == "spherical"){

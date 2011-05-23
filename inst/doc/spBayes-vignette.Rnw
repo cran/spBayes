@@ -1222,7 +1222,7 @@ We hope future releases of \pkg{spBayes} will continue to help fulfill multivari
 
 \item Cressie, N.A.C. (1993). \emph{Statistics for Spatial Data}, 2nd ed. New York: Wiley.
 
-\item Gelman A. (2006). Prior distributions for variance parameters in hierarchical models. \emph{Bayesian Analysis}, 3, 515–533.
+\item Gelman A. (2006). Prior distributions for variance parameters in hierarchical models. \emph{Bayesian Analysis}, 3, 515--533.
 
 \item Gelman, A., Carlin, J.B., Stern, H.S., and Rubin, D.B. (2004). \emph{Bayesian Data Analysis}. 2nd ed. Boca Raton, FL: Chapman and Hall/CRC Press.
 
@@ -1234,7 +1234,7 @@ We hope future releases of \pkg{spBayes} will continue to help fulfill multivari
 
 \item M{\o}ller, J. (2003). \emph{Spatial Statistics and Computational Method}. New York: Springer.
 
-\item Ribeiro Jr., P.J., and Diggle, P.J.(2001). geoR: A Package for Geostatistical Analysis. R News, 1(2), 14–18.
+\item Ribeiro Jr., P.J., and Diggle, P.J.(2001). geoR: A Package for Geostatistical Analysis. R News, 1(2), 14--18.
 
 \item Schabenberger, O., and Gotway, C.A. (2004). \emph{Statistical Methods for Spatial Data Analysis (Texts in Statistical Science Series)}. Boca Raton: Chapman and Hall/CRC.
 
