@@ -64,7 +64,7 @@ spMvGLM(formula, family="binomial", weights, data = parent.frame(), coords, knot
     \code{beta.normal}, \code{K.IW}, \code{Psi.IW}, \code{phi.unif}, and
     \code{nu.unif}. If \code{beta.normal} then covariate specific mean and variance hyperparameters are
     passed as the first and second list elements, respectively.  \code{K} is assumed to follow an
-    inverse-Wishart distribution, whereas the spatial range \code{phi}
+    inverse-Wishart distribution, whereas the spatial decay \code{phi}
     and smoothness \code{nu} parameters are assumed to follow Uniform distributions. The
     hyperparameters of the inverse-Wishart are
     passed as a list of length two, with the first and second elements corresponding

@@ -46,7 +46,7 @@ spLM(formula, data = parent.frame(), coords, knots,
     \code{tau.sq.ig}, \code{phi.unif}, and \code{nu.unif} (\code{Beta} priors are
     assumed \emph{flat}). Variance parameters, \code{simga.sq} and
     \code{tau.sq}, are assumed to follow an
-    inverse-Gamma distribution, whereas the spatial range \code{phi}
+    inverse-Gamma distribution, whereas the spatial decay \code{phi}
     and smoothness \code{nu} parameters are assumed to follow Uniform distributions. The
     hyperparameters of the inverse-Gamma are
     passed as a vector of length two, with the first and second elements corresponding

@@ -33,7 +33,7 @@
     observations.  Supported covariance model key words are:
     \code{"exponential"}, \code{"matern"}, \code{"spherical"}, and
     \code{"gaussian"}.  See below for details.  }
-  \item{phi}{the fixed value of the spatial range. }
+  \item{phi}{the fixed value of the spatial decay. }
   \item{nu}{if \code{cov.model} is \code{"matern"} then the fixed value
     of the spatial process smoothness must be specified. }
   \item{alpha}{the fixed value of the ratio between the nugget

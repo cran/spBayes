@@ -730,7 +730,7 @@ processes (-0.707 to be precise).
 
 The effective range of spatial dependence (i.e., the distance at
 which the correlation drops to 0.05) is determined by
-$-log(0.05)/\phi$. The range parameters in $\bphi$ provide an
+$-log(0.05)/\phi$. The decay parameters in $\bphi$ provide an
 effective range of $\sim 5.0$ units for the first response surface
 and $\sim 30.0$ units for the second.  Given these parameters and
 the marginalized likelihood (\ref{marginalizedLikelihood}), we can
@@ -809,7 +809,7 @@ element in the cross--covariance matrix $\bK$,
 \]
 where, recall, $\bA$ is the square root of the $m\times m$
 cross--covariance matrix.  The sixth model is the non--separable
-form of Model 5, allowing response specific spatial range terms,
+form of Model 5, allowing response specific spatial decay terms,
 \[
 \text{Model~6: } \bA, \Psi = Diag[\tau^2_i]_{i=1}^{m}, \text{ and }
 \bphi = \left\lbrace \phi_k \right\rbrace_{k=1}^{m}
@@ -837,7 +837,7 @@ prior distributions used in \code{ggt.sp} are consistent with
 definitions found in Appendix A of Gelman et al. (2004).   The variance
 parameters in Model 6 are a $m\times m$ spatial cross-covariance
 matrix $\bK$, diagonal non--spatial cross--covariance matrix $\Psi$,
-and $m$ spatial range parameters $\bphi$.  The code block below
+and $m$ spatial decay parameters $\bphi$.  The code block below
 specifies an inverse--Wishart prior for $\bK$, separate
 inverse--Gamma priors for the diagonal elements of $\Psi$, and a
 single uniform prior which will be used for both of the $\phi$.  The
@@ -1020,7 +1020,7 @@ of -0.707.
 
 \begin{table}[!h]
 \begin{center}
-\caption{Percentiles of the posterior distributions of the parameters in Model 6.  $\beta$ subscripts refer to the response variable and parameter, respectively.  Subscripts on $\bK$ and $\Psi$ refer to the covariance matrix element.  Subscripts on the spatial range parameters, $\phi$, refer to the response variable. Summaries generated from three chains of 4,000 samples.} \label{SyntheticEsts}
+\caption{Percentiles of the posterior distributions of the parameters in Model 6.  $\beta$ subscripts refer to the response variable and parameter, respectively.  Subscripts on $\bK$ and $\Psi$ refer to the covariance matrix element.  Subscripts on the spatial decay parameters, $\phi$, refer to the response variable. Summaries generated from three chains of 4,000 samples.} \label{SyntheticEsts}
 \begin{tabular}
 [c]{|c|c|}%
 \hline Parameter & Estimates: 50\% (2.5\%, 97.5\%)\\\hline
@@ -1112,7 +1112,7 @@ As in the previous illustration, the univariate empirical semivariograms provide
 K.Psi.prior <- prior(dist="IWISH", df=2, S=matrix(c(100, 0, 0, 2600), 2, 2))
 phi.prior <- prior(dist="LOGUNIF", a=0.0015, b=0.03)
 \end{verbatim}
-The inverse--Wishart prior is used for both cross--covariance matrices.  The empirical semivariograms suggest that the nugget and partial sill are about equal for each response variable (i.e., $\sim100$ for basal area and $\sim2600$ for biomass).  The vague scale matrix defined for the common inverse--Wishart centers each response on the suggested values but does not impose any off--diagonal association.  The noninformative prior on the spatial range parameters corresponds to an interval of 100 to 2,000 meters.
+The inverse--Wishart prior is used for both cross--covariance matrices.  The empirical semivariograms suggest that the nugget and partial sill are about equal for each response variable (i.e., $\sim100$ for basal area and $\sim2600$ for biomass).  The vague scale matrix defined for the common inverse--Wishart centers each response on the suggested values but does not impose any off--diagonal association.  The noninformative prior on the spatial decay parameters corresponds to an interval of 100 to 2,000 meters.
 
 The following code block defines the starting values of $\bK^{1/2}$ and $\Psi^{1/2}$; Metropolis--Hastings tuning values; update method for the $\bbeta$; the number of samples to take; and the regression model for each response surface.
 
@@ -1151,7 +1151,7 @@ Table \ref{RealEsts} provides the credible intervals for each parameter in the m
 
 \begin{table}[h!]
 \begin{center}
-\caption{Percentiles of the posterior distribution of model parameters.  $\beta$ subscripts refer to the response variable and parameter, respectively.  Subscripts on $\bK$ and $\Psi$ refer to the covariance matrix element.  Subscripts on the spatial range parameters, $\phi$, refer to the response variable model. Summaries generated from six chains of 9,000 samples.} \label{RealEsts}
+\caption{Percentiles of the posterior distribution of model parameters.  $\beta$ subscripts refer to the response variable and parameter, respectively.  Subscripts on $\bK$ and $\Psi$ refer to the covariance matrix element.  Subscripts on the spatial decay parameters, $\phi$, refer to the response variable model. Summaries generated from six chains of 9,000 samples.} \label{RealEsts}
 \begin{tabular}
 [c]{|c|c|}%
 \hline Parameter & Estimates: 50\% (2.5\%, 97.5\%)\\\hline

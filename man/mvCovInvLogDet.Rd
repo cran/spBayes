@@ -19,8 +19,8 @@ Utility function for constructing multivariate predictive process covariance mat
   \item{V}{spatial cross-covariance matrix. }  
   \item{Psi}{residual cross-covariance matrix.} 
   \item{theta}{if \code{cov.model} is \code{matern} then \code{theta} is a
-  vector of the multivariate spatial ranges followed by the associated smoothness parameters; otherwise,
-  \code{theta} is the spatial range vector.  } 
+  vector of the multivariate spatial decays followed by the associated smoothness parameters; otherwise,
+  \code{theta} is the spatial decays vector.  } 
   \item{modified.pp}{a logical value indicating if the \emph{modified
     predictive process} should be used. }
   \item{cov.model}{a quoted key word that specifies the covariance

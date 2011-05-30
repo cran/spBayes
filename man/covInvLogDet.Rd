@@ -19,8 +19,8 @@ Utility function for constructing predictive process covariance matrices
   \item{sigma.sq}{partial sill value. }  
   \item{tau.sq}{nugget value.} 
   \item{theta}{if \code{cov.model} is \code{matern} then \code{theta} is a
-  vector of the spatial range and smoothness parameters; otherwise,
-  \code{theta} is the spatial range.  } 
+  vector of the spatial decay and smoothness parameters; otherwise,
+  \code{theta} is the spatial decay.  } 
   \item{modified.pp}{a logical value indicating if the \emph{modified
     predictive process} should be used. }
   \item{cov.model}{a quoted key word that specifies the covariance

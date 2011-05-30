@@ -1,6 +1,6 @@
 Package: spBayes
-Version: 0.2-1
-Date: 2011-5-23
+Version: 0.2-2
+Date: 2011-5-30
 Title: Univariate and Multivariate Spatial Modeling
 Author: Andrew O. Finley <finleya@msu.edu>, Sudipto Banerjee
         <sudiptob@biostat.umn.edu>, Bradley P. Carlin
@@ -13,5 +13,5 @@ Description: spBayes fits univariate and multivariate models with
 License: GPL (>= 2)
 URL: http://blue.for.msu.edu/software
 Repository: CRAN
-Date/Publication: 2011-05-23 16:58:11
-Packaged: 2011-05-23 13:57:33 UTC; andy
+Date/Publication: 2012-01-13 21:35:54
+Packaged: 2012-01-13 21:35:09 UTC; ripley

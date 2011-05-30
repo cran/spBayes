@@ -160,60 +160,109 @@ gelman.diag(chains)
 ##Example of fitting a
 ##a non-linear model
 ##########################
+##Example of fitting a non-linear model
 set.seed(1)
 
-##Simulate some data
-par <- c(0.1,0.1,3,1)
-tau.sq <- 0.01
+########################################################
+##Simulate some data.
+########################################################
+a <- 0.1 #-Inf < a < Inf
+b <- 0.1 #b > 0
+c <- 0.2 #c > 0
+tau.sq <- 0.1 #tau.sq > 0
 
-fn <- function(par,x){
-  par[1]+par[2]^(1-(log(x/par[3])/par[4])^2)
+fn <- function(a,b,c,x){
+  a+b*exp(x/c)
 }
 
 n <- 200
-x <- seq(1,10,0.1)
-y <- rnorm(length(x), fn(par,x), sqrt(tau.sq))
+x <- seq(0,1,0.01)
+y <- rnorm(length(x), fn(a,b,c,x), sqrt(tau.sq))
 
-##Define the log target density
-ltd <- function(theta, x, y, fn, IG.a, IG.b){
+##check out your data
+plot(x, y)
 
-  theta[2:5] <- exp(theta[2:5])
-  tau.sq <- theta[5]
+########################################################
+##The log target density
+########################################################
+##Define the log target density used in the Metrop.
+ltd <- function(theta){
 
-  y.hat <- fn(theta[1:4],x)
+  ##extract and transform as needed
+  a <- theta[1]
+  b <- exp(theta[2])
+  c <- exp(theta[3])
+  tau.sq <- exp(theta[4])
+
+  y.hat <- fn(a, b, c, x)
 
   ##likelihood
-  logl <- -(n/2)*log(tau.sq)-(1/(2*tau.sq))*sum((y-y.hat)^2)
+  logl <- sum(dnorm(y, y.hat, sqrt(tau.sq), log=TRUE))
 
-  ##priors IG on tau.sq and the rest flat
-  logl <- logl-(IG.a+1)*log(tau.sq)-IG.b/tau.sq
-
-  ##Jacobian adjustments
-  logl <- logl+sum(log(theta[2:5]))
+  ##priors IG on tau.sq and normal on a and transformed b, c, d
+  logl <- (logl
+           -(IG.a+1)*log(tau.sq)-IG.b/tau.sq
+           +sum(dnorm(theta[1:3], N.mu, N.v, log=TRUE))
+           )
+  
+  ##Jacobian adjustment for tau.sq
+  logl <- logl+log(tau.sq)
   
   return(logl)  
 }
 
-##Give some reasonable starting values,
-##note the transformation
-starting <- c(0.5, log(0.5), log(5), log(3), log(1))
+########################################################
+##The rest
+########################################################
 
-m.1 <- adaptMetropGibbs(ltd, starting=starting,
-                        batch=1200, batch.length=25, 
-                        x=x, y=y, fn=fn, IG.a=2, IG.b=0.01)
+##Priors
+IG.a <- 2
+IG.b <- 0.01
+
+N.mu <- 0
+N.v <- 10
+
+theta.tuning <- c(0.01, 0.01, 0.005, 0.01)
+
+##Run three chains with different starting values
+n.batch <- 1000
+batch.length <- 25
+
+theta.starting <- c(0, log(0.01), log(0.6), log(0.01))
+run.1 <- adaptMetropGibbs(ltd=ltd, starting=theta.starting, tuning=theta.tuning,
+                          batch=n.batch, batch.length=batch.length, report=100)
+
+theta.starting <- c(1.5, log(0.05), log(0.5), log(0.05))
+run.2 <- adaptMetropGibbs(ltd=ltd, starting=theta.starting, tuning=theta.tuning,
+                          batch=n.batch, batch.length=batch.length, report=100)
+
+theta.starting <- c(-1.5, log(0.1), log(0.4), log(0.1))
+run.3 <- adaptMetropGibbs(ltd=ltd, starting=theta.starting, tuning=theta.tuning,
+                          batch=n.batch, batch.length=batch.length, report=100)
 
 ##Back transform
-m.1$p.samples[,2:5] <- exp(m.1$p.samples[,2:5])
+samples.1 <- cbind(run.1$p.samples[,1], exp(run.1$p.samples[,2:4]))
+samples.2 <- cbind(run.2$p.samples[,1], exp(run.2$p.samples[,2:4]))
+samples.3 <- cbind(run.3$p.samples[,1], exp(run.3$p.samples[,2:4]))
 
-##Summary with 95% prediction interval
-burn.in <- 10000
+samples <- mcmc.list(mcmc(samples.1), mcmc(samples.2), mcmc(samples.3))
 
-fn.pred <- function(par,x){
-  rnorm(length(x), fn(par[1:4],x), sqrt(par[5]))
+##Summary 
+plot(samples, density=FALSE)
+gelman.plot(samples)
+
+burn.in <- 5000
+
+fn.pred <- function(theta,x){
+  a <- theta[1]
+  b <- theta[2]
+  c <- theta[3]
+  tau.sq <- theta[4]
+  
+  rnorm(length(x), fn(a,b,c,x), sqrt(tau.sq))
 }
 
-post.curves <-
-  t(apply(m.1$p.samples[burn.in:nrow(m.1$p.samples),], 1, fn.pred, x))
+post.curves <- t(apply(samples.1[burn.in:nrow(samples.1),], 1, fn.pred, x))
 
 post.curves.quants <- summary(mcmc(post.curves))$quantiles
 
@@ -222,71 +271,6 @@ lines(x, post.curves.quants[,1], lty="dashed", col="blue")
 lines(x, post.curves.quants[,3])
 lines(x, post.curves.quants[,5], lty="dashed", col="blue")
 
-########################################
-##Now some real data. There are way too
-##few data for this model so we use a
-##slightly informative normal prior on
-##the parameters.
-########################################
-
-fn <- function(par,x){
-  par[1]-(par[2]^(1-(log(x/par[3])/par[4])^2))
-}
-
-x <- c(5,6,7,17,17,18,39,55,60)
-y <- c(47.54,62.10,37.29,24.74,22.64,32.60,11.16,9.65,14.83)
-n <- length(x)
-
-##Define the log target density
-ltd <- function(theta, x, y, fn, IG.a, IG.b){
-
-  theta[2:5] <- exp(theta[2:5])
-  tau.sq <- theta[5]
-
-  y.hat <- fn(theta[1:4],x)
-
-  ##likelihood
-  logl <- -(n/2)*log(tau.sq)-(1/(2*tau.sq))*sum((y-y.hat)^2)
-
-  ##priors IG on tau.sq and the rest normal
-  logl <- logl-(IG.a+1)*log(tau.sq)-IG.b/tau.sq+
-    sum(dnorm(theta[1:4], rep(0,4), 500, log = TRUE))
-  
-  ##Jacobian adjustments
-  logl <- logl+sum(log(theta[2:5]))
-  
-  return(logl)  
-}
-
-##Give some reasonable starting values,
-##note the transformation
-starting <- c(50, log(40), log(40), log(2), log(0.1))
-
-m.1 <- adaptMetropGibbs(ltd, starting=starting,
-                        batch=1500, batch.length=25, 
-                        x=x, y=y, fn=fn, IG.a=2, IG.b=10)
-
-##Back transform
-m.1$p.samples[,2:5] <- exp(m.1$p.samples[,2:5])
-
-##Summary with 95% prediction interval
-burn.in <- 20000
-
-x.pred <- seq(0, 60, seq=0.1)
-
-fn.pred <- function(par,x){
-  rnorm(length(x), fn(par[1:4],x), sqrt(par[5]))
-}
-
-post.curves <-
-  t(apply(m.1$p.samples[burn.in:nrow(m.1$p.samples),], 1, fn.pred, x.pred))
-
-post.curves.quants <- summary(mcmc(post.curves))$quantiles
-
-plot(x, y, pch=19, xlab="x", ylab="f(x)", xlim=c(0,60), ylim=c(0,100))
-lines(x.pred, post.curves.quants[,1], lty="dashed", col="blue")
-lines(x.pred, post.curves.quants[,3])
-lines(x.pred, post.curves.quants[,5], lty="dashed", col="blue")
 
 }
 }

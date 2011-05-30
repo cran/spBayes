@@ -52,7 +52,7 @@ spMvLM(formula, data = parent.frame(), coords, knots,
     parameter name. Valid list tags are \code{K.IW}, \code{Psi.IW}, \code{phi.unif}, and \code{nu.unif} (\code{Beta} priors are
     assumed \emph{flat}). Variance parameters, \code{K} and
     \code{Psi}, are assumed to follow an
-    inverse-Wishart distribution, whereas the spatial range \code{phi}
+    inverse-Wishart distribution, whereas the spatial decay \code{phi}
     and smoothness \code{nu} parameters are assumed to follow Uniform distributions. The
     hyperparameters of the inverse-Wishart are
     passed as a list of length two, with the first and second elements corresponding

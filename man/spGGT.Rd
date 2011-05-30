@@ -157,7 +157,7 @@ coords <- as.matrix(FBC07.dat[1:100,c("coord.X", "coord.Y")])
 
 ##Fit some competing models.
 ##Full model with nugget (Psi), partial sill (K),
-##and spatial range (Phi).
+##and spatial decay (Phi).
 K.prior <- prior(dist="IG", shape=2, scale=5)
 Psi.prior <- prior(dist="IG", shape=2, scale=5)
 phi.prior <- prior(dist="UNIF", a=0.06, b=3)
@@ -180,7 +180,7 @@ Fit.m1 <- spGGT(formula=Y.2~1, run.control=run.control,
 plot(Fit.m1$p.samples)
 summary(Fit.m1$p.samples)
 
-##First reduced model with no nugget just partial sill and range.
+##First reduced model with no nugget just partial sill and decay.
 var.update.control <-
   list("K"=list(starting=5, tuning=0.5, prior=K.prior),
        "phi"=list(starting=0.1, tuning=0.5, prior=phi.prior)
@@ -194,7 +194,7 @@ Fit.m2 <- spGGT(formula=Y.2~1, run.control=run.control,
 plot(Fit.m2$p.samples)
 
 ##Second reduced model with no nugget just partial sill and fixed
-##range at the WRONG value, which forces the wrong estimate of K.
+##decay at the WRONG value, which forces the wrong estimate of K.
 phi.prior <- prior(dist="FIXED")
        
 var.update.control <-
@@ -227,7 +227,7 @@ image(m1.surf, xaxs="r", yaxs="r",
 points(coords, pch=19)
 
 ##Now the full model using the Matern spatial correlation function.
-##Also, for fun, update the spatial range parameters
+##Also, for fun, update the spatial decay parameters
 ##phi and nu in a separate MH block.  This provides finer control
 ##on the parameters' acceptance rate, but takes a bit longer to
 ##run.
@@ -254,7 +254,7 @@ Fit.m4 <-
 plot(Fit.m4$p.samples)
 
 ##Solve the Matern correlation function for the estimated
-##95\% CI for effective range (e.g., distance at which the
+##95\% CI for effective decay (e.g., distance at which the
 ##correlation drops to 0.05).
 phi.hat <-  quantile(Fit.m4$p.samples[,"Phi"], c(0.50,0.025,0.975))
 nu.hat <- quantile(Fit.m4$p.samples[,"Nu"], c(0.50,0.025,0.975))
@@ -340,7 +340,7 @@ summary(Fit.m1$p.samples)
 
 ##Full model with non-spatial cross-covariance
 ##(Psi) matrix, spatial cross-covariance matrix (K),
-##and response specific spatial range parameter (Phi)
+##and response specific spatial decay parameter (Phi)
 ##(i.e., a non-separable model).
 
 ##These chains really need to be run for several thousand
@@ -471,7 +471,7 @@ summary(Fit.mv.m3$p.samples)
 
 ##Finally, a really simple model which we know makes no sense
 ##for this data set.  Specifically, a single variance parameter
-##for the diagonal elements of K and Psi and common spatial range,
+##for the diagonal elements of K and Psi and common spatial decay,
 ##phi.  Also, we use a spherical spatial covariance function, just
 ##because we can.
 K.prior <- prior(dist="IG", shape=2, scale=5)

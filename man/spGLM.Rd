@@ -57,7 +57,7 @@ spGLM(formula, family="binomial", weights, data = parent.frame(),
   \item{priors}{a list with each tag corresponding to a
     parameter name. Valid list tags are \code{beta.flat}, \code{beta.normal}, \code{sigma.sq.ig},
     \code{phi.unif}, and \code{nu.unif}. \code{simga.sq} is assumed to follow an
-    inverse-Gamma distribution, whereas the spatial range \code{phi}
+    inverse-Gamma distribution, whereas the spatial decay \code{phi}
     and smoothness \code{nu} parameters are assumed to follow Uniform
     distributions. If \code{beta.normal} then covariate specific mean and variance hyperparameters are
     passed as the first and second list elements, respectively. The
