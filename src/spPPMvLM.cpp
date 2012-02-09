@@ -21,8 +21,6 @@ extern "C" {
 	      SEXP phiTuning_r, SEXP ATuning_r, SEXP LTuning_r, SEXP nuTuning_r, 
 	      SEXP nugget_r, SEXP covModel_r, SEXP amcmc_r, SEXP nBatch_r, SEXP batchLength_r, SEXP acceptRate_r, SEXP verbose_r, SEXP nReport_r){
 
-    // omp_set_nested(1);
-
     /*****************************************
                 Common variables
     *****************************************/
@@ -477,9 +475,9 @@ extern "C" {
 	  }
 	  
 	  //construct covariance matrix
-          #pragma omp parallel 
-          {
-          #pragma omp for private(ii, k, l, h)
+          // #pragma omp parallel 
+          // {
+          // #pragma omp for private(ii, k, l, h)
 	  for(jj = 0; jj < g; jj++){
 	    for(ii = jj; ii < g; ii++){	
 	      for(k = 0; k < m; k++){
@@ -492,11 +490,11 @@ extern "C" {
 	      }
 	    }
 	  }
-	  } //parallel for
+	  // } //parallel for
 	  
-        #pragma omp parallel 
-        {
-        #pragma omp for private(ii, k, l, h) 
+        // #pragma omp parallel 
+        // {
+        // #pragma omp for private(ii, k, l, h) 
 	for(jj = 0; jj < n; jj++){
 	  for(ii = 0; ii < g; ii++){	
 	    for(k = 0; k < m; k++){
@@ -509,7 +507,7 @@ extern "C" {
 	    }
 	  }
 	}
-	} //parallel for
+	// } //parallel for
 	
 	//get D, det(D), and D^{-1/2}
 	det = 0;

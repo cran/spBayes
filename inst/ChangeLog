@@ -1,12 +1,17 @@
+2013-02-09  andy  <andy@darkstar>
+
+	* 0.3-4
+	* Temporarily commented out #pragma omp parallel regions in C++ code called by spMvLM and spMvGLM until I can figure out some inconsistent behavior that only seems to occur when cov.model=matern.
+
 2013-02-05  andy  <andy@darkstar>
 
 	* 0.3-3
 	* Fixed bug in spLMPredict.cpp that caused the posterior predictive distribution to be too narrow when spLM was called with no nugget.
-	
+
 2013-01-28  andy  <andy@darkstar>
 
 	* 0.3-2
-	* Fixed bug in spDiag.R and spPredict.R associated with bayesLMRef. Added keywords to serveral Rd files. Added spPPMvGLMPredict.cpp.
+	* Fixed bug in spDiag.R and spPredict.R associated with bayesLMRef.R Added keywords to serveral Rd files. Added spPPMvGLMPredict.cpp.
 
 2013-01-02  andy  <andy@darkstar>
 

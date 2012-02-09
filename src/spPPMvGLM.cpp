@@ -304,9 +304,9 @@ extern "C" {
       }   
       
       //construct covariance matrix
-      #pragma omp parallel 
-      {
-      #pragma omp for private(ii, k, l, h)
+      // #pragma omp parallel 
+      // {
+      // #pragma omp for private(ii, k, l, h)
       for(jj = 0; jj < q; jj++){
       	for(ii = jj; ii < q; ii++){	
       	  for(k = 0; k < m; k++){
@@ -319,11 +319,11 @@ extern "C" {
       	  }
       	}
       }
-      } //parallel for
+      // } //parallel for
       
-      #pragma omp parallel 
-      {
-      #pragma omp for private(ii, k, l, h)
+      // #pragma omp parallel 
+      // {
+      // #pragma omp for private(ii, k, l, h)
       for(jj = 0; jj < n; jj++){
       	for(ii = 0; ii < q; ii++){	
       	  for(k = 0; k < m; k++){
@@ -336,7 +336,7 @@ extern "C" {
       	  }
       	}
       }
-      } //parallel for
+      // } //parallel for
 
       detCand = 0.0;
       F77_NAME(dpotrf)(lower, &qm, K, &qm, &info); if(info != 0){error("c++ error: dpotrf failed\n");}

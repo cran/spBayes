@@ -291,9 +291,9 @@ extern "C" {
       }      
       
       //construct covariance matrix
-      #pragma omp parallel 
-      {
-      #pragma omp for private(ii, k, l, h)
+      // #pragma omp parallel 
+      // {
+      // #pragma omp for private(ii, k, l, h)
       for(jj = 0; jj < n; jj++){
       	for(ii = jj; ii < n; ii++){	
       	  for(k = 0; k < m; k++){
@@ -306,7 +306,7 @@ extern "C" {
       	  }
       	}
       }
-      } //parallel for
+      // } //parallel for
 
       //invert C and log det cov
       detCand = 0;

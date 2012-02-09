@@ -1,4 +1,4 @@
-8b32eb45ca7730ebb175077cb0ded91b *DESCRIPTION
+ade149afeb052b9fe4e426739a37b9b9 *DESCRIPTION
 92d25b851efaac3e8286bc10f70ff915 *NAMESPACE
 92e68259d6dd3e539816b7e847cd3b64 *R/adaptMetropGibbs.R
 d905170ecda7dff20b2d97cab92dcaa1 *R/bayesLMRef.R
@@ -17,7 +17,7 @@ ba398a4fda6daac3a06c8da3d7db4c06 *R/spPredict.R
 1e03d714545401d1321a3d4c0b3c35aa *data/BEF.dat.tab.gz
 d3d1506d71992fc0039934124f597f49 *data/WEF.dat.csv.gz
 fc1e01474aece5b483230d0ca4f7b988 *data/Zurich.dat.tab.gz
-5f88cadd4b563ea1cb85aec54c686104 *inst/ChangeLog
+bbb2159575a3066269a4904e2795763f *inst/ChangeLog
 c31f15e48d4789bf5954504137c6a05b *inst/NOTES
 d16bcc410f632fb500366b0a36b70c5c *man/BEF.dat.Rd
 22c648b98621cfba8dbe9ea6c7b60e7f *man/WEF.dat.Rd
@@ -47,10 +47,10 @@ dbca27fba579f7d6e71bb148ea3ee186 *src/spLM.cpp
 5e94e2db89b8876b9659125226eb1566 *src/spLMPredict.cpp
 3348edcb5bb980f813200656e235feba *src/spLMRecover.cpp
 1fa061f3266a318fb4ee32cc8d678697 *src/spMPPMvDIC.cpp
-21aa4b0042036255741089d1842bdf4a *src/spMvGLM.cpp
-aded979cb02e3685c990b83bb9b6e55d *src/spMvGLMPredict.cpp
-bae02ba95e350781e279f02041c533a6 *src/spMvGLM_AMCMC.cpp
-096ee51a9e0f1ae1290a3d4a7783cdef *src/spMvLM.cpp
+039e02e8155062af6df1d0cb7127bb5e *src/spMvGLM.cpp
+bc53023e4b9a8a6fe59c0ba448fb1199 *src/spMvGLMPredict.cpp
+20e23833d1bc3631f487a072a40aa6e7 *src/spMvGLM_AMCMC.cpp
+3d9ee887e90501f6a37ab23c857ffd5b *src/spMvLM.cpp
 19561f6cd72571a56e17f642e80a5bbe *src/spMvLMPredict.cpp
 7e1363777f384ee560b2c13c164ac1ea *src/spMvLMRecover.cpp
 8bbad7c36503d2d5e156b3444e0c1d86 *src/spPPGLM.cpp
@@ -58,10 +58,10 @@ c761e171aa5f1218288443b900d6c2f8 *src/spPPGLM_AMCMC.cpp
 ccafcc8415afd03ede56767f98bfc862 *src/spPPLM.cpp
 1a61ba1229bfc0bdca250c44321baead *src/spPPLMPredict.cpp
 8a728681f253d8072117d307c408e50b *src/spPPLMRecover.cpp
-62822499827c04d9ec09538067c17d8f *src/spPPMvGLM.cpp
-cca5ef72aa4e4ee6a8a98134039d4ce8 *src/spPPMvGLMPredict.cpp
-ab80234247980b466f727884d817d0ff *src/spPPMvGLM_AMCMC.cpp
-986f557fd22e44a64d4b133f57e5e23a *src/spPPMvLM.cpp
+92560e7043b4994fa4b05620f47611c7 *src/spPPMvGLM.cpp
+e2f5293a9082cc6b40b88b7386798295 *src/spPPMvGLMPredict.cpp
+1938f82c7eca9282c6145d7e0903cca4 *src/spPPMvGLM_AMCMC.cpp
+6ddf69ac4b75aef38fd4645b8554c968 *src/spPPMvLM.cpp
 c4535bd2cc30fe430b7495c972124294 *src/spPPMvLMPredict.cpp
 041b5c75d721795f75fe4da60e5e04ab *src/spPPMvLMRecover.cpp
 3e6d7258f06d5c83e7f445d8d3a2df74 *src/util.cpp
