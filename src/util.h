@@ -75,3 +75,5 @@ void spCovLT(double *D, int n, double *theta, std::string &covModel, double *C);
 void transpose(double *m, int w, int h);
 
 void clearUT(double *m, int n);
+
+void rwish(double *S, int v, int p, double *Z, double *tmp_pp, int iwish);

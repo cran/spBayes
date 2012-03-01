@@ -25,7 +25,6 @@ mkX <- function(x){
   X
 }
 
-
 parseFormulaSimple <- function(formula, data, na.action = na.fail){
 
   m <- model.frame(formula, data, na.action = na.action)##kinda fragile
@@ -109,4 +108,40 @@ mkMvX <- function(X){
 
 mkMvFormulaYX <- function(mods, data){
   mkMats(mods, data)
+}
+
+parseFormula2 <- function(formula, data, subset, na.action, ...){
+  
+  mf <- match.call(expand.dots = FALSE)
+  m <- match(c("formula", "data", "subset", "na.action"), names(mf), 0)
+  mf <- mf[c(1, m)]
+  
+  f <- Formula(formula)
+  mf[[1]] <- as.name("model.frame")
+  mf$formula <- f
+  mf <- eval(mf, parent.frame())
+  
+  y <- model.response(mf)
+  x <- model.matrix(f, data = mf, rhs = 1)
+  
+  list(y, x)
+}
+
+mkspDynMats <- function(mods, data){
+
+  Y <- vector()
+  X <- vector()
+  X.names <- colnames(parseFormula2(mods[[1]], data=data, na.action=NULL)[[2]])
+  
+  for(i in 1:length(mods)){
+    tmp <- parseFormula2(mods[[i]], data=data, na.action=NULL)
+    
+    ##get Y
+    Y <- cbind(Y, tmp[[1]])
+
+    ##get X
+    X <- rbind(X, tmp[[2]])
+  }
+
+  list(Y, X, X.names)
 }

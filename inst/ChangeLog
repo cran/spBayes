@@ -1,3 +1,8 @@
+2013-03-01  andy  <andy@darkstar>
+
+	* 0.3-5
+	* Added spDynLM, bayesGeostatExact, and bayesLMConjugate. Modified spPredict to accept bayesGeostatExact objects. Added several additional illustrative data sets.
+
 2013-02-09  andy  <andy@darkstar>
 
 	* 0.3-4

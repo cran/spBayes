@@ -11,8 +11,8 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, ve
   }
   
   if(missing(sp.obj)){stop("error: spPredict expects sp.obj\n")}
-  if(!class(sp.obj) %in% c("spLM", "spMvLM", "spGLM", "spMvGLM","bayesLMRef","nonSpGLM","nonSpMvGLM")){
-    stop("error: requires an output object of class spLM, spMvLM, spGLM, spMvGLM, bayesLMRef, nonSpGLM, or nonSpMvGLM\n")
+  if(!class(sp.obj) %in% c("spLM", "spMvLM", "spGLM", "spMvGLM","bayesLMRef","bayesGeostatExact","nonSpGLM","nonSpMvGLM")){
+    stop("error: requires an output object of class spLM, spMvLM, spGLM, spMvGLM, bayesGeostatExact, bayesLMRef, nonSpGLM, or nonSpMvGLM\n")
   }
 
   obj.class <- class(sp.obj)
@@ -90,6 +90,135 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, ve
     return(out)
   }
 
+  ##
+  ##bayesGeostatExact
+  ##
+  
+  if(obj.class == "bayesGeostatExact"){
+    
+    X <- sp.obj$X
+    n <- sp.obj$n
+    p <- sp.obj$p
+    Y <- sp.obj$Y
+    coords <- sp.obj$coords
+    cov.model <- sp.obj$cov.model
+    samples <- sp.obj$p.samples
+    phi <- sp.obj$phi
+    n.samples <- sp.obj$n.samples
+    
+    if(cov.model == "matern")
+      nu <- sp.obj$nu
+    
+    ##check covars
+    if(missing(pred.covars)){stop("error: pred.covars must be specified\n")}
+    
+    if(!any(is.data.frame(pred.covars), is.matrix(pred.covars))){stop("error: pred.covars must be a data.frame or matrix\n")}
+    
+    if(ncol(pred.covars) != ncol(X))
+      stop(paste("error: pred.covars must have ",p," columns\n"))
+    
+    ##thin
+    if(missing(end))
+      end <- n.samples
+    
+    if(!is.numeric(start) || start >= n.samples)
+      stop("error: invalid start")
+    if(!is.numeric(end) || end > n.samples) 
+      stop("error: invalid end")
+    if(!is.numeric(thin) || thin >= n.samples) 
+      stop("error: invalid thin")
+    
+    samples <- samples[seq(start, end, by=as.integer(thin)),]
+    n.samples <- nrow(samples)
+    
+    ##get samples
+    beta <- as.matrix(samples[,1:p])
+    tau.sq <- samples[,"tau.sq"]
+    sigma.sq <- samples[,"sigma.sq"]    
+    
+    ##make R
+    D <- as.matrix(dist(coords))
+    
+    if(cov.model == "exponential"){
+      R <- exp(-phi*D)
+    }else if(cov.model == "matern"){
+      R <- (D*phi)^nu/(2^(nu-1)*gamma(nu))*besselK(x=D*phi, nu=nu)
+      diag(R) <- 1
+    }else if(cov.model == "gaussian"){
+      R <- exp(-1*((phi*D)^2))
+    }else if(cov.model == "spherical"){
+      R <- D
+      R[TRUE] <- 1
+      R[D > 0 & D < 1/phi] <- 1-1.5*phi*D[D > 0 & D <= 1/phi]+0.5*((phi*D[D > 0 & D <= 1/phi])^3)
+      R[D >= 1/phi] <- 0   
+    }else{
+      stop("error: in spPredict, specified cov.model '",cov.model,"' is not a valid option; choose, from gaussian, exponential, matern, spherical.")
+    }
+    
+    
+    n.pred <- nrow(pred.coords)
+    
+    y.pred <- matrix(0, n.pred, n.samples)
+    
+    R.eigen <- eigen(R)
+    R.vals <- R.eigen$values
+    R.vecs <- R.eigen$vectors
+    R.vects.t <- t(R.vecs)
+    
+    if(verbose)
+      cat("Predicting ...\n")
+    
+    report <- 1
+    
+    ##for each pred point by each sample
+    for(i in 1:n.pred){
+      
+      D.pred <- sqrt((pred.coords[i,1]-coords[,1])^2 + (pred.coords[i,2]-coords[,2])^2)
+      
+      if(cov.model == "exponential"){
+        gamma <- exp(-phi*D.pred)
+      }else if(cov.model == "matern"){
+        gamma <- (D.pred*phi)^nu/(2^(nu-1)*gamma(nu))*besselK(x=D.pred*phi, nu=nu)
+      }else if(cov.model == "gaussian"){
+        gamma <- exp(-1*((phi*D.pred)^2))
+      }else if(cov.model == "spherical"){
+        gamma <- D.pred
+        gamma[TRUE] <- 1
+        gamma[D.pred > 0 & D.pred < 1/phi] <- 1-1.5*phi*D.pred[D.pred > 0 & D.pred <= 1/phi]+0.5*((phi*D.pred[D.pred > 0 & D.pred <= 1/phi])^3)
+        gamma[D.pred >= 1/phi] <- 0   
+      }else{
+        stop("error: in spPredict, specified cov.model '",cov.model,"' is not a valid option; choose, from gaussian, exponential, matern, spherical.")
+      }
+      
+      gamma <- as.matrix(gamma)
+      
+      for(s in 1:n.samples){
+        
+        R.inv <- R.vecs%*%diag(1/(R.vals+tau.sq[s]/sigma.sq[s]))%*%t(R.vecs)
+        
+        mu <- pred.covars[i,]%*%beta[s,]+t(gamma)%*%R.inv%*%(Y-X%*%beta[s,])
+        S <- sigma.sq[s]*(1-t(gamma)%*%R.inv%*%gamma)+tau.sq[s]
+        
+        y.pred[i,s] <- rnorm(1, mu, sqrt(S))
+        
+      }
+
+      
+      if(verbose){
+        if(report == 10){
+          cat(paste("Percent complete: ",100*i/n.pred,"\n",sep=""))
+          report <- 0
+        }
+        report <- report+1
+      }
+    }
+    
+    out <- list()
+    out$p.predictive.samples <- y.pred
+    
+    return(out)
+  }
+ 
   
   ##
   ##spatial model prediction

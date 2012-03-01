@@ -13,17 +13,17 @@ void mvrnorm(double *des, double *mu, double *cholCov, int dim){
   int inc = 1;
   double one = 1.0;
   double zero = 0.0;
-
+  
   //make some std norm draws
   for(i = 0; i < dim; i++)
     des[i] = rnorm(0.0, 1.0);
-
+  
   //mult this vector by the lower triangle of the cholCov
   F77_NAME(dtrmv)("L", "N", "N", &dim, cholCov, &dim, des, &inc);
-
+  
   //add the mean to the result
   F77_NAME(daxpy)(&dim, &one, mu, &inc, des, &inc);
-
+  
 }
 
 void mvrnorm(double *des, double *mu, double *cholCov, int dim, bool upper){
@@ -602,3 +602,89 @@ void clearUT(double *m, int n){
     }
   }
 }
+
+
+// rwish delivers a pseudo-random Wishart deviate
+//
+// USAGE:
+//
+//   A <- rwish(v, S)
+//
+// INPUT:
+//
+//   v    degrees of freedom
+//
+//   S    Scale matrix
+//
+// OUTPUT:
+//
+//  A     a pseudo-random Wishart deviate
+//
+// Based on code originally posted by Bill Venables to S-news
+// on 6/11/1998
+
+// extern "C" {
+  
+//   SEXP rwish(SEXP S_r, SEXP v_r, SEXP p_r, SEXP Z_r, SEXP tmp_pp_r, SEXP iwish){
+    
+//     double *S = REAL(S_r);
+//     int v = INTEGER(v_r)[0];
+//     int p = INTEGER(p_r)[0];
+//     double *Z = REAL(Z_r);
+//     double *tmp_pp = REAL(tmp_pp_r);
+//     bool riwish = static_cast<bool>(INTEGER(iwish));
+void rwish(double *S, int v, int p, double *Z, double *tmp_pp, int iwish){
+  
+    int i, j, info;
+    char const *lower = "L";
+    char const *nUnit = "N";
+    char const *ntran = "N";
+    char const *ytran = "T";
+    char const *rside = "R";
+    const double one = 1.0;
+    const double zero = 0.0;
+    bool riwish = static_cast<bool>(iwish);
+
+    if(riwish){
+      F77_NAME(dpotrf)(lower, &p, S, &p, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+      F77_NAME(dpotri)(lower, &p, S, &p, &info); if(info != 0){error("c++ error: dpotri failed\n");}
+    }
+    
+    if(v < p){
+      error("c++ error: rwish v < p\n");
+    }
+    
+    F77_NAME(dpotrf)(lower, &p, S, &p, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+    zeros(tmp_pp, p*p);
+    
+    //GetRNGstate();
+    for(i = 0; i < p; i++){
+      tmp_pp[i*p+i] = sqrt(rchisq(v-i));
+    }
+    
+    for(j = 1; j < p; j++){
+      for(i = 0; i < j; i++){
+	tmp_pp[j*p+i] = rnorm(0, 1);
+      }
+    }
+    //PutRNGstate();
+    
+    F77_NAME(dtrmm)(rside, lower, ytran, nUnit, &p, &p, &one, S, &p, tmp_pp, &p);
+    F77_NAME(dgemm)(ytran, ntran, &p, &p, &p, &one, tmp_pp, &p, tmp_pp, &p, &zero, Z, &p); 
+    
+    if(riwish){
+      F77_NAME(dpotrf)(lower, &p, Z, &p, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+      F77_NAME(dpotri)(lower, &p, Z, &p, &info); if(info != 0){error("c++ error: dpotri failed\n");}
+    }
+
+    for(i = 1; i < p; i++){
+      for(j = 0; j < i; j++){
+	Z[i*p+j] = Z[j*p+i];
+      }
+    }
+
+//     return(R_NilValue);
+}
+// }
+
+
