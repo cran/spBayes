@@ -137,7 +137,7 @@ void hex_grid_01_approximate_h ( double h_goal, int *nodes_per_layer,
     cout << "\n";
     cout << "HEX_GRID_01_APPROXIMATE_H - Fatal error!\n";
     cout << "  Illegal input value of H_GOAL = " << h_goal << "\n";
-    exit ( 1 );
+    //exit ( 1 );
   }
 
   *nodes_per_layer = 1 + ( int ) ( 1.0 / h_goal );
@@ -206,7 +206,7 @@ void hex_grid_01_approximate_n ( int n_goal, int *nodes_per_layer, int *n )
     cout << "\n";
     cout << "HEX_GRID_01_APPROXIMATE_N - Fatal error!\n";
     cout << "  Illegal input value of N_GOAL = " << n_goal << "\n";
-    exit ( 1 );
+    //exit ( 1 );
   }
 
   nodes_per_layer_low = 0;
@@ -627,7 +627,7 @@ void hex_grid_approximate_h ( double box[], double h_goal, int *nodes_per_layer,
     cout << "\n";
     cout << "HEX_GRID_APPROXIMATE_H - Fatal error!\n";
     cout << "  Illegal input value of H_GOAL = " << h_goal <<"\n";
-    exit ( 1 );
+    //exit ( 1 );
   }
 
   *nodes_per_layer = 1 + ( int ) ( ( box[0+1*2] - box[0+0*2] ) / h_goal );
@@ -700,7 +700,7 @@ void hex_grid_approximate_n ( double box[], int n_goal, int *nodes_per_layer,
     cout << "\n";
     cout << "HEX_GRID_APPROXIMATE_N - Fatal error!\n";
     cout << "  Illegal input value of N_GOAL = " << n_goal << "\n";
-    exit ( 1 );
+    //exit ( 1 );
   }
 
   nodes_per_layer_low = 0;
@@ -1149,7 +1149,7 @@ void hex_grid_write ( int n, int nodes_per_layer, int layers, double hx,
     cout << "\n";
     cout << "HEX_GRID_WRITE - Fatal error!\n";
     cout << "  Could not open the output file.\n";
-    exit ( 1 );
+    //exit ( 1 );
   }
 
   s = timestring ( );

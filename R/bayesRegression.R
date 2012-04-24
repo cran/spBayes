@@ -1,10 +1,10 @@
 ##set.seed(1234)
 
-library(MASS)
+#library(MASS)
 ##library(mvtnorm)
 ##library(fields)
 ##library(magic)
-library(coda)
+#library(coda)
 
 ##takes args like MASS's mvrnorm
 rmvn <- function(n, mu=0, V = matrix(1))

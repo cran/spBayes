@@ -127,8 +127,8 @@ void showMatrix(double *x, int xnrow, int xncol){
 void writeRMatrix(string outfile, double * a, int nrow, int ncol){
     ofstream file(outfile.c_str());
     if ( !file ) {
-      cerr << "Data file could not be opened." << endl;
-      exit(1);
+      cout << "Data file could not be opened." << endl;
+      //exit(1);
     }
   
 

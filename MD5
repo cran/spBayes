@@ -1,7 +1,7 @@
-a4184a6818891452815142a475bfae09 *DESCRIPTION
+a40369b451c9e8573ded261ca90d6768 *DESCRIPTION
 fae914db97073024cc15785276f3f12c *NAMESPACE
 be98ca5d08bea3b473bb127143201b9a *R/adaptMetropGibbs.R
-ceba9e6d861c5cda869f8c002872fe45 *R/bayesRegression.R
+73fda8e65d2e90ece8a1040b08f80164 *R/bayesRegression.R
 4806c51f4967cf488f51f60ff4435b7f *R/bayesUtilities.R
 676649070a270a72d4c5452e01fbce3a *R/covGivens.R
 eb3759aa7336bcc0aa0fad3f47c97329 *R/covInvLogDet.R
@@ -29,7 +29,6 @@ fc1e01474aece5b483230d0ca4f7b988 *data/Zurich.dat.tab.gz
 09759ebf62ec58bdaf66475f37cad0c5 *data/rf.n1000.dat.tab.gz
 a33a36e637d333f8cab0f7f2febef3b3 *data/rf.n200.dat.tab.gz
 403e94120917bdd3abea55b738f04bfc *data/rf.n500.dat.tab.gz
-74b24120a0bc26b61b543f1d6dc63623 *inst/doc/JABES_manu.sty
 ba378aef40d1abef4904408790fdb120 *inst/doc/OMSrsfs.fd
 7b77c4fc18f9a4e760f675b9c3dbbfe0 *inst/doc/befObs.png
 49b302ed24e6ab6e99c61c04126825ca *inst/doc/befObsSurf.png
@@ -39,8 +38,8 @@ fd5638c4122d830ffc8bfa4a641d6d00 *inst/doc/befObsc.png
 569e0dd90aa5236e36a522f04af6334a *inst/doc/befPredWSurf.png
 ad8385dab1b63c8ae08336601740f227 *inst/doc/befPredYSurf.png
 9843c9ace1581bb2efd5d3919602ada3 *inst/doc/befWSurf.png
-732c2979503adc879d80374c1ffc0bd2 *inst/doc/spBayes-vignette.Rnw
-5270d5a9b90eec1768eab85c5487d0e8 *inst/doc/spBayes-vignette.pdf
+9175a8ce32e948e089fbcfe24831ca2b *inst/doc/spBayes-vignette.Rnw
+640b7a5e82f20bfa7ce058e7b9b489a8 *inst/doc/spBayes-vignette.pdf
 6b64bb4a5a2da4c62a513924d5001b78 *inst/doc/synObs.png
 eb1fa151a185690b0c3fcdeabb9df8eb *inst/doc/synObsSurf.png
 bfdc984f258bb0cd6920da8f2f9f81a2 *inst/doc/synObsa.png
@@ -87,7 +86,7 @@ b3443f7f4d3183957abafcf9b66821c7 *src/covGivens.cpp
 ea28f0746d406eca56d9e244301158b6 *src/dic.cpp
 d89bbad9c814d278630325e000a85d14 *src/ggtsp.cpp
 687ec36e975f6717d2aa5b6ffa353807 *src/hex_grid.cpp
-769b11def2fe9e4ae3eb874df5c22921 *src/hex_utils.cpp
+f836a3aadd9a17bbe7abd052c4b96e39 *src/hex_utils.cpp
 cd474c6835b4eccff41de1bbbc622c34 *src/hex_utils.h
 bbece153faa3eb8ad96be6a6a4971c5c *src/idist.cpp
 3448c9860d4671417dedc98d5b246a1d *src/mPPCov.cpp
@@ -128,7 +127,7 @@ b1dffe832d75f3b6adcdc318ed1e0b9a *src/spPPMvGLM.cpp
 4bd1c01eab0cbd4385b04b4459818182 *src/spPPMvGLM_AMCMC.cpp
 85da5e771d84c38389c0e298df1044ac *src/spPPMvLM.cpp
 bd400f0a9f401638e74ce6d6dc9073a6 *src/spPredict.cpp
-f60d39221a030fafed966c9b7c4879e1 *src/util.cpp
+18b0b1145434430b8ccd7f5afb8fbd31 *src/util.cpp
 083c52ede9254b38a9bb46e9fa9e2e78 *src/util.h
 47c5dc7b1c2b7599e7ac02c5a289ddbd *src/vprior.cpp
 26fcd80779f4574260990380a2d8e615 *src/vprior.h

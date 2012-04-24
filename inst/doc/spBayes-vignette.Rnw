@@ -1,6 +1,6 @@
 %\VignetteIndexEntry{spBayes supporting documentation}
 \documentclass[a4paper]{article}
-\usepackage{JABES_manu}
+%\usepackage{JABES_manu}
 \usepackage{amsmath}
 \usepackage{subfigure}
 \usepackage{graphicx}
