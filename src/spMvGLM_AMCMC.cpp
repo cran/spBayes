@@ -1,6 +1,9 @@
 #include <iostream>
 #include <string>
-using namespace std;
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+//using namespace std;
 
 #include <R.h>
 #include <Rinternals.h>
@@ -8,8 +11,6 @@ using namespace std;
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
-#include "covmodel.h"
-#include "covInvDet.h"
 
 
 extern "C" {
@@ -20,11 +21,10 @@ extern "C" {
 		     SEXP phiTuning_r, SEXP ATuning_r, SEXP nuTuning_r , SEXP betaTuning_r, SEXP wTuning_r,
 		     SEXP covModel_r, SEXP nBatch_r, SEXP batchLength_r, SEXP acceptRate_r, SEXP verbose_r, SEXP nReport_r){
     
-    
     /*****************************************
                 Common variables
     *****************************************/
-    int i,j,k,l,b,info,nProtect= 0;
+    int h, i, j, k, l, b, s, ii, jj, info, nProtect= 0;
     char const *lower = "L";
     char const *upper = "U";
     char const *ntran = "N";
@@ -166,30 +166,6 @@ extern "C" {
     }
  
     /*****************************************
-        Set-up cov. model function pointer
-    *****************************************/
-    int nPramPtr = 1;
-    
-    void (covmodel::*cov1ParamPtr)(double, double &, double &) = NULL; 
-    void (covmodel::*cov2ParamPtr)(double, double, double &, double&) = NULL;
-    
-    if(covModel == "exponential"){
-      cov1ParamPtr = &covmodel::exponential;
-    }else if(covModel == "spherical"){
-      cov1ParamPtr = &covmodel::spherical;
-    }else if(covModel == "gaussian"){
-      cov1ParamPtr = &covmodel::gaussian;
-    }else if(covModel == "matern"){
-      cov2ParamPtr = &covmodel::matern;
-      nPramPtr = 2;
-    }else{
-      error("c++ error: cov.model is not correctly specified");
-    }
-   
-    //my covmodel object for calling cov function
-    covmodel *covModelObj = new covmodel;
-
-    /*****************************************
          Set-up MCMC sample matrices etc.
     *****************************************/
     //spatial parameters
@@ -251,15 +227,15 @@ extern "C" {
 
     PROTECT(w_r = allocMatrix(REALSXP, nm, nSamples)); nProtect++;  
     PROTECT(samples_r = allocMatrix(REALSXP, nParams, nSamples)); nProtect++; 
-    PROTECT(accept_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++; //just to monitor acceptance rate
-    PROTECT(accept_w_r = allocMatrix(REALSXP, nm, nBatch)); nProtect++; //just to monitor acceptance rate
-    PROTECT(tuning_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++; //just to monitor acceptance rate
-    PROTECT(tuning_w_r = allocMatrix(REALSXP, nm, nBatch)); nProtect++; //just to monitor acceptance rate
+    PROTECT(accept_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++;
+    PROTECT(accept_w_r = allocMatrix(REALSXP, nm, nBatch)); nProtect++;
+    PROTECT(tuning_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++;
+    PROTECT(tuning_w_r = allocMatrix(REALSXP, nm, nBatch)); nProtect++;
 
     /*****************************************
        Set-up MCMC alg. vars. matrices etc.
     *****************************************/
-    int s=0, status=0;
+    int status=0;
     double logPostCurrent = 0, logPostCand = 0, detCand = 0, logDetK, SKtrace;
     double spParamsjCurrent, wjCurrent;
 
@@ -272,11 +248,11 @@ extern "C" {
     double *tmp_mm1 = (double *) R_alloc(mm, sizeof(double));
     double *tmp_mm2 = (double *) R_alloc(mm, sizeof(double));
     double *tmp_nm = (double *) R_alloc(nm, sizeof(double));
+    double *tmp_nm1 = (double *) R_alloc(nm, sizeof(double));
 
     double *beta = (double *) R_alloc(p, sizeof(double));
-    double *K = (double *) R_alloc(mm, sizeof(double));
-    double *Psi = (double *) R_alloc(mm, sizeof(double)); zeros(Psi, mm);
-    double *theta = (double *) R_alloc(mm, sizeof(double));
+    double *phi = (double *) R_alloc(m, sizeof(double));
+    double *nu = (double *) R_alloc(m, sizeof(double));
 
     double logMHRatio;
 
@@ -308,22 +284,38 @@ extern "C" {
 	  covTransInvExpand(&spParams[AIndx], A, m);
 	  
 	  for(k = 0; k < m; k++){
-	    theta[k] = logitInv(spParams[phiIndx+k], phiUnif[k*2], phiUnif[k*2+1]);
+	    phi[k] = logitInv(spParams[phiIndx+k], phiUnif[k*2], phiUnif[k*2+1]);
 	    
 	    if(covModel == "matern"){
-	      theta[m+k] = logitInv(spParams[nuIndx+k], nuUnif[k*2], nuUnif[k*2+1]);
+	      nu[k] = logitInv(spParams[nuIndx+k], nuUnif[k*2], nuUnif[k*2+1]);
 	    }
 	  }
 
-	  //K = A'A
-	  F77_NAME(dgemm)(ntran, ytran, &m, &m, &m, &one, A, &m, A, &m, &zero, K, &m);
+	  //construct covariance matrix
+          #pragma omp parallel 
+	  {
+          #pragma omp for private(ii, k, l, h)
+	  for(jj = 0; jj < n; jj++){
+	    for(ii = jj; ii < n; ii++){	
+	      for(k = 0; k < m; k++){
+		for(l = 0; l < m; l++){
+		  C[(k+jj*m)*nm+(ii*m+l)] = 0.0; 
+		  for(h = 0; h < m; h++){
+		    C[(k+jj*m)*nm+(ii*m+l)] += A[k+m*h]*A[l+m*h]*spCor(coordsD[jj*n+ii], phi[h], nu[h], covModel);
+		  }
+		}
+	      }
+	    }
+	  }
+	  } //parallel for
 
-	  detCand = mvCovInvDet(coordsD, C, n, m, Psi, K, theta, tmp_mm, tmp_mm1, tmp_mm2, 
-				covModel, nPramPtr, covModelObj, cov1ParamPtr, cov2ParamPtr);
-	  
-	  //
+	  //invert C and log det cov
+	  detCand = 0;
+	  F77_NAME(dpotrf)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
+	  for(k = 0; k < nm; k++) detCand += 2*log(C[k*nm+k]);
+	  F77_NAME(dpotri)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
+
 	  //Likelihood with Jacobian   
-	  //
 	  logPostCand = 0.0;
 	  
 	  if(betaPrior == "normal"){
@@ -332,11 +324,7 @@ extern "C" {
 	    }
 	  }      
 	  
-	  //
 	  //Jacobian and IW priors for K = A'A
-	  //
-	  
-	  //AtA prior with jacob.
 	  logDetK = 0.0;
 	  SKtrace = 0.0;
 	  
@@ -346,16 +334,16 @@ extern "C" {
 	  for(k = 0; k < m; k++) logPostCand += (m-k)*log(A[k*m+k])+log(A[k*m+k]);
 	  
 	  //get S*K^-1, already have the chol of K (i.e., A)
-	  F77_NAME(dpotri)(lower, &m, A, &m, &info); if(info != 0){cout << "c++ error: Cand A Cholesky inverse failed\n" << endl;}
+	  F77_NAME(dpotri)(lower, &m, A, &m, &info); if(info != 0){error("c++ error: dpotri failed\n");}
 	  F77_NAME(dsymm)(rside, lower, &m, &m, &one, A, &m, KIW_S, &m, &zero, tmp_mm, &m);
 	  for(k = 0; k < m; k++){SKtrace += tmp_mm[k*m+k];}
 	  logPostCand += -0.5*(KIW_df+m+1)*logDetK - 0.5*SKtrace;
 	  
 	  for(k = 0; k < m; k++){
-	    logPostCand += log(theta[k] - phiUnif[k*2]) + log(phiUnif[k*2+1] - theta[k]); 
+	    logPostCand += log(phi[k] - phiUnif[k*2]) + log(phiUnif[k*2+1] - phi[k]); 
 	    
 	    if(covModel == "matern"){
-	      logPostCand += log(theta[m+k] - nuUnif[k*2]) + log(nuUnif[k*2+1] - theta[m+k]);  
+	      logPostCand += log(nu[k] - nuUnif[k*2]) + log(nuUnif[k*2+1] - nu[k]);  
 	    }
 	  }
 	  
@@ -364,14 +352,14 @@ extern "C" {
 	  if(family == "binomial"){
 	    logPostCand += binomial_logpost(nm, Y, tmp_nm, w, weights);
 	  }else if(family == "poisson"){
-	    logPostCand += poisson_logpost(nm, Y, tmp_nm, w);
+	    logPostCand += poisson_logpost(nm, Y, tmp_nm, w, weights);
 	  }else{
 	    error("c++ error: family misspecification in spGLM\n");
 	  }
 	  
 	  //(-1/2) * tmp_n` *  C^-1 * tmp_n
-	  F77_NAME(dsymv)(lower, &nm, &one,  C, &nm, w, &incOne, &zero, tmp_nm, &incOne);
-	  logPostCand += -0.5*detCand-0.5*F77_NAME(ddot)(&nm, w, &incOne, tmp_nm, &incOne);
+	  F77_NAME(dsymv)(lower, &nm, &one, C, &nm, w, &incOne, &zero, tmp_nm1, &incOne);
+	  logPostCand += -0.5*detCand-0.5*F77_NAME(ddot)(&nm, w, &incOne, tmp_nm1, &incOne);
 	  
 	  //
 	  //MH accept/reject	
@@ -400,19 +388,39 @@ extern "C" {
 	covTransInvExpand(&spParams[AIndx], A, m);
 	
 	for(k = 0; k < m; k++){
-	  theta[k] = logitInv(spParams[phiIndx+k], phiUnif[k*2], phiUnif[k*2+1]);
+	  phi[k] = logitInv(spParams[phiIndx+k], phiUnif[k*2], phiUnif[k*2+1]);
 	  
 	  if(covModel == "matern"){
-	    theta[m+k] = logitInv(spParams[nuIndx+k], nuUnif[k*2], nuUnif[k*2+1]);
+	    nu[k] = logitInv(spParams[nuIndx+k], nuUnif[k*2], nuUnif[k*2+1]);
 	  }
 	}
 	
-	//K = A'A
-	F77_NAME(dgemm)(ntran, ytran, &m, &m, &m, &one, A, &m, A, &m, &zero, K, &m);
+	//construct covariance matrix
+        #pragma omp parallel 
+	{
+        #pragma omp for private(ii, k, l, h)
+	  for(jj = 0; jj < n; jj++){
+	    for(ii = jj; ii < n; ii++){	
+	      for(k = 0; k < m; k++){
+		for(l = 0; l < m; l++){
+		  C[(k+jj*m)*nm+(ii*m+l)] = 0.0; 
+		  for(h = 0; h < m; h++){
+		    C[(k+jj*m)*nm+(ii*m+l)] += A[k+m*h]*A[l+m*h]*spCor(coordsD[jj*n+ii], phi[h], nu[h], covModel);
+		  }
+		}
+	      }
+	    }
+	  }
+	} //parallel for
 	
-	detCand = mvCovInvDet(coordsD, C, n, m, Psi, K, theta, tmp_mm, tmp_mm1, tmp_mm2, 
-			      covModel, nPramPtr, covModelObj, cov1ParamPtr, cov2ParamPtr);
-	  
+	//invert C and log det cov
+	detCand = 0;
+	F77_NAME(dpotrf)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+	for(k = 0; k < nm; k++) detCand += 2*log(C[k*nm+k]);
+	F77_NAME(dpotri)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: dpotri failed\n");}
+
+	F77_NAME(dgemv)(ntran, &nm, &p, &one, X, &nm, beta, &incOne, &zero, tmp_nm, &incOne);
+
 	for(j = 0; j < nm; j++){
 	  
 	  //propose
@@ -430,13 +438,9 @@ extern "C" {
 	    }
 	  }      
 	  
-	  //
 	  //Jacobian and IW priors for K = A'A
-	  //
-
 	  covTransInvExpand(&spParams[AIndx], A, m);	  
 
-	  //AtA prior with jacob.
 	  logDetK = 0.0;
 	  SKtrace = 0.0;
 	  
@@ -446,32 +450,30 @@ extern "C" {
 	  for(k = 0; k < m; k++) logPostCand += (m-k)*log(A[k*m+k])+log(A[k*m+k]);
 	  
 	  //get S*K^-1, already have the chol of K (i.e., A)
-	  F77_NAME(dpotri)(lower, &m, A, &m, &info); if(info != 0){cout << "c++ error: Cand A Cholesky inverse failed\n" << endl;}
+	  F77_NAME(dpotri)(lower, &m, A, &m, &info); if(info != 0){error("c++ error: dpotri failed\n");}
 	  F77_NAME(dsymm)(rside, lower, &m, &m, &one, A, &m, KIW_S, &m, &zero, tmp_mm, &m);
 	  for(k = 0; k < m; k++){SKtrace += tmp_mm[k*m+k];}
 	  logPostCand += -0.5*(KIW_df+m+1)*logDetK - 0.5*SKtrace;
 	  
 	  for(k = 0; k < m; k++){
-	    logPostCand += log(theta[k] - phiUnif[k*2]) + log(phiUnif[k*2+1] - theta[k]); 
+	    logPostCand += log(phi[k] - phiUnif[k*2]) + log(phiUnif[k*2+1] - phi[k]); 
 	    
 	    if(covModel == "matern"){
-	      logPostCand += log(theta[m+k] - nuUnif[k*2]) + log(nuUnif[k*2+1] - theta[m+k]);  
+	      logPostCand += log(nu[k] - nuUnif[k*2]) + log(nuUnif[k*2+1] - nu[k]);  
 	    }
 	  }
-	  
-	  F77_NAME(dgemv)(ntran, &nm, &p, &one, X, &nm, beta, &incOne, &zero, tmp_nm, &incOne);
 	  
 	  if(family == "binomial"){
 	    logPostCand += binomial_logpost(nm, Y, tmp_nm, w, weights);
 	  }else if(family == "poisson"){
-	    logPostCand += poisson_logpost(nm, Y, tmp_nm, w);
+	    logPostCand += poisson_logpost(nm, Y, tmp_nm, w, weights);
 	  }else{
 	    error("c++ error: family misspecification in spGLM\n");
 	  }
 	  
 	  //(-1/2) * tmp_n` *  C^-1 * tmp_n
-	  F77_NAME(dsymv)(lower, &nm, &one,  C, &nm, w, &incOne, &zero, tmp_nm, &incOne);
-	  logPostCand += -0.5*detCand-0.5*F77_NAME(ddot)(&nm, w, &incOne, tmp_nm, &incOne);
+	  F77_NAME(dsymv)(lower, &nm, &one, C, &nm, w, &incOne, &zero, tmp_nm1, &incOne);
+	  logPostCand += -0.5*detCand-0.5*F77_NAME(ddot)(&nm, w, &incOne, tmp_nm1, &incOne);
 	  
 	  //
 	  //MH accept/reject	
@@ -592,7 +594,7 @@ extern "C" {
     
     //samples
     SET_VECTOR_ELT(result, 0, samples_r);
-    SET_VECTOR_ELT(resultNames, 0, mkChar("p.samples")); 
+    SET_VECTOR_ELT(resultNames, 0, mkChar("p.beta.theta.samples")); 
 
     SET_VECTOR_ELT(result, 1, accept_r);
     SET_VECTOR_ELT(resultNames, 1, mkChar("acceptance"));
@@ -601,7 +603,7 @@ extern "C" {
     SET_VECTOR_ELT(resultNames, 2, mkChar("acceptance.w"));
     
     SET_VECTOR_ELT(result, 3, w_r);
-    SET_VECTOR_ELT(resultNames, 3, mkChar("sp.effects"));
+    SET_VECTOR_ELT(resultNames, 3, mkChar("p.w.samples"));
 
     SET_VECTOR_ELT(result, 4, tuning_r);
     SET_VECTOR_ELT(resultNames, 4, mkChar("tuning"));

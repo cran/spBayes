@@ -20,7 +20,7 @@
 }
 
 \value{
-  The \eqn{n\times m} inter-site Euclidean distance matrix.
+  The \eqn{n\times n}{nxn} or \eqn{n\times m}{nxm} inter-site Euclidean distance matrix.
 }
 
 \author{
@@ -29,7 +29,7 @@
 }
 
 \examples{
-
+\dontrun{
 n <- 10
 p1 <- cbind(runif(n),runif(n))
 
@@ -37,7 +37,5 @@ m <- 5
 p2 <- cbind(runif(m),runif(m))
 
 D <- iDist(p1, p2)
-
 }
-
-\keyword{misc}
+}

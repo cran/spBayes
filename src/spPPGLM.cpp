@@ -8,12 +8,11 @@ using namespace std;
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
-#include "covmodel.h"
 
 extern "C" {
 
   SEXP spPPGLM(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP coordsD_r, SEXP family_r, SEXP weights_r,
-	       SEXP isModPp_r, SEXP m_r, SEXP knotsD_r, SEXP coordsKnotsD_r, 
+	       SEXP m_r, SEXP knotsD_r, SEXP knotsCoordsD_r, 
 	       SEXP betaPrior_r, SEXP betaNorm_r, SEXP sigmaSqIG_r, SEXP nuUnif_r, SEXP phiUnif_r,
 	       SEXP phiStarting_r, SEXP sigmaSqStarting_r, SEXP nuStarting_r, SEXP betaStarting_r, SEXP w_strStarting_r,
 	       SEXP phiTuning_r, SEXP sigmaSqTuning_r, SEXP nuTuning_r, SEXP betaTuning_r, SEXP w_strTuning_r,
@@ -37,7 +36,6 @@ extern "C" {
     /*****************************************
                      Set-up
     *****************************************/
-
     double *Y = REAL(Y_r);
     double *X = REAL(X_r);
     int p = INTEGER(p_r)[0];
@@ -53,10 +51,7 @@ extern "C" {
 
     int m = INTEGER(m_r)[0];
     double *knotsD = REAL(knotsD_r);
-    double *coordsKnotsD = REAL(coordsKnotsD_r);
-
-    //if predictive process
-    bool isModPp = static_cast<bool>(INTEGER(isModPp_r)[0]);
+    double *knotsCoordsD = REAL(knotsCoordsD_r);
 
     //priors and starting
     string betaPrior = CHAR(STRING_ELT(betaPrior_r,0));
@@ -113,10 +108,7 @@ extern "C" {
       Rprintf("Number of covariates %i (including intercept if specified).\n\n", p);
       Rprintf("Using the %s spatial correlation model.\n\n", covModel.c_str());
       
-      if(isModPp)
-	Rprintf("Using modified predictive process with %i knots.\n\n", m);
-      else
-	Rprintf("Using non-modified predictive process with %i knots.\n\n", m);
+      Rprintf("Using non-modified predictive process with %i knots.\n\n", m);
     
       Rprintf("Number of MCMC samples %i.\n\n", nSamples);
 
@@ -178,30 +170,6 @@ extern "C" {
     } 
 
     /*****************************************
-        Set-up cov. model function pointer
-    *****************************************/
-     int nPramPtr = 1;
-    
-    void (covmodel::*cov1ParamPtr)(double, double &, double &) = NULL; 
-    void (covmodel::*cov2ParamPtr)(double, double, double &, double&) = NULL;
-    
-    if(covModel == "exponential"){
-      cov1ParamPtr = &covmodel::exponential;
-    }else if(covModel == "spherical"){
-      cov1ParamPtr = &covmodel::spherical;
-    }else if(covModel == "gaussian"){
-      cov1ParamPtr = &covmodel::gaussian;
-    }else if(covModel == "matern"){
-      cov2ParamPtr = &covmodel::matern;
-      nPramPtr = 2;
-    }else{
-      error("c++ error: cov.model is not correctly specified");
-    }
-   
-    //my covmodel object for calling cov function
-    covmodel *covModelObj = new covmodel;
-
-    /*****************************************
          Set-up MCMC sample matrices etc.
     *****************************************/
     int nn = n*n, nm = n*m, mm = m*m;
@@ -254,11 +222,12 @@ extern "C" {
     int s=0, status=0, rtnStatus=0, accept=0, batchAccept = 0;
     double logPostCurrent = 0, logPostCand = 0, detCand = 0;
   
-    double *ct = (double *) R_alloc(nm, sizeof(double));
-    double *C_str = (double *) R_alloc(mm, sizeof(double));
+    double *P = (double *) R_alloc(nm, sizeof(double));
+    double *K = (double *) R_alloc(mm, sizeof(double));
     double *tmp_n = (double *) R_alloc(n, sizeof(double));
     double *tmp_m = (double *) R_alloc(m, sizeof(double));
     double *tmp_nm = (double *) R_alloc(nm, sizeof(double));
+    double *theta = (double *) R_alloc(3, sizeof(double)); //phi, nu, and perhaps more in the future
 
     double *candSpParams = (double *) R_alloc(nParams, sizeof(double));
     double *w_strCand = (double *) R_alloc(m, sizeof(double));
@@ -287,50 +256,33 @@ extern "C" {
       F77_NAME(dcopy)(&p, &candSpParams[betaIndx], &incOne, beta, &incOne);
 
       candSpParams[sigmaSqIndx] = rnorm(spParams[sigmaSqIndx], sigmaSqTuning);
-      sigmaSq = exp(candSpParams[sigmaSqIndx]);
+      sigmaSq = theta[0] = exp(candSpParams[sigmaSqIndx]);
 
       candSpParams[phiIndx] = rnorm(spParams[phiIndx], phiTuning);
-      phi = logitInv(candSpParams[phiIndx], phiUnifa, phiUnifb);
+      phi = theta[1] = logitInv(candSpParams[phiIndx], phiUnifa, phiUnifb);
 
       if(covModel == "matern"){
 	candSpParams[nuIndx] = rnorm(spParams[nuIndx], nuTuning);
-	nu = logitInv(candSpParams[nuIndx], nuUnifa, nuUnifb);
+	nu = theta[2] = logitInv(candSpParams[nuIndx], nuUnifa, nuUnifb);
       }
 
       for(i = 0; i < m; i++){
 	w_strCand[i] = rnorm(w_strCurrent[i], sqrt(w_strTuning[i]));
       }
       
-      //make the correlation matrix
-      for(i = 0; i < mm; i++){
-	if(nPramPtr == 1)
-	  (covModelObj->*cov1ParamPtr)(phi, C_str[i], knotsD[i]);
-	else //i.e., 2 parameter matern
-	  (covModelObj->*cov2ParamPtr)(phi, nu, C_str[i], knotsD[i]);
-      }
-      
-      for(i = 0; i < nm; i++){
-	if(nPramPtr == 1)
-	  (covModelObj->*cov1ParamPtr)(phi, ct[i], coordsKnotsD[i]);
-	else //i.e., 2 parameter matern
-	  (covModelObj->*cov2ParamPtr)(phi, nu, ct[i], coordsKnotsD[i]);
-      }
-      
-      //scale by sigma^2
-      F77_NAME(dscal)(&mm, &sigmaSq, C_str, &incOne);	
-      F77_NAME(dscal)(&nm, &sigmaSq, ct, &incOne);
-  
+      //construct covariance matrices 
+      spCovLT(knotsD, m, theta, covModel, K);
+      spCov(knotsCoordsD, nm, theta, covModel, P);
+    
       //invert C and log det cov
       detCand = 0;
-      F77_NAME(dpotrf)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
-      for(i = 0; i < m; i++) detCand += 2*log(C_str[i*m+i]);
-      F77_NAME(dpotri)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
-      
-      F77_NAME(dsymm)(rside, upper, &n, &m, &one, C_str, &m, ct, &n, &zero, tmp_nm, &n);
+      F77_NAME(dpotrf)(lower, &m, K, &m, &info); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
+      for(i = 0; i < m; i++) detCand += 2*log(K[i*m+i]);
+      F77_NAME(dpotri)(lower, &m, K, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
       
       //make \tild{w}
-      F77_NAME(dgemv)(ntran, &n, &m, &one, tmp_nm, &n, w_strCand, &incOne, &zero, wCand, &incOne);
-
+      F77_NAME(dsymv)(lower, &m, &one, K, &m, w_strCand, &incOne, &zero, tmp_m, &incOne);     
+      F77_NAME(dgemv)(ytran, &m, &n, &one, P, &m, tmp_m, &incOne, &zero, wCand, &incOne);
       
       //Likelihood with Jacobian  
       logPostCand = 0.0;
@@ -354,13 +306,12 @@ extern "C" {
       if(family == "binomial"){
 	logPostCand += binomial_logpost(n, Y, tmp_n, wCand, weights);
       }else if(family == "poisson"){
-	logPostCand += poisson_logpost(n, Y, tmp_n, wCand);
+	logPostCand += poisson_logpost(n, Y, tmp_n, wCand, weights);
       }else{
 	error("c++ error: family misspecification in spGLM\n");
       }
 
       //(-1/2) * tmp_n` *  C^-1 * tmp_n
-      F77_NAME(dsymv)(upper, &m, &one,  C_str, &m, w_strCand, &incOne, &zero, tmp_m, &incOne);
       logPostCand += -0.5*detCand-0.5*F77_NAME(ddot)(&m, w_strCand, &incOne, tmp_m, &incOne);
 
       //
@@ -379,7 +330,6 @@ extern "C" {
 	batchAccept++;
       }
       
-
       /******************************
           Save samples and report
       *******************************/
@@ -402,8 +352,7 @@ extern "C" {
 	}
       }
       status++;
-      
-      
+   
       R_CheckUserInterrupt();
     }//end sample loop
     PutRNGstate();
@@ -440,16 +389,16 @@ extern "C" {
 
    //samples
     SET_VECTOR_ELT(result, 0, samples_r);
-    SET_VECTOR_ELT(resultNames, 0, mkChar("p.samples")); 
+    SET_VECTOR_ELT(resultNames, 0, mkChar("p.beta.theta.samples")); 
 
     SET_VECTOR_ELT(result, 1, accept_r);
     SET_VECTOR_ELT(resultNames, 1, mkChar("acceptance"));
     
     SET_VECTOR_ELT(result, 2, w_r);
-    SET_VECTOR_ELT(resultNames, 2, mkChar("sp.effects"));
+    SET_VECTOR_ELT(resultNames, 2, mkChar("p.w.samples"));
 
     SET_VECTOR_ELT(result, 3, w_str_r);
-    SET_VECTOR_ELT(resultNames, 3, mkChar("sp.effects.knots"));
+    SET_VECTOR_ELT(resultNames, 3, mkChar("p.w.knots.samples"));
   
     namesgets(result, resultNames);
    

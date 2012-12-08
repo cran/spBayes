@@ -1,6 +1,9 @@
 #include <iostream>
 #include <string>
-using namespace std;
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+//using namespace std;
 
 #include <R.h>
 #include <Rinternals.h>
@@ -8,25 +11,27 @@ using namespace std;
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
-#include "covmodel.h"
-#include "covInvDet.h"
-
 
 extern "C" {
 
   SEXP spMvLM(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP m_r, SEXP coordsD_r,
-	      SEXP KIW_r, SEXP PsiIW_r, SEXP nuUnif_r, SEXP phiUnif_r,
-	      SEXP phiStarting_r, SEXP AStarting_r, SEXP LStarting_r, SEXP nuStarting_r, SEXP betaStarting_r,
+	      SEXP betaPrior_r, SEXP betaNorm_r, 
+	      SEXP KPrior_r, SEXP KPriorName_r, 
+	      SEXP PsiPrior_r, SEXP PsiPriorName_r, SEXP PsiDiag_r, 
+	      SEXP nuUnif_r, SEXP phiUnif_r,
+	      SEXP phiStarting_r, SEXP AStarting_r, SEXP LStarting_r, SEXP nuStarting_r, 
 	      SEXP phiTuning_r, SEXP ATuning_r, SEXP LTuning_r, SEXP nuTuning_r, 
-	      SEXP nugget_r, SEXP covModel_r, SEXP nSamples_r, SEXP verbose_r, SEXP nReport_r){
-
+	      SEXP getBeta_r, SEXP rIndx_r,
+	      SEXP nugget_r, SEXP covModel_r, SEXP amcmc_r, SEXP nBatch_r, SEXP batchLength_r, SEXP acceptRate_r, SEXP verbose_r, SEXP nReport_r){
 
     /*****************************************
                 Common variables
     *****************************************/
-    int i,j,k,l,info,nProtect= 0;
+    int h, i, j, k, l, b, s, ii, jj, info, nProtect= 0;
     char const *lower = "L";
     char const *upper = "U";
+    char const *nUnit = "N";
+    char const *yUnit = "U";
     char const *ntran = "N";
     char const *ytran = "T";
     char const *rside = "R";
@@ -39,7 +44,6 @@ extern "C" {
     /*****************************************
                      Set-up
     *****************************************/
-
     double *Y = REAL(Y_r);
     double *X = REAL(X_r);
     int p = INTEGER(p_r)[0];
@@ -49,58 +53,98 @@ extern "C" {
     int nn = n*n;
     int mm = m*m;
     int nm = n*m;
+    int nmnm = nm*nm;
+    int nmp = nm*p;
+    int pp = p*p;
 
     double *coordsD = REAL(coordsD_r);
 
-    //covariance model
     string covModel = CHAR(STRING_ELT(covModel_r,0));
 
-    //priors and starting
-    double *phiUnif = REAL(phiUnif_r);
-    double KIW_df = REAL(VECTOR_ELT(KIW_r, 0))[0]; double *KIW_S = REAL(VECTOR_ELT(KIW_r, 1));
-
-    double *phiStarting = REAL(phiStarting_r);
-    double *AStarting = REAL(AStarting_r);
-    double *betaStarting = REAL(betaStarting_r);
-
-    //if nugget
-    bool nugget = static_cast<bool>(INTEGER(nugget_r)[0]);
-
-    double *LStarting = NULL;
-    double PsiIW_df = 0; double *PsiIW_S = NULL;
-    if(nugget){
-      LStarting = REAL(LStarting_r);
-      PsiIW_df = REAL(VECTOR_ELT(PsiIW_r, 0))[0]; PsiIW_S = REAL(VECTOR_ELT(PsiIW_r, 1));
+    //priors
+    string betaPrior = CHAR(STRING_ELT(betaPrior_r,0));
+    double *betaMu = NULL;
+    double *betaC = NULL;
+    
+    if(betaPrior == "normal"){
+      betaMu = (double *) R_alloc(p, sizeof(double));
+      F77_NAME(dcopy)(&p, REAL(VECTOR_ELT(betaNorm_r, 0)), &incOne, betaMu, &incOne);
+      
+      betaC = (double *) R_alloc(pp, sizeof(double)); 
+      F77_NAME(dcopy)(&pp, REAL(VECTOR_ELT(betaNorm_r, 1)), &incOne, betaC, &incOne);
     }
 
-    //if matern
-    double *nuUnif = NULL;
-    double *nuStarting = NULL;
+    double *phiUnif = REAL(phiUnif_r);
 
+    string KPriorName = CHAR(STRING_ELT(KPriorName_r,0));
+    double KIW_df = 0; double *KIW_S = NULL;
+    double *ANormMu = NULL; double *ANormC = NULL;
+
+    if(KPriorName == "IW"){
+      KIW_S = (double *) R_alloc(mm, sizeof(double));
+      KIW_df = REAL(VECTOR_ELT(KPrior_r, 0))[0]; KIW_S = REAL(VECTOR_ELT(KPrior_r, 1));
+    }else{//assume A normal (can add more specifications later)
+      ANormMu = (double *) R_alloc(nLTr, sizeof(double));
+      ANormC = (double *) R_alloc(nLTr, sizeof(double));
+      
+      for(i = 0; i < nLTr; i++){
+	ANormMu[i] = REAL(VECTOR_ELT(KPrior_r, 0))[i];
+	ANormC[i] = REAL(VECTOR_ELT(KPrior_r, 1))[i];
+      }
+    }
+
+    bool nugget = static_cast<bool>(INTEGER(nugget_r)[0]);
+    string PsiPriorName;
+    bool PsiDiag = static_cast<bool>(INTEGER(PsiDiag_r)[0]);
+    double PsiIW_df = 0; double *PsiIW_S = NULL;
+    double *LNormMu = NULL; double *LNormC = NULL;
+    double *PsiIGa = NULL; double *PsiIGb = NULL;
+
+    if(nugget){
+      PsiPriorName = CHAR(STRING_ELT(PsiPriorName_r,0));
+
+      if(PsiDiag){
+	PsiIGa = (double *) R_alloc(m, sizeof(double));
+	PsiIGb = (double *) R_alloc(m, sizeof(double));
+	
+	for(i = 0; i < m; i++){
+	  PsiIGa[i] = REAL(VECTOR_ELT(PsiPrior_r, 0))[i];
+	  PsiIGb[i] = REAL(VECTOR_ELT(PsiPrior_r, 1))[i];
+	}
+      }else{
+	if(PsiPriorName == "IW"){
+	  PsiIW_S = (double *) R_alloc(mm, sizeof(double));
+	  PsiIW_df = REAL(VECTOR_ELT(PsiPrior_r, 0))[0]; PsiIW_S = REAL(VECTOR_ELT(PsiPrior_r, 1));
+	}else{//assume A normal (can add more specifications later)
+	  LNormMu = (double *) R_alloc(nLTr, sizeof(double));
+	  LNormC = (double *) R_alloc(nLTr, sizeof(double));
+	  
+	  for(i = 0; i < nLTr; i++){
+	    LNormMu[i] = REAL(VECTOR_ELT(PsiPrior_r, 0))[i];
+	    LNormC[i] = REAL(VECTOR_ELT(PsiPrior_r, 1))[i];
+	  }
+	}
+      }
+    }
+ 
+    //matern
+    double *nuUnif = NULL;
     if(covModel == "matern"){
       nuUnif = REAL(nuUnif_r);
-      nuStarting = REAL(nuStarting_r);
     }
 
-    //tuning
-    double *phiTuning = REAL(phiTuning_r);
-    double *ATuning = REAL(ATuning_r);
-    double *LTuning = NULL;
-    double *nuTuning = NULL;
+    //recover beta
+    // bool getBeta = static_cast<bool>(INTEGER(getBeta_r)[0]);
+    // int *rIndx = INTEGER(rIndx_r);
 
-    if(nugget)
-      LTuning = REAL(LTuning_r);
-
-    if(covModel == "matern")
-      nuTuning = REAL(nuTuning_r);
-
-    int nSamples = INTEGER(nSamples_r)[0];
+    bool amcmc = static_cast<bool>(INTEGER(amcmc_r)[0]);
+    int nBatch = INTEGER(nBatch_r)[0];
+    int batchLength = INTEGER(batchLength_r)[0];
+    double acceptRate = REAL(acceptRate_r)[0];
+    int nSamples = nBatch*batchLength;
     int verbose = INTEGER(verbose_r)[0];
     int nReport = INTEGER(nReport_r)[0];
-
-    double *A = (double *) R_alloc(mm, sizeof(double));
-    double *L = (double *) R_alloc(mm, sizeof(double));
-
+ 
     if(verbose){
       Rprintf("----------------------------------------\n");
       Rprintf("\tGeneral model description\n");
@@ -109,515 +153,598 @@ extern "C" {
       Rprintf("Number of covariates %i (including intercept if specified).\n\n", p);
       Rprintf("Using the %s spatial correlation model.\n\n", covModel.c_str());
       
+      if(amcmc){
+	Rprintf("Using adaptive MCMC.\n\n");
+	Rprintf("\tNumber of batches %i.\n", nBatch);
+	Rprintf("\tBatch length %i.\n", batchLength);
+	Rprintf("\ttarget acceptance rate %.5f.\n", acceptRate);
+	Rprintf("\n");
+      }else{
+	Rprintf("Number of MCMC samples %i.\n\n", nSamples);
+      }
       
-      Rprintf("Number of MCMC samples %i.\n\n", nSamples);
+      if(!nugget){
+	Rprintf("tau.sq not included in the model (i.e., no nugget model).\n\n");
+      }
+
+      // if(getBeta){
+      // 	Rprintf("Recovering beta samples.\n\n");
+      // }
 
       Rprintf("Priors and hyperpriors:\n");
-      Rprintf("\tbeta flat.\n\n");   
-      Rprintf("\tK IW hyperpriors df=%.5f, S=\n", KIW_df);
-      printMtrx(KIW_S, m, m);
+      
+      if(betaPrior == "flat"){
+	Rprintf("\tbeta flat.\n");
+      }else{
+	Rprintf("\tbeta normal:\n");
+	Rprintf("\tmu:"); printVec(betaMu, p);
+	Rprintf("\tcov:\n"); printMtrx(betaC, p, p);
+      }
+      Rprintf("\n");
+      
+      if(KPriorName == "IW"){
+	Rprintf("\tK IW hyperpriors df=%.5f, S=\n", KIW_df);
+	printMtrx(KIW_S, m, m);
+      }else{
+	Rprintf("\tA Normal hyperpriors\n");
+	Rprintf("\t\tparameter\tmean\tvar\n");
+	for(j = 0, i = 0; j < m; j++){
+	  for(k = j; k < m; k++, i++){
+	    Rprintf("\t\tA[%i,%i]\t\t%3.1f\t%1.2f\n", j+1, k+1, ANormMu[i], ANormC[i]);
+	  }
+	}
+      }
       Rprintf("\n"); 
-
+      
       if(nugget){
-	Rprintf("\tPsi IW hyperpriors df=%.5f, S=\n", PsiIW_df);
-	printMtrx(PsiIW_S, m, m);
-	Rprintf("\n"); 
+	if(PsiPriorName == "IW"){
+	  Rprintf("\tPsi IW hyperpriors df=%.5f, S=\n", PsiIW_df);
+	  printMtrx(PsiIW_S, m, m);
+	  Rprintf("\n"); 
+	}else{
+	  if(PsiDiag){
+	    Rprintf("\tDiag(Psi) IG hyperpriors\n");
+	    Rprintf("\t\tparameter\tshape\tscale\n");
+	    for(j = 0; j < m; j++){
+	      Rprintf("\t\tPsi[%i,%i]\t%3.1f\t%1.2f\n", j+1, j+1, PsiIGa[j], PsiIGb[j]);
+	    }
+	  }else{
+	    Rprintf("\tL Normal hyperpriors\n");
+	    Rprintf("\t\tparameter\tmean\tvar\n");
+	    for(j = 0, i = 0; j < m; j++){
+	      for(k = j; k < m; k++, i++){
+		Rprintf("\t\tL[%i,%i]\t\t%3.1f\t%1.2f\n", j+1, k+1, LNormMu[i], LNormC[i]);
+	      }
+	    }
+	  }
+	}
       }
- 
-      Rprintf("\tphi Unif hyperpriors\n");
-      Rprintf("\t");   
-      for(i = 0; i < m; i++){
-	Rprintf("(%.5f, %.5f) ", phiUnif[i*2], phiUnif[i*2+1]);
-      }
-      Rprintf("\n\n");   
+      Rprintf("\n");  
 
+      Rprintf("\tphi Unif hyperpriors\n");
+      Rprintf("\t\tparameter\ta\tb\n");
+      for(j = 0; j < m; j++){
+	Rprintf("\t\tphi[%i]\t\t%0.5f\t%0.5f\n", j+1, phiUnif[j*2], phiUnif[j*2+1]);
+      }
+      Rprintf("\n");   
+      
       if(covModel == "matern"){
 	Rprintf("\tnu Unif hyperpriors\n");
-	Rprintf("\t");
-	for(i = 0; i < m; i++){
-	  Rprintf("(%.5f, %.5f) ", nuUnif[i*2], nuUnif[i*2+1]);
+	for(j = 0; j < m; j++){
+	  Rprintf("\t\tnu[%i]\t\t%0.5f\t%0.5f\n", j+1, nuUnif[j*2], nuUnif[j*2+1]);
 	}
-	Rprintf("\n\n");   
+	Rprintf("\n");   
       }
-
-      Rprintf("Metropolis tuning values:\n");
-  
-      Rprintf("\tA tuning:\n");
-      Rprintf("\t"); printVec(ATuning, nLTr);
-      Rprintf("\n"); 
-
-      if(nugget){
-	Rprintf("\tL tuning:\n");
-	Rprintf("\t"); printVec(LTuning, nLTr);
-	Rprintf("\n"); 
-      }
-
-      Rprintf("\tphi tuning\n");
-      Rprintf("\t"); printVec(phiTuning, m);
-      Rprintf("\n");   
-
-      if(covModel == "matern"){
-	Rprintf("\tnu tuning\n");
-	Rprintf("\t"); printVec(nuTuning, m);
-	Rprintf("\n");
-      }
-
-      Rprintf("Metropolis starting values:\n");
-  
-      covExpand(AStarting, A, m);
-      Rprintf("\tA starting\n");
-      printMtrx(A, m, m);
-      Rprintf("\n");
-
-      if(nugget){
-	covExpand(LStarting, L, m);
-	Rprintf("\tL starting\n");
-	printMtrx(L, m, m);
-	Rprintf("\n");
-      }
-
-      Rprintf("\tphi starting\n");
-      Rprintf("\t"); printVec(phiStarting, m);
-      Rprintf("\n");   
-
-      if(covModel == "matern"){
-	Rprintf("\tnu starting\n");
-	Rprintf("\t");printVec(nuStarting, m);
-      }
+      
     }
  
-    /*****************************************
-        Set-up cov. model function pointer
-    *****************************************/
-    int nPramPtr = 1;
-    
-    void (covmodel::*cov1ParamPtr)(double, double &, double &) = NULL; 
-    void (covmodel::*cov2ParamPtr)(double, double, double &, double&) = NULL;
-    
-    if(covModel == "exponential"){
-      cov1ParamPtr = &covmodel::exponential;
-    }else if(covModel == "spherical"){
-      cov1ParamPtr = &covmodel::spherical;
-    }else if(covModel == "gaussian"){
-      cov1ParamPtr = &covmodel::gaussian;
-    }else if(covModel == "matern"){
-      cov2ParamPtr = &covmodel::matern;
-      nPramPtr = 2;
-    }else{
-      error("c++ error: cov.model is not correctly specified");
-    }
-   
-    //my covmodel object for calling cov function
-    covmodel *covModelObj = new covmodel;
-
     /*****************************************
          Set-up MCMC sample matrices etc.
     *****************************************/
     //spatial parameters
-    int nSpParams, AIndx, LIndx, phiIndx, nuIndx;
+    int nParams, AIndx, LIndx, phiIndx, nuIndx;
 
     if(!nugget && covModel != "matern"){
-      nSpParams = nLTr+m;//A, phi
+      nParams = nLTr+m;//A, phi
       AIndx = 0; phiIndx = nLTr;
     }else if(nugget && covModel != "matern"){
-      nSpParams = 2*nLTr+m;//A, L, phi
-      AIndx = 0; LIndx = nLTr; phiIndx = LIndx+nLTr;
+      if(PsiDiag){
+	nParams = nLTr+m+m;//A, diag(Psi), phi
+	AIndx = 0; LIndx = nLTr; phiIndx = LIndx+m;
+      }else{
+	nParams = 2*nLTr+m;//A, L, phi
+	AIndx = 0; LIndx = nLTr; phiIndx = LIndx+nLTr;
+      }
     }else if(!nugget && covModel == "matern"){
-      nSpParams = nLTr+2*m;//A, phi, nu
+      nParams = nLTr+2*m;//A, phi, nu
       AIndx = 0; phiIndx = nLTr, nuIndx = phiIndx+m;
     }else{
-      nSpParams = 2*nLTr+2*m;//A, Phi, phi, nu
-      AIndx = 0; LIndx = nLTr, phiIndx = LIndx+nLTr, nuIndx = phiIndx+m;
+      if(PsiDiag){
+	nParams = nLTr+3*m;//A, diag(Psi), phi, nu
+	AIndx = 0; LIndx = nLTr, phiIndx = LIndx+m, nuIndx = phiIndx+m;
+      }else{
+	nParams = 2*nLTr+2*m;//A, Psi, phi, nu
+	AIndx = 0; LIndx = nLTr, phiIndx = LIndx+nLTr, nuIndx = phiIndx+m;
+      }
     }
     
-    double *spParams = (double *) R_alloc(nSpParams, sizeof(double));
-    
-    //set starting
-    covTrans(AStarting, &spParams[AIndx], m);
+    double *params = (double *) R_alloc(nParams, sizeof(double));
+
+    //starting
+    covTrans(REAL(AStarting_r), &params[AIndx], m);
 
     if(nugget){
-      covTrans(LStarting, &spParams[LIndx], m);
-    }
-
-    for(i = 0; i < m; i++){
-      spParams[phiIndx+i] = logit(phiStarting[i], phiUnif[i*2], phiUnif[i*2+1]);
-    }
-
-    if(covModel == "matern"){
-      for(i = 0; i < m; i++){
-	spParams[nuIndx+i] = logit(nuStarting[i], nuUnif[i*2], nuUnif[i*2+1]);
+      if(PsiDiag){
+	for(i = 0; i < m; i++){
+	  params[LIndx+i] = log(REAL(LStarting_r)[i]);
+	}
+      }else{
+	covTrans(REAL(LStarting_r), &params[LIndx], m);
       }
     }
 
-    //Beta parameter and set starting
-    double *beta = (double *) R_alloc(p, sizeof(double));
-    F77_NAME(dcopy)(&p, betaStarting, &incOne, beta, &incOne);
+    for(i = 0; i < m; i++){
+      params[phiIndx+i] = logit(REAL(phiStarting_r)[i], phiUnif[i*2], phiUnif[i*2+1]);
+      
+      if(covModel == "matern"){
+	params[nuIndx+i] = logit(REAL(nuStarting_r)[i], nuUnif[i*2], nuUnif[i*2+1]);
+      }
+    }
 
-    //samples and random effects
-    int nParams = p+nSpParams;
+    //tuning and fixed
+    double *tuning = (double *) R_alloc(nParams, sizeof(double));
+    int *fixed = (int *) R_alloc(nParams, sizeof(int)); zeros(fixed, nParams);
 
-    SEXP w_r, samples_r, accept_r;
+    for(i = 0; i < nLTr; i++){
+      tuning[AIndx+i] = REAL(ATuning_r)[i];
+      if(tuning[AIndx+i] == 0){
+	fixed[AIndx+i] = 1;
+      }
+    }
+    
+    if(nugget){
+      if(PsiDiag){
+	for(i = 0; i < m; i++){
+	  tuning[LIndx+i] = REAL(LTuning_r)[i];
+	  if(tuning[LIndx+i] == 0){
+	    fixed[LIndx+i] = 1;
+	  }
+	}	
+      }else{
+	for(i = 0; i < nLTr; i++){
+	  tuning[LIndx+i] = REAL(LTuning_r)[i];
+	  if(tuning[LIndx+i] == 0){
+	    fixed[LIndx+i] = 1;
+	  }
+	}
+      }
+    }
 
-    PROTECT(w_r = allocMatrix(REALSXP, nm, nSamples)); nProtect++; 
-    double *w = REAL(w_r); zeros(w, nm*nSamples);
+    for(i = 0; i < m; i++){
+      tuning[phiIndx+i] = REAL(phiTuning_r)[i];
+      if(tuning[phiIndx+i] == 0){
+	fixed[phiIndx+i] = 1;
+      }
+      
+      if(covModel == "matern"){
+	tuning[nuIndx+i] = REAL(nuTuning_r)[i];
+	if(tuning[nuIndx+i] == 0){
+	  fixed[nuIndx+i] = 1;
+	}
+      }
+    }
 
-    PROTECT(samples_r = allocMatrix(REALSXP, nParams, nSamples)); nProtect++; 
-    double *samples = REAL(samples_r);
+    for(i = 0; i < nParams; i++){
+      tuning[i] = log(sqrt(tuning[i]));
+    }
 
-    PROTECT(accept_r = allocMatrix(REALSXP, 1, 1)); nProtect++;
+    //return stuff  
+    SEXP samples_r, accept_r, tuning_r;//, betaSamples_r;
+    PROTECT(samples_r = allocMatrix(REALSXP, nParams, nSamples)); nProtect++;
+    PROTECT(accept_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++; 
+    PROTECT(tuning_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++;  
+    
+    // int nRIndx = 0;
+    // if(getBeta){
+    //   for(i = 0; i < nSamples; i++){
+    // 	if(rIndx[i] == 1)
+    // 	  nRIndx++;
+    //   }
+    //   PROTECT(betaSamples_r = allocMatrix(REALSXP, p, nRIndx)); nProtect++; 
+    // }
 
     /*****************************************
        Set-up MCMC alg. vars. matrices etc.
     *****************************************/
-    int s=0, status=0, rtnStatus=0, accept=0, batchAccept = 0;
-    double logPostCurrent = 0, logPostCand = 0, detCand = 0, det = 0,
-      logDetK, SKtrace;
+    int status=0, batchAccept=0;
+    double logMHRatio =0, logPostCurrent = R_NegInf, logPostCand = 0, det = 0, paramsjCurrent = 0;
+    double Q, logDetK, SKtrace;
 
+    double *paramsCurrent = (double *) R_alloc(nParams, sizeof(double));
+    double *accept = (double *) R_alloc(nParams, sizeof(double)); zeros(accept, nParams);
 
-    double *C = (double *) R_alloc(nm*nm, sizeof(double)); 
-        
-    double *tmp_mm = (double *) R_alloc(mm, sizeof(double));
-    double *tmp_mm1 = (double *) R_alloc(mm, sizeof(double));
-    double *tmp_mm2 = (double *) R_alloc(mm, sizeof(double));
-    double *tmp_nm = (double *) R_alloc(nm, sizeof(double));
-    double *tmp_nm1 = (double *) R_alloc(nm, sizeof(double));
+    double *C = (double *) R_alloc(nmnm, sizeof(double)); 
 
-    double *candSpParams = (double *) R_alloc(nSpParams, sizeof(double));
     double *K = (double *) R_alloc(mm, sizeof(double));
     double *Psi = (double *) R_alloc(mm, sizeof(double));
-    double *theta = (double *) R_alloc(mm, sizeof(double));
-    double logMHRatio;
-    
-    double *S_beta = (double *) R_alloc(p*p, sizeof(double));
-    double *Mu_beta = (double *) R_alloc(p, sizeof(double));
-    double *tmp_p = (double *) R_alloc(p, sizeof(double)); 
-    double *tmp_nmp = (double *) R_alloc(nm*p, sizeof(double)); 
+    double *A = (double *) R_alloc(mm, sizeof(double));
+    double *L = (double *) R_alloc(mm, sizeof(double));
+    double *phi = (double *) R_alloc(m, sizeof(double));
+    double *nu = (double *) R_alloc(m, sizeof(double));
+ 
+    int p1 = p+1;
+    double *vU = (double *) R_alloc(nm*p1, sizeof(double));
 
+    double *z = (double *) R_alloc(nm, sizeof(double));
+    double *tmp_nm = (double *) R_alloc(nm, sizeof(double));
+    double *tmp_mm = (double *) R_alloc(mm, sizeof(double));
+    //double *tmp_mm1 = (double *) R_alloc(mm, sizeof(double));
+    double *tmp_pp = (double *) R_alloc(pp, sizeof(double));
+    double *tmp_p = (double *) R_alloc(p, sizeof(double));
+    //double *tmp_p2 = (double *) R_alloc(p, sizeof(double));
+    double *tmp_nmnm = NULL;
+    double *Cbeta = NULL;
+
+    //recover stuff
+    // double *B = NULL;
+    // double *bb = NULL;
+    // double *betaCInv = NULL;
+    // double *betaCInvMu = NULL;
+    // int rCnt = 0;
+
+    // if(getBeta){
+    //   B = (double *) R_alloc(pp, sizeof(double));
+    //   bb = (double *) R_alloc(p, sizeof(double));
+      
+    //   if(betaPrior == "normal"){
+    // 	betaCInv = (double *) R_alloc(pp, sizeof(double));
+    // 	betaCInvMu = (double *) R_alloc(p, sizeof(double));
+
+    // 	F77_NAME(dcopy)(&pp, betaC, &incOne, betaCInv, &incOne);
+    // 	F77_NAME(dpotrf)(lower, &p, betaCInv, &p, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+    // 	F77_NAME(dpotri)(lower, &p, betaCInv, &p, &info); if(info != 0){error("c++ error: dpotri failed\n");}
+	
+    // 	F77_NAME(dsymv)(lower, &p, &one, betaCInv, &p, betaMu, &incOne, &zero, betaCInvMu, &incOne);      
+    //   }
+    // }
+
+    if(betaPrior == "normal"){
+      tmp_nmnm = (double *) R_alloc(nmnm, sizeof(double));
+      Cbeta = (double *) R_alloc(nmnm, sizeof(double));
+      
+      F77_NAME(dgemv)(ntran, &nm, &p, &negOne, X, &nm, betaMu, &incOne, &zero, z, &incOne);
+      F77_NAME(daxpy)(&nm, &one, Y, &incOne, z, &incOne);
+
+      F77_NAME(dsymm)(rside, lower, &nm, &p, &one, betaC, &p, X, &nm, &zero, vU, &nm);
+      F77_NAME(dgemm)(ntran, ytran, &nm, &nm, &p, &one, vU, &nm, X, &nm, &zero, tmp_nmnm, &nm);
+    }
+     
     if(verbose){
       Rprintf("-------------------------------------------------\n");
       Rprintf("\t\tSampling\n");
       Rprintf("-------------------------------------------------\n");
       #ifdef Win32
-        R_FlushConsole();
+      R_FlushConsole();
       #endif
     }
 
     GetRNGstate();
-    for(s = 0; s < nSamples; s++){
-      
-      //
-      //Current
-      //
-      covTransInvExpand(&spParams[AIndx], A, m);
-
-      if(nugget){
-       covTransInvExpand(&spParams[LIndx], L, m);
-      }      
-
-      for(i = 0; i < m; i++){
-	theta[i] = logitInv(spParams[phiIndx+i], phiUnif[i*2], phiUnif[i*2+1]);
-	
-	if(covModel == "matern"){
-	  theta[m+i] = logitInv(spParams[nuIndx+i], nuUnif[i*2], nuUnif[i*2+1]);
-	}
-      }
-
-      //K = A'A and Psi = L'L
-      F77_NAME(dgemm)(ntran, ytran, &m, &m, &m, &one, A, &m, A, &m, &zero, K, &m);
-      F77_NAME(dgemm)(ntran, ytran, &m, &m, &m, &one, L, &m, L, &m, &zero, Psi, &m);
-
-      det = mvCovInvDet(coordsD, C, n, m, Psi, K, theta, tmp_mm, tmp_mm1, tmp_mm2, 
-			covModel, nPramPtr, covModelObj, cov1ParamPtr, cov2ParamPtr);
-
-      //
-      //Update Beta
-      //
-      //finish the Gibbs
-      F77_NAME(dsymm)(lside, lower, &nm, &p, &one, C, &nm, X, &nm, &zero, tmp_nmp, &nm);
-      F77_NAME(dgemm)(ytran, ntran, &p, &p, &nm, &one, X, &nm, tmp_nmp, &nm, &zero, S_beta, &p);
-      
-      F77_NAME(dpotrf)(lower, &p, S_beta, &p, &info); if(info != 0){cout << "c++ error: Cholesky failed\n" << endl;}
-      F77_NAME(dpotri)(lower, &p, S_beta, &p, &info); if(info != 0){cout << "c++ error: Cholesky inverse failed\n" << endl;}
-      
-      F77_NAME(dsymv)(lower, &nm, &one, C, &nm, Y, &incOne, &zero, tmp_nm, &incOne);
-      F77_NAME(dgemv)(ytran, &nm, &p, &one, X, &nm, tmp_nm, &incOne, &zero, tmp_p, &incOne);
-      F77_NAME(dsymv)(lower, &p, &one, S_beta, &p, tmp_p, &incOne, &zero, Mu_beta, &incOne);
-      
-      //Gibbs draw
-      //take lower for the chol for the mv draw
-      F77_NAME(dpotrf)(lower, &p, S_beta, &p, &info); if(info != 0){cout << "c++ error: Cholesky failed\n" << endl;}
-      mvrnorm(beta, Mu_beta, S_beta, p, false);
-
-      //
-      //Likelihood with Jacobian   
-      //
-      logPostCurrent = 0.0;
-      
-      //
-      //Jacobian and IW priors for K = A'A and Psi = L'L
-      //
-      //A'A prior with jacob.
-      logDetK = 0.0;
-      SKtrace = 0.0;
-
-      for(i = 0; i < m; i++) logDetK += 2*log(A[i*m+i]);
-      
-      //jacobian \sum_{i=1}^{m} (m-i+1)*log(a_ii)+log(a_ii)
-      for(i = 0; i < m; i++) logPostCurrent += (m-i)*log(A[i*m+i])+log(A[i*m+i]);
-      
-      //get S*K^-1, already have the chol of K (i.e., A)
-      F77_NAME(dpotri)(lower, &m, A, &m, &info); if(info != 0){cout << "c++ error: A Cholesky inverse failed\n" << endl;}
-      F77_NAME(dsymm)(rside, lower, &m, &m, &one, A, &m, KIW_S, &m, &zero, tmp_mm, &m);
-      for(i = 0; i < m; i++){SKtrace += tmp_mm[i*m+i];}
-      logPostCurrent += -0.5*(KIW_df+m+1)*logDetK - 0.5*SKtrace;
-
-      if(nugget){
-	
-	//L'L prior with jacob.
-	logDetK = 0.0;
-	SKtrace = 0.0; 
-	
-	for(i = 0; i < m; i++) logDetK += 2*log(L[i*m+i]);
-	
-	//jacobian \sum_{i=1}^{m} (m-i+1)*log(a_ii)+log(a_ii)
-	for(i = 0; i < m; i++) logPostCurrent += (m-i)*log(L[i*m+i])+log(L[i*m+i]);
-	
-	//get S*K^-1, already have the chol of Psi (i.e., L)
-	F77_NAME(dpotri)(lower, &m, L, &m, &info); if(info != 0){cout << "c++ error: L Cholesky inverse failed\n" << endl;}
-	F77_NAME(dsymm)(rside, lower, &m, &m, &one, L, &m, PsiIW_S, &m, &zero, tmp_mm, &m);
-	for(i = 0; i < m; i++){SKtrace += tmp_mm[i*m+i];}
-	logPostCurrent += -0.5*(PsiIW_df+m+1)*logDetK - 0.5*SKtrace;
-
-      }
-
-      for(i = 0; i < m; i++){
-	logPostCurrent += log(theta[i] - phiUnif[i*2]) + log(phiUnif[i*2+1] - theta[i]); 
-      
-	if(covModel == "matern"){
-	  logPostCurrent += log(theta[m+i] - nuUnif[i*2]) + log(nuUnif[i*2+1] - theta[m+i]);  
-	}
-      }
-
-      //Y-XB
-      F77_NAME(dgemv)(ntran, &nm, &p, &negOne, X, &nm, beta, &incOne, &zero, tmp_nm, &incOne);
-      F77_NAME(daxpy)(&nm, &one, Y, &incOne, tmp_nm, &incOne);
-      
-      //(-1/2) * (Y-XB)` * C * (Y-XB)
-      F77_NAME(dsymv)(lower, &nm, &one, C, &nm, tmp_nm, &incOne, &zero, tmp_nm1, &incOne);
-      logPostCurrent += -0.5*det-0.5*F77_NAME(ddot)(&nm, tmp_nm, &incOne, tmp_nm1, &incOne);
-
-      //
-      //Candidate
-      //
-
-      //propose   
-      for(i = 0; i < nLTr; i++){
-	candSpParams[AIndx+i] = rnorm(spParams[AIndx+i], ATuning[i]);
-
-	if(nugget){
-	  candSpParams[LIndx+i] = rnorm(spParams[LIndx+i], LTuning[i]);
-	}
-      }
-
-      covTransInvExpand(&candSpParams[AIndx], A, m);
-
-      if(nugget){
-	covTransInvExpand(&candSpParams[LIndx], L, m);
-      }
-
-      for(i = 0; i < m; i++){
-	candSpParams[phiIndx+i] = rnorm(spParams[phiIndx+i], phiTuning[i]);
-	theta[i] = logitInv(candSpParams[phiIndx+i], phiUnif[i*2], phiUnif[i*2+1]);
-	
-	if(covModel == "matern"){
-	  candSpParams[nuIndx+i] = rnorm(spParams[nuIndx+i], nuTuning[i]);
-	  theta[m+i] = logitInv(candSpParams[nuIndx+i], nuUnif[i*2], nuUnif[i*2+1]);
-	}
-      }
-      
-      //K = A'A and Psi = L'L
-      F77_NAME(dgemm)(ntran, ytran, &m, &m, &m, &one, A, &m, A, &m, &zero, K, &m);
-      F77_NAME(dgemm)(ntran, ytran, &m, &m, &m, &one, L, &m, L, &m, &zero, Psi, &m);
-
-      det = mvCovInvDet(coordsD, C, n, m, Psi, K, theta, tmp_mm, tmp_mm1, tmp_mm2, 
-			covModel, nPramPtr, covModelObj, cov1ParamPtr, cov2ParamPtr);
-      
-      //
-      //Likelihood with Jacobian   
-      //
-      logPostCand = 0.0;
-      
-      //
-      //Jacobian and IW priors for K = A'A and Psi = L'L
-      //
-      //AtA prior with jacob.
-      logDetK = 0.0;
-      SKtrace = 0.0;
-
-      for(i = 0; i < m; i++) logDetK += 2*log(A[i*m+i]);
-      
-      //jacobian \sum_{i=1}^{m} (m-i+1)*log(a_ii)+log(a_ii)
-      for(i = 0; i < m; i++) logPostCand += (m-i)*log(A[i*m+i])+log(A[i*m+i]);
-      
-      //get S*K^-1, already have the chol of K (i.e., A)
-      F77_NAME(dpotri)(lower, &m, A, &m, &info); if(info != 0){cout << "c++ error: Cand A Cholesky inverse failed\n" << endl;}
-      F77_NAME(dsymm)(rside, lower, &m, &m, &one, A, &m, KIW_S, &m, &zero, tmp_mm, &m);
-      for(i = 0; i < m; i++){SKtrace += tmp_mm[i*m+i];}
-      logPostCand += -0.5*(KIW_df+m+1)*logDetK - 0.5*SKtrace;
-
-      if(nugget){
-	
-	//L'L prior with jacob.
-	logDetK = 0.0;
-	SKtrace = 0.0; 
-
-	for(i = 0; i < m; i++) logDetK += 2*log(L[i*m+i]);
-	
-	//jacobian \sum_{i=1}^{m} (m-i+1)*log(a_ii)+log(a_ii)
-	for(i = 0; i < m; i++) logPostCand += (m-i)*log(L[i*m+i])+log(L[i*m+i]);
-	
-	//get S*K^-1, already have the chol of Psi (i.e., L)
-	F77_NAME(dpotri)(lower, &m, L, &m, &info); if(info != 0){cout << "c++ error: Cand L Cholesky inverse failed\n" << endl;}
-	F77_NAME(dsymm)(rside, lower, &m, &m, &one, L, &m, PsiIW_S, &m, &zero, tmp_mm, &m);
-	for(i = 0; i < m; i++){SKtrace += tmp_mm[i*m+i];}
-	logPostCand += -0.5*(PsiIW_df+m+1)*logDetK - 0.5*SKtrace;
-
-      }
-
-      for(i = 0; i < m; i++){
-	logPostCand += log(theta[i] - phiUnif[i*2]) + log(phiUnif[i*2+1] - theta[i]); 
-      
-	if(covModel == "matern"){
-	  logPostCand += log(theta[m+i] - nuUnif[i*2]) + log(nuUnif[i*2+1] - theta[m+i]);  
-	}
-      }
-
-      //Y-XB
-      F77_NAME(dgemv)(ntran, &nm, &p, &negOne, X, &nm, beta, &incOne, &zero, tmp_nm, &incOne);
-      F77_NAME(daxpy)(&nm, &one, Y, &incOne, tmp_nm, &incOne);
-      
-      //(-1/2) * (Y-XB)` * C * (Y-XB)
-      F77_NAME(dsymv)(lower, &nm, &one, C, &nm, tmp_nm, &incOne, &zero, tmp_nm1, &incOne);
-      logPostCand += -0.5*det-0.5*F77_NAME(ddot)(&nm, tmp_nm, &incOne, tmp_nm1, &incOne);
-
-      //
-      //MH accept/reject	
-      //      
-  
-      //MH ratio with adjustment
-      logMHRatio = logPostCand - logPostCurrent;
-      
-      if(runif(0.0,1.0) <= exp(logMHRatio)){
-	F77_NAME(dcopy)(&nSpParams, candSpParams, &incOne, spParams, &incOne);
-	accept++;
-	batchAccept++;
-      }
     
-      /******************************
-         Recover w and w* if needed
-      *******************************/
-      //
-      //Current
-      //
-      covTransInvExpand(&spParams[AIndx], A, m);
-
-      if(nugget){
-       covTransInvExpand(&spParams[LIndx], L, m);
-      }      
-
-      for(i = 0; i < m; i++){
-	theta[i] = logitInv(spParams[phiIndx+i], phiUnif[i*2], phiUnif[i*2+1]);
-	
-	if(covModel == "matern"){
-	  theta[m+i] = logitInv(spParams[nuIndx+i], nuUnif[i*2], nuUnif[i*2+1]);
-	}
-      }
-
-      //K = A'A and Psi = L'L
-      F77_NAME(dgemm)(ntran, ytran, &m, &m, &m, &one, A, &m, A, &m, &zero, K, &m);
-      F77_NAME(dgemm)(ntran, ytran, &m, &m, &m, &one, L, &m, L, &m, &zero, Psi, &m);
-
-      //
-      //make C
-      //
-      for(i = 0; i < n; i++){
-	for(j = 0; j < n; j++){
+    for(b = 0, s = 0; b < nBatch; b++){
+      for(i = 0; i < batchLength; i++, s++){
+	for(j = 0; j < nParams; j++){
 	  
-	  zeros(tmp_mm, mm);
-	  
-	  for(k = 0; k < m; k++){
-	    if(nPramPtr == 1)
-	      (covModelObj->*cov1ParamPtr)(theta[k], tmp_mm[k*m+k], coordsD[j*n+i]);
-	    else //i.e., 2 parameter matern
-	      (covModelObj->*cov2ParamPtr)(theta[k], theta[m+k], tmp_mm[k*m+k], coordsD[j*n+i]);
-	  }
-	  
-	  F77_NAME(dgemm)(ntran, ntran, &m, &m, &m, &one, A, &m, tmp_mm, &m, &zero, tmp_mm1, &m);
-	  F77_NAME(dgemm)(ntran, ytran, &m, &m, &m, &one, tmp_mm1, &m, A, &m, &zero, tmp_mm, &m);
-	  
-	  for(k = 0; k < m; k++){
-	    for(l = 0; l < m; l++){
-	      C[((j*m+l)*nm)+(i*m+k)] = tmp_mm[l*m+k];
-	      tmp_mm[l*m+k] = 0.0; //zero out
+	  //propose
+	  if(amcmc){
+	    if(fixed[j] == 1){
+	      paramsjCurrent = params[j];
+	    }else{
+	      paramsjCurrent = params[j];
+	      params[j] = rnorm(paramsjCurrent, exp(tuning[j]));
+	    }
+	  }else{
+	    F77_NAME(dcopy)(&nParams, params, &incOne, paramsCurrent, &incOne);
+	    
+	    for(j = 0; j < nParams; j++){
+	      if(fixed[j] == 1){
+		params[j] = params[j];
+	      }else{
+		params[j] = rnorm(params[j], exp(tuning[j]));
+	      }
 	    }
 	  }
-	}
-      }
-
-      if(nugget){
-
-	//C^{-1}
-	F77_NAME(dpotrf)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: w recovery C Cholesky failed\n");}
-	F77_NAME(dpotri)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: w recovery C Cholesky failed\n");}
-	
-	F77_NAME(dpotrf)(lower, &m, Psi, &m, &info); if(info != 0){error("c++ error: w recovery Psi Cholesky failed\n");}
-	F77_NAME(dpotri)(lower, &m, Psi, &m, &info); if(info != 0){error("c++ error: w recovery Psi Cholesky failed\n");}
-	
-	for(i = 0; i < n; i++){
+	  
+	  //extract and transform
+	  covTransInvExpand(&params[AIndx], A, m);
+	  
 	  for(k = 0; k < m; k++){
-	    for(l = 0; l < m; l++){
-	      C[(i*m+l)*nm+(i*m+k)] += Psi[l*m+k];
+	    phi[k] = logitInv(params[phiIndx+k], phiUnif[k*2], phiUnif[k*2+1]);
+	    
+	    if(covModel == "matern"){
+	      nu[k] = logitInv(params[nuIndx+k], nuUnif[k*2], nuUnif[k*2+1]);
+	    }	  
+	  }
+	  
+	  if(nugget){
+	    if(PsiDiag){
+	      for(k = 0; k < m; k++){
+		Psi[k] = exp(params[LIndx+k]);//first column of Psi holds the m tau.sq's
+	      }
+	    }else{
+	      covTransInvExpand(&params[LIndx], L, m);
 	    }
 	  }
-	}
+	  
+	  //construct covariance matrix
+          #pragma omp parallel 
+	  {
+          #pragma omp for private(ii, k, l, h)
+	    for(jj = 0; jj < n; jj++){
+	      for(ii = jj; ii < n; ii++){	
+		for(k = 0; k < m; k++){
+		  for(l = 0; l < m; l++){
+		    C[(k+jj*m)*nm+(ii*m+l)] = 0.0; 
+		    for(h = 0; h < m; h++){
+		      C[(k+jj*m)*nm+(ii*m+l)] += A[k+m*h]*A[l+m*h]*spCor(coordsD[jj*n+ii], phi[h], nu[h], covModel);
+		    }
+		  }
+		}
+	      }
+	    }
+	  } //parallel for
+
+	  if(nugget){
+	    if(PsiDiag){
+	      for(l = 0; l < n; l++){
+	  	for(k = 0; k < m; k++){
+	  	  C[(l*m+k)*nm+(l*m+k)] += Psi[k];
+	  	}
+	      }
+	    }else{
+	      F77_NAME(dgemm)(ntran, ytran, &m, &m, &m, &one, L, &m, L, &m, &zero, Psi, &m);
+	      
+	      for(l = 0; l < n; l++){
+	  	for(k = 0; k < m; k++){
+	  	  F77_NAME(daxpy)(&m, &one, &Psi[k*m], &incOne, &C[l*m*nm+k*nm+l*m], &incOne);
+	  	}
+	      }
+	    }
+	  }
+
+	  if(betaPrior == "normal"){
+	    
+	    for(k = 0; k < nm; k++){
+	      for(l = k; l < nm; l++){
+		Cbeta[k*nm+l] = C[k*nm+l]+tmp_nmnm[k*nm+l];
+	      }
+	    }
+	    
+	    det = 0;
+	    F77_NAME(dpotrf)(lower, &nm, Cbeta, &nm, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+	    for(k = 0; k < nm; k++) det += 2*log(Cbeta[k*nm+k]);
+	    
+	    F77_NAME(dcopy)(&nm, z, &incOne, tmp_nm, &incOne);
+	    F77_NAME(dtrsv)(lower, ntran, nUnit, &nm, Cbeta, &nm, tmp_nm, &incOne);//u = L^{-1}(y-X'beta)
+	    
+	    Q = pow(F77_NAME(dnrm2)(&nm, tmp_nm, &incOne),2);
+	  }else{//beta flat
+	    det = 0;
+	    F77_NAME(dpotrf)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+	    for(k = 0; k < nm; k++) det += 2*log(C[k*nm+k]);
+	    
+	    F77_NAME(dcopy)(&nm, Y, &incOne, vU, &incOne);
+	    F77_NAME(dcopy)(&nmp, X, &incOne, &vU[nm], &incOne);
+	    F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &nm, &p1, &one, C, &nm, vU, &nm);//L^{-1}[v:U] = [y:X]
+	    
+	    F77_NAME(dgemm)(ytran, ntran, &p, &p, &nm, &one, &vU[nm], &nm, &vU[nm], &nm, &zero, tmp_pp, &p); //U'U
+	    F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+	    for(k = 0; k < p; k++) det += 2*log(tmp_pp[k*p+k]);
+	    
+	    F77_NAME(dgemv)(ytran, &nm, &p, &one, &vU[nm], &nm, vU, &incOne, &zero, tmp_p, &incOne); //U'v
+	    F77_NAME(dtrsv)(lower, ntran, nUnit, &p, tmp_pp, &p, tmp_p, &incOne);
+
+	    Q = pow(F77_NAME(dnrm2)(&nm, vU, &incOne),2) - pow(F77_NAME(dnrm2)(&p, tmp_p, &incOne),2) ;
+	  }
+	  
+	  //
+	  //priors, jacobian adjustments, and likelihood
+	  //
+	  logPostCand = 0.0;
+	  
+	  if(KPriorName == "IW"){
+	    logDetK = 0.0;
+	    SKtrace = 0.0;
+	    
+	    for(k = 0; k < m; k++){logDetK += 2*log(A[k*m+k]);}
+	    
+	    //jacobian \sum_{i=1}^{m} (m-i+1)*log(a_ii)+log(a_ii)
+	    for(k = 0; k < m; k++){logPostCand += (m-k)*log(A[k*m+k])+log(A[k*m+k]);}
+	    
+	    //S*K^-1
+	    F77_NAME(dpotri)(lower, &m, A, &m, &info); if(info != 0){error("c++ error: dpotri failed\n");}
+	    F77_NAME(dsymm)(rside, lower, &m, &m, &one, A, &m, KIW_S, &m, &zero, tmp_mm, &m);
+	    for(k = 0; k < m; k++){SKtrace += tmp_mm[k*m+k];}
+	    logPostCand += -0.5*(KIW_df+m+1)*logDetK - 0.5*SKtrace;
+	  }else{	     
+	    for(k = 0; k < nLTr; k++){
+	      logPostCand += dnorm(params[AIndx+k], ANormMu[k], sqrt(ANormC[k]), 1);
+	    }
+	  }
+	  
+	  if(nugget){
+	    if(PsiDiag){
+	      for(k = 0; k < m; k++){
+		logPostCand += -1.0*(1.0+PsiIGa[k])*log(Psi[k])-PsiIGb[k]/Psi[k]+log(Psi[k]);
+	      }
+	    }else{
+	      if(PsiPriorName == "IW"){
+		logDetK = 0.0;
+		SKtrace = 0.0; 
 	
-	F77_NAME(dpotrf)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: w recovery C Cholesky failed\n");}
-	F77_NAME(dpotri)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: w recovery C Cholesky failed\n");}
-
-	//Y-XB
-	F77_NAME(dgemv)(ntran, &nm, &p, &negOne, X, &nm, beta, &incOne, &zero, tmp_nm, &incOne);
-	F77_NAME(daxpy)(&nm, &one, Y, &incOne, tmp_nm, &incOne);
-
-	//C^{-1} 1/Psi (Y-XB)
-	for(i = 0; i < n; i++){
-	  F77_NAME(dsymv)(lower, &m, &one, Psi, &m, &tmp_nm[i*m], &incOne, &zero, &tmp_nm1[i*m], &incOne);
-	}
+		for(k = 0; k < m; k++){logDetK += 2*log(L[k*m+k]);}
+		
+		//jacobian \sum_{i=1}^{m} (m-i+1)*log(a_ii)+log(a_ii)
+		for(k = 0; k < m; k++){logPostCand += (m-k)*log(L[k*m+k])+log(L[k*m+k]);}
+		
+		//get S*K^-1
+		F77_NAME(dpotri)(lower, &m, L, &m, &info); if(info != 0){error("c++ error: dpotri failed\n");}
+		F77_NAME(dsymm)(rside, lower, &m, &m, &one, L, &m, PsiIW_S, &m, &zero, tmp_mm, &m);
+		for(k = 0; k < m; k++){SKtrace += tmp_mm[k*m+k];}
+		logPostCand += -0.5*(PsiIW_df+m+1)*logDetK - 0.5*SKtrace;
+	      }else{
+		for(k = 0; k < nLTr; k++){
+		  logPostCand += dnorm(params[LIndx+k], LNormMu[k], sqrt(LNormC[k]), 1);
+		}
+	      }
+	    }
+	  }
+	  
+	  for(k = 0; k < m; k++){
+	    logPostCand += log(phi[k] - phiUnif[k*2]) + log(phiUnif[k*2+1] - phi[k]); 
+	    
+	    if(covModel == "matern"){
+	      logPostCand += log(nu[k] - nuUnif[k*2]) + log(nuUnif[k*2+1] - nu[k]);  
+	    }
+	  }
+	  
+	  logPostCand += -0.5*det-0.5*Q;
+	  
+	  //
+	  //MH accept/reject	
+	  //      
+	  logMHRatio = logPostCand - logPostCurrent;
+	  
+	  if(runif(0.0,1.0) <= exp(logMHRatio)){
+	    logPostCurrent = logPostCand;
+	    
+	    if(amcmc){
+	      accept[j]++;
+	    }else{
+	      accept[0]++;
+	      batchAccept++;
+	    }
+	    
+	    // //recover beta
+	    // if(getBeta && rIndx[s] == 1){
+	      
+	    //   if(betaPrior == "normal"){
+	    // 	F77_NAME(dpotrf)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+	    // 	F77_NAME(dcopy)(&nm, Y, &incOne, vU, &incOne);
+	    // 	F77_NAME(dcopy)(&nmp, X, &incOne, &vU[nm], &incOne);
+	    // 	F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &nm, &p1, &one, C, &nm, vU, &nm); //L[v:U] = [y:X]
+	    //   }
+	      
+	    //   //B
+	    //   F77_NAME(dgemm)(ytran, ntran, &p, &p, &nm, &one, &vU[nm], &nm, &vU[nm], &nm, &zero, B, &p); //U'U
+	      
+	    //   if(betaPrior == "normal"){
+	    // 	for(k = 0; k < p; k++){
+	    // 	  for(l = k; l < p; l++){
+	    // 	    B[k*p+l] += betaCInv[k*p+l];
+	    // 	  }
+	    // 	}
+	    //   }
+	      
+	    //   F77_NAME(dpotrf)(lower, &p, B, &p, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+	    //   F77_NAME(dpotri)(lower, &p, B, &p, &info); if(info != 0){error("c++ error: dpotri failed\n");}
+	      
+	    //   //bb
+	    //   F77_NAME(dgemv)(ytran, &nm, &p, &one, &vU[nm], &nm, vU, &incOne, &zero, tmp_p, &incOne); //U'v
+	      
+	    //   if(betaPrior == "normal"){
+	    // 	for(k = 0; k < p; k++){
+	    // 	  tmp_p[k] += betaCInvMu[k];
+	    // 	}
+	    //   }
+	      
+	    //   F77_NAME(dsymv)(lower, &p, &one, B, &p, tmp_p, &incOne, &zero, bb, &incOne); 
+	    //   F77_NAME(dpotrf)(lower, &p, B, &p, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+	    // }//end update beta
+	    
+	  }else{
+	    if(amcmc){
+	      params[j] = paramsjCurrent;
+	    }else{
+	      F77_NAME(dcopy)(&nParams, paramsCurrent, &incOne, params, &incOne);
+	    }
+	  }
+	  
+	  if(!amcmc){
+	    break;
+	  }
+	}//end params
 	
-	F77_NAME(dsymv)(lower, &nm, &one, C, &nm, tmp_nm1, &incOne, &zero, tmp_nm, &incOne);
-
-	F77_NAME(dpotrf)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: w recovery C Cholesky failed\n");}
-
-	mvrnorm(&w[s*nm], tmp_nm, C, nm, false);
-
-      }else{
-
-	F77_NAME(dgemv)(ntran, &nm, &p, &negOne, X, &nm, beta, &incOne, &zero, &w[s*nm], &incOne);
-	F77_NAME(daxpy)(&nm, &one, Y, &incOne, &w[s*nm], &incOne);
-
-      }
+	/******************************
+               Save samples
+	*******************************/
+	F77_NAME(dcopy)(&nParams, params, &incOne, &REAL(samples_r)[s*nParams], &incOne);
+	
+	// /******************************
+        //       Recover beta
+	// *******************************/
+	// if(getBeta && rIndx[s] == 1){
+	//   mvrnorm(&REAL(betaSamples_r)[rCnt*p], bb, B, p, false);
+	//   rCnt++;
+	// }
+	
+	R_CheckUserInterrupt();
+      }//end batch
       
-      /******************************
-          Save samples and report
-      *******************************/
-      F77_NAME(dcopy)(&p, beta, &incOne, &samples[s*nParams], &incOne);
-      F77_NAME(dcopy)(&nSpParams, spParams, &incOne, &samples[s*nParams+p], &incOne);
+      //adjust tuning
+      if(amcmc){
+	for(j = 0; j < nParams; j++){
+	  REAL(accept_r)[b*nParams+j] = accept[j]/batchLength;
+	  REAL(tuning_r)[b*nParams+j] = tuning[j];
+	  
+	  if(accept[j]/batchLength > acceptRate){
+	    tuning[j] += min(0.01, 1.0/sqrt(static_cast<double>(b)));
+	  }else{
+	    tuning[j] -= min(0.01, 1.0/sqrt(static_cast<double>(b)));
+	  }
+	  accept[j] = 0.0;
+	}
+      }
       
       //report
       if(verbose){
 	if(status == nReport){
-	  Rprintf("Sampled: %i of %i, %3.2f%%\n", s, nSamples, 100.0*s/nSamples);
-	  Rprintf("Report interval Metrop. Acceptance rate: %3.2f%%\n", 100.0*batchAccept/nReport);
-	  Rprintf("Overall Metrop. Acceptance rate: %3.2f%%\n", 100.0*accept/s);
+	  if(amcmc){
+	    Rprintf("Batch: %i of %i, %3.2f%%\n", b, nBatch, 100.0*b/nBatch);
+	    Rprintf("\tparameter\tacceptance\ttuning\n");
+	    for(j = 0, i = 0; j < m; j++){
+	      for(k = j; k < m; k++, i++){
+		Rprintf("\tA[%i,%i]\t\t%3.1f%\t\t%1.2f\n", j+1, k+1, 100.0*REAL(accept_r)[b*nParams+AIndx+i], exp(tuning[AIndx+i]));
+	      }
+	    }
+	    if(nugget){
+	      if(PsiDiag){
+		for(j = 0; j < m; j++){
+		  Rprintf("\tPsi[%j,%j]\t\t%3.1f%\t\t%1.2f\n", j+1, j+1, 100.0*REAL(accept_r)[b*nParams+LIndx+j], exp(tuning[LIndx+j]));
+		}
+	      }else{
+		Rprintf("\n");
+		for(j = 0, i = 0; j < m; j++){
+		  for(k = j; k < m; k++, i++){
+		    Rprintf("\tL[%i,%i]\t\t%3.1f%\t\t%1.2f\n", j+1, k+1, 100.0*REAL(accept_r)[b*nParams+LIndx+i], exp(tuning[LIndx+i]));
+		  }
+		}
+	      }
+	    }
+	    Rprintf("\n");
+	    for(j = 0; j < m; j++){
+	      Rprintf("\tphi[%i]\t\t%3.1f%\t\t%1.2f\n", j+1, 100.0*REAL(accept_r)[b*nParams+phiIndx+j], exp(tuning[phiIndx+j]));
+	    }
+	    if(covModel == "matern"){
+	      Rprintf("\n");
+	      for(j = 0; j < m; j++){
+		Rprintf("\tnu[%i]\t\t%3.1f%\t\t%1.2f\n", j+1, 100.0*REAL(accept_r)[b*nParams+nuIndx+j], exp(tuning[nuIndx+j]));
+	      } 
+	    }
+	  }else{
+	    Rprintf("Sampled: %i of %i, %3.2f%%\n", s, nSamples, 100.0*s/nSamples);
+	    Rprintf("Report interval Metrop. Acceptance rate: %3.2f%%\n", 100.0*batchAccept/nReport);
+	    Rprintf("Overall Metrop. Acceptance rate: %3.2f%%\n", 100.0*accept[0]/s);
+	  }
 	  Rprintf("-------------------------------------------------\n");
           #ifdef Win32
 	  R_FlushConsole();
@@ -628,66 +755,68 @@ extern "C" {
       }
       status++;
       
-      
-      R_CheckUserInterrupt();
-    }//end sample loop
+    }//end samples
+    
     PutRNGstate();
     
-    //final status report
-    if(verbose){
-      Rprintf("Sampled: %i of %i, %3.2f%%\n", s, nSamples, 100.0*s/nSamples);
-    }
-    Rprintf("-------------------------------------------------\n");
-    #ifdef Win32
-    R_FlushConsole();
-    #endif
-
     //untransform variance variables
     for(s = 0; s < nSamples; s++){
- 
-      covTransInv(&samples[s*nParams+p+AIndx], &samples[s*nParams+p+AIndx], m);
-     
+      
+      covTransInv(&REAL(samples_r)[s*nParams+AIndx], &REAL(samples_r)[s*nParams+AIndx], m);
+      
       if(nugget){
-	covTransInv(&samples[s*nParams+p+LIndx], &samples[s*nParams+p+LIndx], m);
-      }
-	
-      for(i = 0; i < m; i++){
-	samples[s*nParams+p+phiIndx+i] = logitInv(samples[s*nParams+p+phiIndx+i], phiUnif[i*2], phiUnif[i*2+1]);
-	
-	if(covModel == "matern"){
-	  samples[s*nParams+p+nuIndx+i] = logitInv(samples[s*nParams+p+nuIndx+i], nuUnif[i*2], nuUnif[i*2+1]);
+	if(PsiDiag){
+	  for(i = 0; i < m; i++){
+	    REAL(samples_r)[s*nParams+LIndx+i] = exp(REAL(samples_r)[s*nParams+LIndx+i]);
+	  }
+	}else{
+	  covTransInv(&REAL(samples_r)[s*nParams+LIndx], &REAL(samples_r)[s*nParams+LIndx], m);
 	}
       }
-    }   
-
-
-    //calculate acceptance rate
-    REAL(accept_r)[0] = 100.0*accept/s;
-
+      
+      for(i = 0; i < m; i++){
+	REAL(samples_r)[s*nParams+phiIndx+i] = logitInv(REAL(samples_r)[s*nParams+phiIndx+i], phiUnif[i*2], phiUnif[i*2+1]);
+	
+	if(covModel == "matern"){
+	  REAL(samples_r)[s*nParams+nuIndx+i] = logitInv(REAL(samples_r)[s*nParams+nuIndx+i], nuUnif[i*2], nuUnif[i*2+1]);
+	}
+      }
+    }
+    
     //make return object
-    SEXP result, resultNames;
-    
+    SEXP result_r, resultName_r;  
     int nResultListObjs = 3;
-
-    PROTECT(result = allocVector(VECSXP, nResultListObjs)); nProtect++;
-    PROTECT(resultNames = allocVector(VECSXP, nResultListObjs)); nProtect++;
-
-   //samples
-    SET_VECTOR_ELT(result, 0, samples_r);
-    SET_VECTOR_ELT(resultNames, 0, mkChar("p.samples")); 
-
-    SET_VECTOR_ELT(result, 1, accept_r);
-    SET_VECTOR_ELT(resultNames, 1, mkChar("acceptance"));
     
-    SET_VECTOR_ELT(result, 2, w_r);
-    SET_VECTOR_ELT(resultNames, 2, mkChar("sp.effects"));
-  
-    namesgets(result, resultNames);
-   
+    // if(getBeta){
+    //   nResultListObjs++;
+    // }
+    
+    PROTECT(result_r = allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(resultName_r = allocVector(VECSXP, nResultListObjs)); nProtect++;
+    
+    //samples
+    SET_VECTOR_ELT(result_r, 0, samples_r);
+    SET_VECTOR_ELT(resultName_r, 0, mkChar("p.theta.samples")); 
+    
+    SET_VECTOR_ELT(result_r, 1, accept_r);
+    SET_VECTOR_ELT(resultName_r, 1, mkChar("acceptance"));
+    
+    SET_VECTOR_ELT(result_r, 2, tuning_r);
+    SET_VECTOR_ELT(resultName_r, 2, mkChar("tuning"));
+    
+    // if(getBeta){
+    //   SET_VECTOR_ELT(result_r, 3, betaSamples_r);
+    //   SET_VECTOR_ELT(resultName_r, 3, mkChar("p.beta.samples"));
+    // }
+    
+    namesgets(result_r, resultName_r);
+    
     //unprotect
     UNPROTECT(nProtect);
     
-    return(result);
-    
+    return(result_r);
   }
 }
+
+
+  

@@ -3,7 +3,7 @@
 \title{Simple Bayesian linear model with non-informative priors }
 
 \description{
-  Given an \code{lm} object, the \code{bayesLMRef} function fits a
+  Given a \code{lm} object, the \code{bayesLMRef} function fits a
   simple Bayesian linear model with reference (non-informative) priors.  
 }
 
@@ -39,9 +39,16 @@
 }
 
 \examples{
-data(FORMGMT.dat)
+\dontrun{
+set.seed(1)
 
-lm.obj <- lm(Y ~ X1+X2+X3+X4+X5+X6, data = FORMGMT.dat)
+n <- 100
+X <- as.matrix(cbind(1, rnorm(n)))
+B <- as.matrix(c(1,5))
+tau.sq <- 0.1
+y <- rnorm(n, X\%*\%B, sqrt(tau.sq))
+
+lm.obj <- lm(y ~ X-1)
 
 summary(lm.obj)
 
@@ -50,8 +57,6 @@ n.samples <- 500
 
 m.1 <- bayesLMRef(lm.obj, n.samples)
 
-summary(m.1$p.sample)
-
+summary(m.1$p.beta.tauSq.samples)
 }
-
-\keyword{misc}
+}

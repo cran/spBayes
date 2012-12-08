@@ -1,14 +1,3 @@
-// Andrew O. Finley
-// Dept. of Forest Resources
-// University of Minnesota
-// finleya@msu.edu 
-//
-// This software is distributed under the terms of the GNU GENERAL
-// PUBLIC LICENSE Version 2, June 1991.  See the package LICENSE
-// file for more information.
-//
-// Copyright (C) 2004 Andrew O. Finley
-
 #include <iostream>
 #include <iomanip>
 #include <fstream>
@@ -112,42 +101,37 @@ void mvrnorm(double *des, double *mu, double *cholCov, int dim, bool upper){
 
 }
 
-void showMatrix(double *x, int xnrow, int xncol){
-  int i,j;
-  for(i = 0; i < xnrow; i++){
-    for(j = 0; j < xncol; j++){
-      cout << x[j*xnrow+i] << "\t";
-    }
-    cout << endl;
-  }      
-}
+// void showMatrix(double *x, int xnrow, int xncol){
+//   int i,j;
+//   for(i = 0; i < xnrow; i++){
+//     for(j = 0; j < xncol; j++){
+//       cout << x[j*xnrow+i] << "\t";
+//     }
+//     cout << endl;
+//   }      
+// }
 
 
 
-void writeRMatrix(string outfile, double * a, int nrow, int ncol){
-    ofstream file(outfile.c_str());
-    if ( !file ) {
-      cout << "Data file could not be opened." << endl;
-      //exit(1);
-    }
+// void writeRMatrix(string outfile, double * a, int nrow, int ncol){
+//     ofstream file(outfile.c_str());
+//     if ( !file ) {
+//       cout << "Data file could not be opened." << endl;
+//       //exit(1);
+//     }
   
 
-  for(int i = 0; i < nrow; i++){
-    for(int j = 0; j < ncol-1; j++){
-      file << setprecision(20) << fixed << a[j*nrow+i] << "\t";
-    }
-    file << setprecision(20) << fixed << a[(ncol-1)*nrow+i] << endl;    
+//   for(int i = 0; i < nrow; i++){
+//     for(int j = 0; j < ncol-1; j++){
+//       file << setprecision(20) << fixed << a[j*nrow+i] << "\t";
+//     }
+//     file << setprecision(20) << fixed << a[(ncol-1)*nrow+i] << endl;    
 
-  }
-  file.close();
-}
+//   }
+//   file.close();
+// }
 
-
-
-
-
-SEXP getListElement(SEXP list, const char *str)
-{
+SEXP getList(SEXP list, const char *str){
   SEXP elmt = R_NilValue, names = getAttrib(list, R_NamesSymbol);
   int i;
   
@@ -164,10 +148,20 @@ SEXP getListElement(SEXP list, const char *str)
   return elmt;
 }
 
+SEXP getGetList(SEXP list, const char *str1, const char *str2){
+  SEXP list2 = getList(list, str1);
+  return getList(list2, str2);  
+}
+
 
 void zeros(double *x, int length){
   for(int i = 0; i < length; i++)
     x[i] = 0.0;
+}
+
+void zeros(int *x, int length){
+  for(int i = 0; i < length; i++)
+    x[i] = 0;
 }
 
 void iden(double *x, int &nrow){
@@ -302,39 +296,39 @@ void subsetCovCol(double *x, int p, int begin, int end, double *cov, double *mea
 
   
 
-double mtrxInvLogDet(double *m, int dim, int info){
+// double mtrxInvLogDet(double *m, int dim, int info){
 
-  double logDet = 0.0;
-  int i,j;
+//   double logDet = 0.0;
+//   int i,j;
 
-  F77_NAME(dpotrf)("L", &dim, m, &dim, &info); if(info != 0){cout << "c++ error: mtrxInvLogDet Cholesky failed\n" << endl;}
-  for(j = 0; j < dim; j++) logDet += 2.0*log(m[j*dim+j]);
-  F77_NAME(dpotri)("L", &dim, m, &dim, &info); if(info != 0){cout << "c++ error: mtrxInvLogDet Cholesky inverse failed\n" << endl;}
+//   F77_NAME(dpotrf)("L", &dim, m, &dim, &info); if(info != 0){cout << "c++ error: mtrxInvLogDet Cholesky failed\n" << endl;}
+//   for(j = 0; j < dim; j++) logDet += 2.0*log(m[j*dim+j]);
+//   F77_NAME(dpotri)("L", &dim, m, &dim, &info); if(info != 0){cout << "c++ error: mtrxInvLogDet Cholesky inverse failed\n" << endl;}
   
-  for(i = 1; i < dim; i++){
-    for(j = 0; j < i; j++){
-      m[i*dim+j] = m[j*dim+i];
-    }
-  }
+//   for(i = 1; i < dim; i++){
+//     for(j = 0; j < i; j++){
+//       m[i*dim+j] = m[j*dim+i];
+//     }
+//   }
 
-  return(logDet);
-}
+//   return(logDet);
+// }
 
 
-void mtrxInv(double *m, int dim, int info){
+// void mtrxInv(double *m, int dim, int info){
 
-  int i,j;
+//   int i,j;
 
-  F77_NAME(dpotrf)("L", &dim, m, &dim, &info); if(info != 0){cout << "c++ error: mtrxInv Cholesky failed\n" << endl;}
-  F77_NAME(dpotri)("L", &dim, m, &dim, &info); if(info != 0){cout << "c++ error: mtrxInv Cholesky inverse failed\n" << endl;}
+//   F77_NAME(dpotrf)("L", &dim, m, &dim, &info); if(info != 0){cout << "c++ error: mtrxInv Cholesky failed\n" << endl;}
+//   F77_NAME(dpotri)("L", &dim, m, &dim, &info); if(info != 0){cout << "c++ error: mtrxInv Cholesky inverse failed\n" << endl;}
   
-  for(i = 1; i < dim; i++){
-    for(j = 0; j < i; j++){
-      m[i*dim+j] = m[j*dim+i];
-    }
-  }
+//   for(i = 1; i < dim; i++){
+//     for(j = 0; j < i; j++){
+//       m[i*dim+j] = m[j*dim+i];
+//     }
+//   }
 
-}
+// }
 
 double logit(double theta, double a, double b){
   return log((theta-a)/(b-theta));
@@ -446,21 +440,39 @@ double binomial_logpost(int &n, double *Y, double *eta, double *w, int *weights)
   return loglike;
 }
 
-
-double poisson_logpost(int &n, double *Y, double *eta, double *w){
+double poisson_logpost(int &n, double *Y, double *eta, double *w, int *r){
   double loglike = 0.0;
   int i;  
 
-  for(i = 0; i < n; i++)
-    loglike += -exp(eta[i]+w[i]);
-
-  for(i = 0; i < n; i++)
-    loglike += Y[i]*(eta[i]+w[i]);
-
+  for(i = 0; i < n; i++){
+    loglike += Y[i]*(eta[i]+w[i]+log(r[i]))-exp(eta[i]+w[i]+log(r[i]));
+  }
 
   return loglike;
 }
 
+double binomial_logpost(int &n, double *Y, double *eta, int *weights){
+  double p, loglike = 0.0;
+  int i;  
+
+  for(i = 0; i < n; i++){
+    p = 1.0/(1+exp(-eta[i]));
+    loglike += Y[i]*log(p)+(static_cast<double>(weights[i])-Y[i])*log(1.0-p);
+  }
+
+  return loglike;
+}
+
+double poisson_logpost(int &n, double *Y, double *eta, int *r){
+  double loglike = 0.0;
+  int i;  
+
+  for(i = 0; i < n; i++){
+    loglike += Y[i]*(eta[i]+log(r[i]))-exp(eta[i]+log(r[i]));
+  }
+
+  return loglike;
+}
 
 void report(int &s, int &nSamples, int &status, int &nReport, bool &verbose){
 
@@ -520,3 +532,249 @@ void report(int &s, int &nSamples, int &status, int &nReport, bool &verbose){
 //     }
 //   }
 // }
+
+void spCor(double *D, int n, double *theta, string &covModel, double *C){
+  int i;
+  
+  if(covModel == "exponential"){
+    
+    for(i = 0; i < n; i++){
+      C[i] = exp(-1.0*theta[0]*D[i]);
+    }
+    
+  }else if(covModel == "spherical"){
+    
+    for(i = 0; i < n; i++){
+      if(D[i] > 0 && D[i] <= 1.0/theta[0]){
+	C[i] = 1.0 - 1.5*theta[0]*D[i] + 0.5*pow(theta[0]*D[i],3);
+      }else if(D[i] >= 1.0/theta[0]){
+	C[i] = 0.0;
+      }else{
+	C[i] = 1.0;
+      }
+    }
+    
+  }else if(covModel == "gaussian"){
+    
+    for(i = 0; i < n; i++){
+      C[i] = exp(-1.0*(pow(theta[0]*D[i],2)));
+    }
+    
+  }else if(covModel == "matern"){
+    
+    //(d*phi)^nu/(2^(nu-1)*gamma(nu))*pi/2*(besselI(d*phi,-nu)-besselI(d*phi, nu))/sin(nu*pi), or
+    //(d*phi)^nu/(2^(nu-1)*gamma(nu))*besselK(x=d*phi, nu=nu)
+    
+    for(i = 0; i < n; i++){
+      if(D[i]*theta[0] > 0.0){
+	C[i] = pow(D[i]*theta[0], theta[1])/(pow(2, theta[1]-1)*gammafn(theta[1]))*bessel_k(D[i]*theta[0], theta[1], 1.0);
+      }else{
+	C[i] = 1.0;
+      }
+    }
+    
+ }else{
+    error("c++ error: cov.model is not correctly specified");
+  }
+}
+
+double spCor(double D, double *theta, string &covModel){
+  
+  if(covModel == "exponential"){
+    
+    return exp(-1.0*theta[0]*D);
+    
+  }else if(covModel == "spherical"){
+    
+    if(D > 0 && D <= 1.0/theta[0]){
+      return 1.0 - 1.5*theta[0]*D + 0.5*pow(theta[0]*D,3);
+    }else if(D >= 1.0/theta[0]){
+      return 0.0;
+    }else{
+      return 1.0;
+    }
+    
+  }else if(covModel == "gaussian"){
+    
+    return exp(-1.0*(pow(theta[0]*D,2)));
+    
+  }else if(covModel == "matern"){
+    
+    //(d*phi)^nu/(2^(nu-1)*gamma(nu))*pi/2*(besselI(d*phi,-nu)-besselI(d*phi, nu))/sin(nu*pi), or
+    //(d*phi)^nu/(2^(nu-1)*gamma(nu))*besselK(x=d*phi, nu=nu)
+    
+    if(D*theta[0] > 0.0){
+      return pow(D*theta[0], theta[1])/(pow(2, theta[1]-1)*gammafn(theta[1]))*bessel_k(D*theta[0], theta[1], 1.0);
+    }else{
+      return 1.0;
+    }    
+    
+  }else{
+    error("c++ error: cov.model is not correctly specified");
+    return 0;
+  }
+}
+
+double spCor(double D, double phi, double nu, string &covModel){
+  
+  if(covModel == "exponential"){
+    
+    return exp(-1.0*phi*D);
+    
+  }else if(covModel == "spherical"){
+    
+    if(D > 0 && D <= 1.0/phi){
+      return 1.0 - 1.5*phi*D + 0.5*pow(phi*D,3);
+    }else if(D >= 1.0/phi){
+      return 0.0;
+    }else{
+      return 1.0;
+    }
+  }else if(covModel == "matern"){
+    
+    //(d*phi)^nu/(2^(nu-1)*gamma(nu))*pi/2*(besselI(d*phi,-nu)-besselI(d*phi, nu))/sin(nu*pi), or
+    //(d*phi)^nu/(2^(nu-1)*gamma(nu))*besselK(x=d*phi, nu=nu)
+    
+    if(D*phi > 0.0){
+      return pow(D*phi, nu)/(pow(2, nu-1)*gammafn(nu))*bessel_k(D*phi, nu, 1.0);
+    }else{
+      return 1.0;
+    } 
+  }else if(covModel == "gaussian"){
+    
+    return exp(-1.0*(pow(phi*D,2)));
+      
+  }else{
+    error("c++ error: cov.model is not correctly specified");
+    return 0;
+  }
+}
+
+
+
+void spCov(double *D, int n, double *theta, string &covModel, double *C){
+  int i;
+  
+  if(covModel == "exponential"){
+    
+    for(i = 0; i < n; i++){
+      C[i] = theta[0]*exp(-1.0*theta[1]*D[i]);
+    }
+    
+  }else if(covModel == "spherical"){
+    
+    for(i = 0; i < n; i++){
+      if(D[i] > 0 && D[i] <= 1.0/theta[1]){
+	C[i] = theta[0]*(1.0 - 1.5*theta[1]*D[i] + 0.5*pow(theta[1]*D[i],3));
+      }else if(D[i] >= 1.0/theta[1]){
+	C[i] = 0.0;
+      }else{
+	C[i] = theta[0];
+      }
+    }
+    
+  }else if(covModel == "gaussian"){
+    
+    for(i = 0; i < n; i++){
+      C[i] = theta[0]*exp(-1.0*(pow(theta[1]*D[i],2)));
+    }
+    
+  }else if(covModel == "matern"){
+    
+    //(d*phi)^nu/(2^(nu-1)*gamma(nu))*pi/2*(besselI(d*phi,-nu)-besselI(d*phi, nu))/sin(nu*pi), or
+    //(d*phi)^nu/(2^(nu-1)*gamma(nu))*besselK(x=d*phi, nu=nu)
+    
+    for(i = 0; i < n; i++){
+      if(D[i]*theta[1] > 0.0){
+	C[i] = theta[0]*pow(D[i]*theta[1], theta[2])/(pow(2, theta[2]-1)*gammafn(theta[2]))*bessel_k(D[i]*theta[1], theta[2], 1.0);
+      }else{
+	C[i] = theta[0];
+      }
+    }
+    
+ }else{
+    error("c++ error: cov.model is not correctly specified");
+  }
+}
+
+void spCovLT(double *D, int n, double *theta, string &covModel, double *C){
+  int i,j;
+  
+  if(covModel == "exponential"){
+    
+    for(i = 0; i < n; i++){
+      for(j = i; j < n; j++){ 
+	C[i*n+j] = theta[0]*exp(-1.0*theta[1]*D[i*n+j]);
+      }
+    }
+    
+  }else if(covModel == "spherical"){
+    
+    for(i = 0; i < n; i++){
+      for(j = i; j < n; j++){ 
+	if(D[i*n+j] > 0 && D[i*n+j] <= 1.0/theta[1]){
+	  C[i*n+j] = theta[0]*(1.0 - 1.5*theta[1]*D[i*n+j] + 0.5*pow(theta[1]*D[i*n+j],3));
+	}else if(D[i*n+j] >= 1.0/theta[1]){
+	  C[i*n+j] = 0.0;
+	}else{
+	  C[i*n+j] = theta[0];
+	}
+      }
+    }
+    
+  }else if(covModel == "gaussian"){
+    
+    for(i = 0; i < n; i++){
+      for(j = i; j < n; j++){ 
+	C[i*n+j] = theta[0]*exp(-1.0*(pow(theta[1]*D[i*n+j],2)));
+      }
+    }
+
+  }else if(covModel == "matern"){
+    
+    //(d*phi)^nu/(2^(nu-1)*gamma(nu))*pi/2*(besselI(d*phi,-nu)-besselI(d*phi, nu))/sin(nu*pi), or
+    //(d*phi)^nu/(2^(nu-1)*gamma(nu))*besselK(x=d*phi, nu=nu)
+    
+    for(i = 0; i < n; i++){
+      for(j = i; j < n; j++){ 
+	if(D[i*n+j]*theta[1] > 0.0){
+	  C[i*n+j] = theta[0]*pow(D[i*n+j]*theta[1], theta[2])/(pow(2, theta[2]-1)*gammafn(theta[2]))*bessel_k(D[i*n+j]*theta[1], theta[2], 1.0);
+	}else{
+	  C[i*n+j] = theta[0];
+	}
+      }
+    }
+    
+ }else{
+    error("c++ error: cov.model is not correctly specified");
+  }
+}
+
+void transpose(double *m, int w, int h){
+  int start, next, i;
+  double tmp;
+  
+  for(start = 0; start <= w * h - 1; start++) {
+    next = start;
+    i = 0;
+    do{	i++;
+      next = (next % h) * w + next / h;
+    }while (next > start);
+    if(next < start || i == 1) continue;
+    
+    tmp = m[next = start];
+    do{
+      i = (next % h) * w + next / h;
+      m[next] = (i == start) ? tmp : m[i];
+      next = i;
+    }while (next > start);
+  }
+}
+
+void clearUT(double *m, int n){
+  for(int i = 1; i < n; i++){
+    for(int j = 0; j < i; j++){
+      m[i*n+j] = 0;
+    }
+  }
+}

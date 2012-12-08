@@ -1,6 +1,9 @@
 #include <iostream>
 #include <string>
-using namespace std;
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+//using namespace std;
 
 #include <R.h>
 #include <Rinternals.h>
@@ -8,9 +11,6 @@ using namespace std;
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
-#include "covmodel.h"
-#include "covInvDet.h"
-
 
 extern "C" {
 
@@ -24,7 +24,7 @@ extern "C" {
     /*****************************************
                 Common variables
     *****************************************/
-    int i,j,k,l,info,nProtect= 0;
+    int h, i, j, k, l, b, s, ii, jj, info, nProtect= 0;
     char const *lower = "L";
     char const *upper = "U";
     char const *ntran = "N";
@@ -99,7 +99,6 @@ extern "C" {
     int nSamples = INTEGER(nSamples_r)[0];
     int verbose = INTEGER(verbose_r)[0];
     int nReport = INTEGER(nReport_r)[0];
-
 
     if(verbose){
       Rprintf("----------------------------------------\n");
@@ -182,30 +181,6 @@ extern "C" {
 	Rprintf("\t"); printVec(nuStarting, m);
       }
     }
- 
-    /*****************************************
-        Set-up cov. model function pointer
-    *****************************************/
-    int nPramPtr = 1;
-    
-    void (covmodel::*cov1ParamPtr)(double, double &, double &) = NULL; 
-    void (covmodel::*cov2ParamPtr)(double, double, double &, double&) = NULL;
-    
-    if(covModel == "exponential"){
-      cov1ParamPtr = &covmodel::exponential;
-    }else if(covModel == "spherical"){
-      cov1ParamPtr = &covmodel::spherical;
-    }else if(covModel == "gaussian"){
-      cov1ParamPtr = &covmodel::gaussian;
-    }else if(covModel == "matern"){
-      cov2ParamPtr = &covmodel::matern;
-      nPramPtr = 2;
-    }else{
-      error("c++ error: cov.model is not correctly specified");
-    }
-   
-    //my covmodel object for calling cov function
-    covmodel *covModelObj = new covmodel;
 
     /*****************************************
          Set-up MCMC sample matrices etc.
@@ -260,7 +235,7 @@ extern "C" {
     /*****************************************
        Set-up MCMC alg. vars. matrices etc.
     *****************************************/
-    int s=0, status=0, rtnStatus=0, accept=0, batchAccept = 0;
+    int status=0, rtnStatus=0, accept=0, batchAccept = 0;
     double logPostCurrent = 0, logPostCand = 0, detCand = 0, logDetK, SKtrace;
 
     double *C = (double *) R_alloc(nm*nm, sizeof(double)); 
@@ -274,13 +249,11 @@ extern "C" {
     double *candSpParams = (double *) R_alloc(nParams, sizeof(double));
     double *beta = (double *) R_alloc(p, sizeof(double));
     double *A = (double *) R_alloc(mm, sizeof(double));
-    double *K = (double *) R_alloc(mm, sizeof(double));
-    double *Psi = (double *) R_alloc(mm, sizeof(double)); zeros(Psi, mm);
-    double *theta = (double *) R_alloc(mm, sizeof(double));
-    double *wCand = (double *) R_alloc(nm, sizeof(double));
-    double logMHRatio;
+    double *phi = (double *) R_alloc(m, sizeof(double));
+    double *nu = (double *) R_alloc(m, sizeof(double));
 
- 
+    double *wCand = (double *) R_alloc(nm, sizeof(double));
+    double logMHRatio; 
 
     if(verbose){
       Rprintf("-------------------------------------------------\n");
@@ -301,18 +274,18 @@ extern "C" {
       F77_NAME(dcopy)(&p, &candSpParams[betaIndx], &incOne, beta, &incOne);
 
       for(i = 0; i < nLTr; i++){
-	candSpParams[AIndx+i] = rnorm(spParams[AIndx+i], ATuning[i]);
+	candSpParams[AIndx+i] = rnorm(spParams[AIndx+i], sqrt(ATuning[i]));
       }
 
       covTransInvExpand(&candSpParams[AIndx], A, m);
 
       for(i = 0; i < m; i++){
-	candSpParams[phiIndx+i] = rnorm(spParams[phiIndx+i], phiTuning[i]);
-	theta[i] = logitInv(candSpParams[phiIndx+i], phiUnif[i*2], phiUnif[i*2+1]);
+	candSpParams[phiIndx+i] = rnorm(spParams[phiIndx+i], sqrt(phiTuning[i]));
+	phi[i] = logitInv(candSpParams[phiIndx+i], phiUnif[i*2], phiUnif[i*2+1]);
 	
 	if(covModel == "matern"){
-	  candSpParams[nuIndx+i] = rnorm(spParams[nuIndx+i], nuTuning[i]);
-	  theta[m+i] = logitInv(candSpParams[nuIndx+i], nuUnif[i*2], nuUnif[i*2+1]);
+	  candSpParams[nuIndx+i] = rnorm(spParams[nuIndx+i], sqrt(nuTuning[i]));
+	  nu[i] = logitInv(candSpParams[nuIndx+i], nuUnif[i*2], nuUnif[i*2+1]);
 	}
       }
 
@@ -320,17 +293,32 @@ extern "C" {
 	wCand[i] = rnorm(wCurrent[i], sqrt(wTuning[i]));
       }      
       
-      //K = A'A
-      F77_NAME(dgemm)(ntran, ytran, &m, &m, &m, &one, A, &m, A, &m, &zero, K, &m);
+      //construct covariance matrix
+      #pragma omp parallel 
+      {
+      #pragma omp for private(ii, k, l, h)
+      for(jj = 0; jj < n; jj++){
+      	for(ii = jj; ii < n; ii++){	
+      	  for(k = 0; k < m; k++){
+      	    for(l = 0; l < m; l++){
+      	      C[(k+jj*m)*nm+(ii*m+l)] = 0.0; 
+      	      for(h = 0; h < m; h++){
+		 C[(k+jj*m)*nm+(ii*m+l)] += A[k+m*h]*A[l+m*h]*spCor(coordsD[jj*n+ii], phi[h], nu[h], covModel);
+      	      }
+      	    }
+      	  }
+      	}
+      }
+      } //parallel for
 
-      detCand = mvCovInvDet(coordsD, C, n, m, Psi, K, theta, tmp_mm, tmp_mm1, tmp_mm2, 
-			covModel, nPramPtr, covModelObj, cov1ParamPtr, cov2ParamPtr);
+      //invert C and log det cov
+      detCand = 0;
+      F77_NAME(dpotrf)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+      for(i = 0; i < nm; i++) detCand += 2*log(C[i*nm+i]);
+      F77_NAME(dpotri)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: dpotri failed\n");}
       
-      //
       //Likelihood with Jacobian   
-      //
       logPostCand = 0.0;
-
 
       if(betaPrior == "normal"){
 	for(i = 0; i < p; i++){
@@ -338,11 +326,7 @@ extern "C" {
 	}
       }      
 
-      //
       //Jacobian and IW priors for K = A'A
-      //
-
-      //AtA prior with jacob.
       logDetK = 0.0;
       SKtrace = 0.0;
 
@@ -352,16 +336,16 @@ extern "C" {
       for(i = 0; i < m; i++) logPostCand += (m-i)*log(A[i*m+i])+log(A[i*m+i]);
       
       //get S*K^-1, already have the chol of K (i.e., A)
-      F77_NAME(dpotri)(lower, &m, A, &m, &info); if(info != 0){cout << "c++ error: Cand A Cholesky inverse failed\n" << endl;}
+      F77_NAME(dpotri)(lower, &m, A, &m, &info); if(info != 0){error("c++ error: dpotri failed\n");}
       F77_NAME(dsymm)(rside, lower, &m, &m, &one, A, &m, KIW_S, &m, &zero, tmp_mm, &m);
       for(i = 0; i < m; i++){SKtrace += tmp_mm[i*m+i];}
       logPostCand += -0.5*(KIW_df+m+1)*logDetK - 0.5*SKtrace;
 
       for(i = 0; i < m; i++){
-	logPostCand += log(theta[i] - phiUnif[i*2]) + log(phiUnif[i*2+1] - theta[i]); 
+	logPostCand += log(phi[i] - phiUnif[i*2]) + log(phiUnif[i*2+1] - phi[i]); 
       
 	if(covModel == "matern"){
-	  logPostCand += log(theta[m+i] - nuUnif[i*2]) + log(nuUnif[i*2+1] - theta[m+i]);  
+	  logPostCand += log(nu[i] - nuUnif[i*2]) + log(nuUnif[i*2+1] - nu[i]);  
 	}
       }
    
@@ -370,7 +354,7 @@ extern "C" {
       if(family == "binomial"){
 	logPostCand += binomial_logpost(nm, Y, tmp_nm, wCand, weights);
       }else if(family == "poisson"){
-	logPostCand += poisson_logpost(nm, Y, tmp_nm, wCand);
+	logPostCand += poisson_logpost(nm, Y, tmp_nm, wCand, weights);
       }else{
 	error("c++ error: family misspecification in spGLM\n");
       }
@@ -458,13 +442,13 @@ extern "C" {
 
    //samples
     SET_VECTOR_ELT(result, 0, samples_r);
-    SET_VECTOR_ELT(resultNames, 0, mkChar("p.samples")); 
+    SET_VECTOR_ELT(resultNames, 0, mkChar("p.beta.theta.samples")); 
 
     SET_VECTOR_ELT(result, 1, accept_r);
     SET_VECTOR_ELT(resultNames, 1, mkChar("acceptance"));
     
     SET_VECTOR_ELT(result, 2, w_r);
-    SET_VECTOR_ELT(resultNames, 2, mkChar("sp.effects"));
+    SET_VECTOR_ELT(resultNames, 2, mkChar("p.w.samples"));
   
     namesgets(result, resultNames);
    

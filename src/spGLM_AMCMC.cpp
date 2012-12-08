@@ -8,7 +8,6 @@ using namespace std;
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
-#include "covmodel.h"
 
 extern "C" {
 
@@ -129,30 +128,6 @@ extern "C" {
     } 
 
     /*****************************************
-        Set-up cov. model function pointer
-    *****************************************/
-     int nPramPtr = 1;
-    
-    void (covmodel::*cov1ParamPtr)(double, double &, double &) = NULL; 
-    void (covmodel::*cov2ParamPtr)(double, double, double &, double&) = NULL;
-    
-    if(covModel == "exponential"){
-      cov1ParamPtr = &covmodel::exponential;
-    }else if(covModel == "spherical"){
-      cov1ParamPtr = &covmodel::spherical;
-    }else if(covModel == "gaussian"){
-      cov1ParamPtr = &covmodel::gaussian;
-    }else if(covModel == "matern"){
-      cov2ParamPtr = &covmodel::matern;
-      nPramPtr = 2;
-    }else{
-      error("c++ error: cov.model is not correctly specified");
-    }
-   
-    //my covmodel object for calling cov function
-    covmodel *covModelObj = new covmodel;
-
-    /*****************************************
          Set-up MCMC sample matrices etc.
     *****************************************/
     int nn = n*n;
@@ -209,15 +184,15 @@ extern "C" {
     
     PROTECT(w_r = allocMatrix(REALSXP, n, nSamples)); nProtect++;  
     PROTECT(samples_r = allocMatrix(REALSXP, nParams, nSamples)); nProtect++; 
-    PROTECT(accept_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++; //just to monitor acceptance rate
-    PROTECT(accept_w_r = allocMatrix(REALSXP, n, nBatch)); nProtect++; //just to monitor acceptance rate
-    PROTECT(tuning_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++; //just to monitor acceptance rate
-    PROTECT(tuning_w_r = allocMatrix(REALSXP, n, nBatch)); nProtect++; //just to monitor acceptance rate
+    PROTECT(accept_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++;
+    PROTECT(accept_w_r = allocMatrix(REALSXP, n, nBatch)); nProtect++;
+    PROTECT(tuning_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++;
+    PROTECT(tuning_w_r = allocMatrix(REALSXP, n, nBatch)); nProtect++;
 
     /*****************************************
        Set-up MCMC alg. vars. matrices etc.
     *****************************************/
-    int s=0, status=0, rtnStatus=0;
+    int s=0, status=0;
     double logPostCurrent = 0, logPostCand = 0, detCand = 0, spParamsjCurrent, wjCurrent;
 
     double *accept = (double *) R_alloc(nParams, sizeof(double));
@@ -229,6 +204,7 @@ extern "C" {
 
     double sigmaSq, phi, nu;
     double *beta = (double *) R_alloc(p, sizeof(double));
+    double *theta = (double *) R_alloc(3, sizeof(double)); //phi, nu, and perhaps more in the future
 
     double logMHRatio;
 
@@ -256,29 +232,21 @@ extern "C" {
  
 	  //extract and transform
 	  F77_NAME(dcopy)(&p, &spParams[betaIndx], &incOne, beta, &incOne);
-	  sigmaSq = exp(spParams[sigmaSqIndx]);
-	  phi = logitInv(spParams[phiIndx], phiUnifa, phiUnifb);
+	  sigmaSq = theta[0] = exp(spParams[sigmaSqIndx]);
+	  phi = theta[1] = logitInv(spParams[phiIndx], phiUnifa, phiUnifb);
 	  
 	  if(covModel == "matern"){
-	    nu = logitInv(spParams[nuIndx], nuUnifa, nuUnifb);
+	    nu = theta[2] = logitInv(spParams[nuIndx], nuUnifa, nuUnifb);
 	  }
 	  
-	  //make the correlation matrix
-	  for(k = 0; k < nn; k++){
-	    if(nPramPtr == 1)
-	      (covModelObj->*cov1ParamPtr)(phi, C[k], coordsD[k]);
-	    else //i.e., 2 parameter matern
-	      (covModelObj->*cov2ParamPtr)(phi, nu, C[k], coordsD[k]);
-	  }
-	  	  
-	  //scale by sigma^2
-	  F77_NAME(dscal)(&nn, &sigmaSq, C, &incOne);	
-	  
+	  //construct covariance matrix
+	  spCovLT(coordsD, n, theta, covModel, C);
+
 	  //invert C and log det cov
 	  detCand = 0;
-	  F77_NAME(dpotrf)(upper, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
+	  F77_NAME(dpotrf)(lower, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
 	  for(k = 0; k < n; k++) detCand += 2*log(C[k*n+k]);
-	  F77_NAME(dpotri)(upper, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
+	  F77_NAME(dpotri)(lower, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
 	  
 	  //Likelihood with Jacobian  
 	  logPostCand = 0.0;
@@ -302,13 +270,13 @@ extern "C" {
 	  if(family == "binomial"){
 	    logPostCand += binomial_logpost(n, Y, tmp_n, w, weights);
 	  }else if(family == "poisson"){
-	    logPostCand += poisson_logpost(n, Y, tmp_n, w);
+	    logPostCand += poisson_logpost(n, Y, tmp_n, w, weights);
 	  }else{
 	    error("c++ error: family misspecification in spGLM\n");
 	  }
 	  
 	  //(-1/2) * tmp_n` *  C^-1 * tmp_n
-	  F77_NAME(dsymv)(upper, &n, &one,  C, &n, w, &incOne, &zero, tmp_n1, &incOne);
+	  F77_NAME(dsymv)(lower, &n, &one,  C, &n, w, &incOne, &zero, tmp_n1, &incOne);
 	  logPostCand += -0.5*detCand-0.5*F77_NAME(ddot)(&n, w, &incOne, tmp_n1, &incOne);
 
 	  //
@@ -333,30 +301,24 @@ extern "C" {
 
 	//extract and transform
 	F77_NAME(dcopy)(&p, &spParams[betaIndx], &incOne, beta, &incOne);
-	sigmaSq = exp(spParams[sigmaSqIndx]);
-	phi = logitInv(spParams[phiIndx], phiUnifa, phiUnifb);
+	sigmaSq = theta[0] = exp(spParams[sigmaSqIndx]);
+	phi = theta[1] = logitInv(spParams[phiIndx], phiUnifa, phiUnifb);
 	
 	if(covModel == "matern"){
-	  nu = logitInv(spParams[nuIndx], nuUnifa, nuUnifb);
+	  nu = theta[2] = logitInv(spParams[nuIndx], nuUnifa, nuUnifb);
 	}
 	
-	//make the correlation matrix
-	for(k = 0; k < nn; k++){
-	  if(nPramPtr == 1)
-	    (covModelObj->*cov1ParamPtr)(phi, C[k], coordsD[k]);
-	  else //i.e., 2 parameter matern
-	    (covModelObj->*cov2ParamPtr)(phi, nu, C[k], coordsD[k]);
-	}
+	//construct covariance matrix
+	spCovLT(coordsD, n, theta, covModel, C);
 
-	//scale by sigma^2
-	F77_NAME(dscal)(&nn, &sigmaSq, C, &incOne);
-	
 	//invert C and log det cov
 	detCand = 0;
-	F77_NAME(dpotrf)(upper, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
+	F77_NAME(dpotrf)(lower, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
 	for(k = 0; k < n; k++) detCand += 2*log(C[k*n+k]);
-	F77_NAME(dpotri)(upper, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
-		
+	F77_NAME(dpotri)(lower, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
+	
+	F77_NAME(dgemv)(ntran, &n, &p, &one, X, &n, beta, &incOne, &zero, tmp_n, &incOne);
+	  
 	for(j = 0; j < n; j++){
 	  
 	  //propose
@@ -379,19 +341,17 @@ extern "C" {
 	  if(covModel == "matern"){
 	    logPostCand += log(nu - nuUnifa) + log(nuUnifb - nu);   
 	  }
-	  
-	  F77_NAME(dgemv)(ntran, &n, &p, &one, X, &n, beta, &incOne, &zero, tmp_n, &incOne);
-	  
+	  	  
 	  if(family == "binomial"){
 	    logPostCand += binomial_logpost(n, Y, tmp_n, w, weights);
 	  }else if(family == "poisson"){
-	    logPostCand += poisson_logpost(n, Y, tmp_n, w);
+	    logPostCand += poisson_logpost(n, Y, tmp_n, w, weights);
 	  }else{
 	    error("c++ error: family misspecification in spGLM\n");
 	  }
 	  
 	  //(-1/2) * tmp_n` *  C^-1 * tmp_n
-	  F77_NAME(dsymv)(upper, &n, &one,  C, &n, w, &incOne, &zero, tmp_n1, &incOne);
+	  F77_NAME(dsymv)(lower, &n, &one,  C, &n, w, &incOne, &zero, tmp_n1, &incOne);
 	  logPostCand += -0.5*detCand-0.5*F77_NAME(ddot)(&n, w, &incOne, tmp_n1, &incOne);
 	  
 	  //
@@ -499,7 +459,7 @@ extern "C" {
 
     //samples
     SET_VECTOR_ELT(result, 0, samples_r);
-    SET_VECTOR_ELT(resultNames, 0, mkChar("p.samples")); 
+    SET_VECTOR_ELT(resultNames, 0, mkChar("p.beta.theta.samples")); 
 
     SET_VECTOR_ELT(result, 1, accept_r);
     SET_VECTOR_ELT(resultNames, 1, mkChar("acceptance"));
@@ -508,7 +468,7 @@ extern "C" {
     SET_VECTOR_ELT(resultNames, 2, mkChar("acceptance.w"));
     
     SET_VECTOR_ELT(result, 3, w_r);
-    SET_VECTOR_ELT(resultNames, 3, mkChar("sp.effects"));
+    SET_VECTOR_ELT(resultNames, 3, mkChar("p.w.samples"));
 
     SET_VECTOR_ELT(result, 4, tuning_r);
     SET_VECTOR_ELT(resultNames, 4, mkChar("tuning"));

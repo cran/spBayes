@@ -8,7 +8,6 @@ using namespace std;
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
-#include "covmodel.h"
 
 extern "C" {
 
@@ -167,30 +166,6 @@ extern "C" {
     } 
 
     /*****************************************
-        Set-up cov. model function pointer
-    *****************************************/
-    bool onePramPtr = true;
-    
-    void (covmodel::*cov1ParamPtr)(double, double &, double &) = NULL; 
-    void (covmodel::*cov2ParamPtr)(double, double, double &, double&) = NULL;
-    
-    if(covModel == "exponential"){
-      cov1ParamPtr = &covmodel::exponential;
-    }else if(covModel == "spherical"){
-      cov1ParamPtr = &covmodel::spherical;
-    }else if(covModel == "gaussian"){
-      cov1ParamPtr = &covmodel::gaussian;
-    }else if(covModel == "matern"){
-      cov2ParamPtr = &covmodel::matern;
-      onePramPtr = false;
-    }else{
-      error("c++ error: cov.model is not correctly specified");
-    }
-   
-    //my covmodel object for calling cov function
-    covmodel *covModelObj = new covmodel;
-
-    /*****************************************
          Set-up MCMC sample matrices etc.
     *****************************************/
     int nn = n*n;
@@ -236,7 +211,7 @@ extern "C" {
     /*****************************************
        Set-up MCMC alg. vars. matrices etc.
     *****************************************/
-    int s=0, status=0, rtnStatus=0, accept=0, batchAccept = 0;
+    int s=0, status=0, accept=0, batchAccept = 0;
     double logPostCurrent = 0, logPostCand = 0, detCand = 0;
   
     double *C = (double *) R_alloc(nn, sizeof(double)); 
@@ -248,6 +223,7 @@ extern "C" {
     double *wCand = (double *) R_alloc(n, sizeof(double));
     double sigmaSq, phi, nu;
     double *beta = (double *) R_alloc(p, sizeof(double));
+    double *theta = (double *) R_alloc(3, sizeof(double)); //phi, nu, and perhaps more in the future
 
     double logMHRatio;
 
@@ -270,35 +246,28 @@ extern "C" {
       F77_NAME(dcopy)(&p, &candSpParams[betaIndx], &incOne, beta, &incOne);
 
       candSpParams[sigmaSqIndx] = rnorm(spParams[sigmaSqIndx], sigmaSqTuning);
-      sigmaSq = exp(candSpParams[sigmaSqIndx]);
+      sigmaSq = theta[0] = exp(candSpParams[sigmaSqIndx]);
 
       candSpParams[phiIndx] = rnorm(spParams[phiIndx], phiTuning);
-      phi = logitInv(candSpParams[phiIndx], phiUnifa, phiUnifb);
+      phi = theta[1] = logitInv(candSpParams[phiIndx], phiUnifa, phiUnifb);
 
       if(covModel == "matern"){
 	candSpParams[nuIndx] = rnorm(spParams[nuIndx], nuTuning);
-	nu = logitInv(candSpParams[nuIndx], nuUnifa, nuUnifb);
+	nu = theta[2] = logitInv(candSpParams[nuIndx], nuUnifa, nuUnifb);
       }
 
       for(i = 0; i < n; i++){
 	wCand[i] = rnorm(wCurrent[i], sqrt(wTuning[i]));
       }
       
-      //make the correlation matrix
-      for(i = 0; i < nn; i++){
-	if(onePramPtr)
-	  (covModelObj->*cov1ParamPtr)(phi, C[i], coordsD[i]);
-	else //i.e., 2 parameter matern
-	  (covModelObj->*cov2ParamPtr)(phi, nu, C[i], coordsD[i]);
-      }
-      
-      F77_NAME(dscal)(&nn, &sigmaSq, C, &incOne);
+      //construct covariance matrix
+      spCovLT(coordsD, n, theta, covModel, C);
       
       //invert C and log det cov
       detCand = 0;
-      F77_NAME(dpotrf)(upper, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
+      F77_NAME(dpotrf)(lower, &n, C, &n, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
       for(i = 0; i < n; i++) detCand += 2*log(C[i*n+i]);
-      F77_NAME(dpotri)(upper, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
+      F77_NAME(dpotri)(lower, &n, C, &n, &info); if(info != 0){error("c++ error: dpotri failed\n");}
       
       //Likelihood with Jacobian  
       logPostCand = 0.0;
@@ -322,13 +291,13 @@ extern "C" {
       if(family == "binomial"){
 	logPostCand += binomial_logpost(n, Y, tmp_n, wCand, weights);
       }else if(family == "poisson"){
-	logPostCand += poisson_logpost(n, Y, tmp_n, wCand);
+	logPostCand += poisson_logpost(n, Y, tmp_n, wCand, weights);
       }else{
 	error("c++ error: family misspecification in spGLM\n");
       }
 
       //(-1/2) * tmp_n` *  C^-1 * tmp_n
-      F77_NAME(dsymv)(upper, &n, &one,  C, &n, wCand, &incOne, &zero, tmp_n1, &incOne);
+      F77_NAME(dsymv)(lower, &n, &one,  C, &n, wCand, &incOne, &zero, tmp_n1, &incOne);
       logPostCand += -0.5*detCand-0.5*F77_NAME(ddot)(&n, wCand, &incOne, tmp_n1, &incOne);
 
       //
@@ -406,13 +375,13 @@ extern "C" {
 
    //samples
     SET_VECTOR_ELT(result, 0, samples_r);
-    SET_VECTOR_ELT(resultNames, 0, mkChar("p.samples")); 
+    SET_VECTOR_ELT(resultNames, 0, mkChar("p.beta.theta.samples")); 
 
     SET_VECTOR_ELT(result, 1, accept_r);
     SET_VECTOR_ELT(resultNames, 1, mkChar("acceptance"));
     
     SET_VECTOR_ELT(result, 2, w_r);
-    SET_VECTOR_ELT(resultNames, 2, mkChar("sp.effects"));
+    SET_VECTOR_ELT(resultNames, 2, mkChar("p.w.samples"));
   
     namesgets(result, resultNames);
    

@@ -1,6 +1,6 @@
-spMvGLM <- function(formula, family="binomial", weights, data = parent.frame(), coords, knots, amcmc,
+spMvGLM <- function(formula, family="binomial", weights, data = parent.frame(), coords, knots, 
                     starting, tuning, priors, cov.model, 
-                    n.samples, sub.samples, verbose=TRUE, n.report=100, ...){
+                    amcmc, n.samples, verbose=TRUE, n.report=100, ...){
   
   ####################################################
   ##Check for unused args
@@ -39,44 +39,36 @@ spMvGLM <- function(formula, family="binomial", weights, data = parent.frame(), 
 
   p <- ncol(X)
   n <- nrow(X)/m
-
+  n.ltr <- m*(m+1)/2
+  nm <- n*m;
+  
   ##make sure storage mode is correct
   storage.mode(Y) <- "double"
   storage.mode(X) <- "double"
   storage.mode(m) <- "integer"
   storage.mode(p) <- "integer"
   storage.mode(n) <- "integer"
+  storage.mode(nm) <- "integer"
 
   ####################################################
-  ##family
+  ##family and weights
   ####################################################
   if(!family %in% c("binomial","poisson"))
     stop("error: family must be binomial or poisson")
 
-  ##default for binomial
-  if(family=="binomial"){
-    if(missing(weights)){
-      weights <- rep(1, n*m)
-    }else if(is.matrix(weights)){
-      if(nrow(weights) == n && ncol(weights) == m){
-        weights <- as.vector(t(weights))
-      }else{
-        stop("error: weights matrix must be n-by-m")
-      }
+  if(missing(weights)){
+    weights <- rep(1, n*m)
+  }else if(is.matrix(weights)){
+    if(nrow(weights) == n && ncol(weights) == m){
+      weights <- as.vector(t(weights))
     }else{
       stop("error: weights matrix must be n-by-m")
     }
   }else{
-    weights <- 0
+    stop("error: weights matrix must be n-by-m")
   }
   
   storage.mode(weights) <- "integer"
-  
-  ####################################################
-  ##family
-  ####################################################
-  if(!family %in% c("binomial","poisson"))
-    stop("error: family must be binomial or poisson")
 
   ####################################################
   ##sampling method
@@ -116,6 +108,115 @@ spMvGLM <- function(formula, family="binomial", weights, data = parent.frame(), 
   storage.mode(n.batch) <- "integer"
   storage.mode(batch.length) <- "integer"
   storage.mode(accept.rate) <- "double"
+
+  ####################################################
+  ##Fit non-spatial model if specified
+  ####################################################
+  if(missing(coords)){
+    
+    ##Starting
+    beta.starting <- 0
+    
+    if(missing(starting)){stop("error: starting value list for the parameters must be specified")}
+    
+    names(starting) <- tolower(names(starting))   
+    
+    if("beta" %in% names(starting)){
+      beta.starting <- starting[["beta"]]
+      if(length(beta.starting) != p){stop(paste("error: starting values for beta must be of length ",p,sep=""))}
+    }else{
+      if(family=="poisson"){
+        beta.starting <- coefficients(glm(Y~X-1, family="poisson"))
+      }else{
+        beta.starting <- coefficients(glm((Y/weights)~X-1, weights=weights, family="binomial"))
+      }
+    }
+    
+    storage.mode(beta.starting) <- "double"
+    
+    ##Starting
+    beta.Norm <- 0
+    beta.prior <- "flat"
+    
+    if(missing(priors)) {stop("error: prior list for the parameters must be specified")}
+    
+    names(priors) <- tolower(names(priors))
+    
+    if("beta.norm" %in% names(priors)){
+      beta.Norm <- priors[["beta.normal"]]
+      if(!is.list(beta.Norm) || length(beta.Norm) != 2){stop("error: beta.Norm must be a list of length 2")}
+      if(length(beta.Norm[[1]]) != p ){stop(paste("error: beta.Norm[[1]] must be a vector of length, ",p, " with elements corresponding to betas' mean",sep=""))}
+      if(length(beta.Norm[[2]]) != p ){stop(paste("error: beta.Norm[[2]] must be a vector of length, ",p, " with elements corresponding to betas' sd",sep=""))}
+      beta.prior <- "normal"
+    }
+    
+    ##Tuning
+    beta.tuning <- 0
+    
+    if(!missing(tuning)){
+      
+      names(tuning) <- tolower(names(tuning))
+      
+      if(!"beta" %in% names(tuning)){stop("error: beta must be specified in tuning value list")}
+      beta.tuning <- tuning[["beta"]]
+      
+      if(is.matrix(beta.tuning)){
+        if(nrow(beta.tuning) != p || ncol(beta.tuning) != p){
+          stop(paste("error: if beta tuning is a matrix, it must be of dimension ",p,sep=""))
+        }
+        
+        if(is.amcmc){
+          beta.tuning <- diag(beta.tuning)
+        }
+        
+      }else if(is.vector(beta.tuning)){
+        if(length(beta.tuning) != p){
+          stop(paste("error: if beta tuning is a vector, it must be of length ",p,sep=""))
+        }
+        
+        if(!is.amcmc){
+          beta.tuning <- diag(beta.tuning)
+        }
+        
+      }else{
+        stop("error: beta tuning is misspecified")
+      }
+      
+    }else{##no tuning provided
+      
+      if(!is.amcmc){
+        stop("error: tuning value list must be specified")
+      }
+      
+      beta.tuning <- rep(0.01,p)
+    }
+    
+    storage.mode(beta.tuning) <- "double"
+
+    ##Other stuff
+    storage.mode(n.report) <- "integer"
+    storage.mode(verbose) <- "integer"
+    
+    ##Send if off
+    out <- .Call("nonSpGLM_AMCMC", Y, X, p, nm, family, weights,
+                 beta.prior, beta.Norm, beta.starting, beta.tuning,
+                 n.batch, batch.length, accept.rate, verbose, n.report, is.amcmc)
+    
+    out$p.beta.samples <- mcmc(t(out$p.beta.samples))
+    
+    colnames(out$p.beta.samples) <- x.names
+    
+    out$weights <- weights
+    out$family <- family
+    out$Y <- Y
+    out$X <- X
+    out$m <- m
+    
+    class(out) <- "nonSpMvGLM"
+    
+    return(out)
+  }
+
   
   ####################################################
   ##Distance matrices
@@ -131,16 +232,14 @@ spMvGLM <- function(formula, family="binomial", weights, data = parent.frame(), 
           data used in the model formula")
   }
   
-  coords.D <- as.matrix(dist(coords))
+  coords.D <- iDist(coords)
   storage.mode(coords.D) <- "double"
   
   ####################
   ##Knots
   ####################
-
   is.pp <- FALSE
-  modified.pp <- FALSE
-
+  
   if(!missing(knots)){
     
     if(is.vector(knots) && length(knots) %in% c(2,3)){
@@ -194,27 +293,21 @@ spMvGLM <- function(formula, family="binomial", weights, data = parent.frame(), 
       stop("error: knots is misspecified")
     }
   }
-
+  
   q <- 0
   knots.D <- 0
-  coords.knots.D <- 0
+  knots.coords.D <- 0
   
   if(is.pp){
-    knots.D <- as.matrix(dist(knot.coords))
+    knots.D <- iDist(knot.coords)
     q <- nrow(knots.D)
-    coords.knots.D <- matrix(0, n, q) ##this is for c^t
-
-    for(i in 1:n){
-      coords.knots.D[i,] <- sqrt((knot.coords[,1]-coords[i,1])^2+
-                                 (knot.coords[,2]-coords[i,2])^2)
-    }
-
-    storage.mode(modified.pp) <- "integer"
-    storage.mode(q) <- "integer"
-    storage.mode(knots.D) <- "double"
-    storage.mode(coords.knots.D) <- "double"
+    knots.coords.D <- iDist(knot.coords, coords)
   }
 
+  storage.mode(q) <- "integer"
+  storage.mode(knots.D) <- "double"
+  storage.mode(knots.coords.D) <- "double"
+  
   ####################################################
   ##Covariance model
   ####################################################
@@ -249,7 +342,7 @@ spMvGLM <- function(formula, family="binomial", weights, data = parent.frame(), 
    
   if(!"a" %in% names(starting)){stop("error: A must be specified in starting")}
   A.starting <- starting[["a"]]
-  if(length(A.starting) != m*(m-1)/2+m){stop(paste("error: A must be of length ",m*(m-1)/2+m," in starting value list",sep=""))}
+  if(length(A.starting) != n.ltr){stop(paste("error: A must be of length ",n.ltr," in starting value list",sep=""))}
   
   if(!"phi" %in% names(starting)){stop("error: phi must be specified in starting")}
   phi.starting <- starting[["phi"]]
@@ -306,7 +399,7 @@ spMvGLM <- function(formula, family="binomial", weights, data = parent.frame(), 
     
   names(priors) <- tolower(names(priors))
 
-  if("beta.normal" %in% names(priors)){
+  if("beta.norm" %in% names(priors)){
     beta.Norm <- priors[["beta.normal"]]
     if(!is.list(beta.Norm) || length(beta.Norm) != 2){stop("error: beta.Norm must be a list of length 2")}
     if(length(beta.Norm[[1]]) != p ){stop(paste("error: beta.Norm[[1]] must be a vector of length, ",p, " with elements corresponding to betas' mean",sep=""))}
@@ -322,19 +415,23 @@ spMvGLM <- function(formula, family="binomial", weights, data = parent.frame(), 
   
   if(!"phi.unif" %in% names(priors)){stop("error: phi.Unif must be specified")}
   phi.Unif <- priors[["phi.unif"]]
-  
-  if(!is.vector(phi.Unif) || length(phi.Unif) != 2*m){stop(paste("error: phi.Unif must be a vector of length ",2*m,sep=""))}
-  if(any(phi.Unif[seq(2,2*m,2)]-phi.Unif[seq(1,2*m,2)] <= 0)){stop("error: phi.Unif has zero support")}
+  if(!is.list(phi.Unif) || length(phi.Unif) != 2){stop("error: phi.Unif must be a list of length 2")}
+  if(length(phi.Unif[[1]]) != m){stop(paste("error: phi.Unif[[1]] must be a vector of length, ",m, "",sep=""))}
+  if(length(phi.Unif[[2]]) != m){stop(paste("error: phi.Unif[[2]] must be a vector of length, ",m, "",sep=""))}
+  if(any(phi.Unif[[2]]-phi.Unif[[1]] <= 0)){stop("error: phi.Unif has zero support")}
+  phi.Unif <- as.vector(t(cbind(phi.Unif[[1]],phi.Unif[[2]])))
   
   if(cov.model == "matern"){
     
     if(!"nu.unif" %in% names(priors)){stop("error: nu.Unif must be specified")}
     nu.Unif <- priors[["nu.unif"]]
-    
-    if(!is.vector(nu.Unif) || length(nu.Unif) != 2*m){stop(paste("error: nu.Unif must be a vector of length ",2*m,sep=""))}
-    if(any(nu.Unif[seq(2,2*m,2)]-nu.Unif[seq(1,2*m,2)] <= 0)){stop("error: nu.Unif has zero support")}
+    if(!is.list(nu.Unif) || length(nu.Unif) != 2){stop("error: nu.Unif must be a list of length 2")}
+    if(length(nu.Unif[[1]]) != m){stop(paste("error: nu.Unif[[1]] must be a vector of length, ",m, "",sep=""))}
+    if(length(nu.Unif[[2]]) != m){stop(paste("error: nu.Unif[[2]] must be a vector of length, ",m, "",sep=""))}
+    if(any(nu.Unif[[2]]-nu.Unif[[1]] <= 0)){stop("error: nu.Unif has zero support")}
+    nu.Unif <- as.vector(t(cbind(nu.Unif[[1]],nu.Unif[[2]])))
   }
-  
+    
   storage.mode(K.IW[[1]]) <- "double"; storage.mode(K.IW[[2]]) <- "double"
   storage.mode(nu.Unif) <- "double"
   storage.mode(phi.Unif) <- "double"
@@ -356,18 +453,22 @@ spMvGLM <- function(formula, family="binomial", weights, data = parent.frame(), 
     beta.tuning <- tuning[["beta"]]
     
     if(is.matrix(beta.tuning)){
-      if(nrow(beta.tuning) != p || ncol(beta.tuning) != p)
+      if(nrow(beta.tuning) != p || ncol(beta.tuning) != p){
         stop(paste("error: if beta tuning is a matrix, it must be of dimension ",p,sep=""))
-
-      if(is.amcmc)
+      }
+      
+      if(is.amcmc){
         beta.tuning <- diag(beta.tuning)
+      }
       
     }else if(is.vector(beta.tuning)){
-      if(length(beta.tuning) != p)
+      if(length(beta.tuning) != p){
         stop(paste("error: if beta tuning is a vector, it must be of length ",p,sep=""))
+      }
       
-      if(!is.amcmc)
+      if(!is.amcmc){
         beta.tuning <- diag(beta.tuning)
+      }
       
     }else{
       stop("error: beta tuning is misspecified")
@@ -375,7 +476,7 @@ spMvGLM <- function(formula, family="binomial", weights, data = parent.frame(), 
     
     if(!"a" %in% names(tuning)){stop("error: A must be specified in tuning value list")}
     A.tuning <- as.vector(tuning[["a"]])
-    if(length(A.tuning) != m*(m-1)/2+m){stop(paste("error: A must be of length ",m*(m-1)/2+m," in tuning value list",sep=""))}
+    if(length(A.tuning) != n.ltr){stop(paste("error: A must be of length ",n.ltr," in tuning value list",sep=""))}
     
     if(!"phi" %in% names(tuning)){stop("error: phi must be specified in tuning value list")}
     phi.tuning <- tuning[["phi"]]
@@ -428,7 +529,8 @@ spMvGLM <- function(formula, family="binomial", weights, data = parent.frame(), 
     }
     
   }
-  
+
+  storage.mode(beta.tuning) <- "double"
   storage.mode(phi.tuning) <- "double"
   storage.mode(A.tuning) <- "double"
   storage.mode(nu.tuning) <- "double"
@@ -437,9 +539,6 @@ spMvGLM <- function(formula, family="binomial", weights, data = parent.frame(), 
   ####################################################
   ##Other stuff
   ####################################################
-  if(missing(sub.samples)){sub.samples <- c(1, n.samples, 1)}
-  if(length(sub.samples) != 3 || any(sub.samples > n.samples) ){stop("error: sub.samples misspecified")}
-    
   storage.mode(n.report) <- "integer"
   storage.mode(verbose) <- "integer"
 
@@ -447,19 +546,20 @@ spMvGLM <- function(formula, family="binomial", weights, data = parent.frame(), 
   ####################################################
   ##Pack it up and off it goes
   ####################################################
-  
+  ptm <- proc.time()
+
   if(is.pp){
     
     if(!is.amcmc){
       out <- .Call("spPPMvGLM", Y, X, p, n, m, coords.D, family, weights,
-                   modified.pp, q, knots.D, coords.knots.D,                
+                   q, knots.D, knots.coords.D,                
                    beta.prior, beta.Norm, K.IW, nu.Unif, phi.Unif,
                    phi.starting, A.starting, nu.starting, beta.starting, w.starting,
                    phi.tuning, A.tuning, nu.tuning, beta.tuning, w.tuning,
                    cov.model, n.samples, verbose, n.report)
     }else{
       out <- .Call("spPPMvGLM_AMCMC", Y, X, p, n, m, coords.D, family, weights,
-                   modified.pp, q, knots.D, coords.knots.D,                
+                   q, knots.D, knots.coords.D,                
                    beta.prior, beta.Norm, K.IW, nu.Unif, phi.Unif,
                    phi.starting, A.starting, nu.starting, beta.starting, w.starting,
                    phi.tuning, A.tuning, nu.tuning, beta.tuning, w.tuning,
@@ -485,66 +585,44 @@ spMvGLM <- function(formula, family="binomial", weights, data = parent.frame(), 
     }
   }
 
-  out$weights <- matrix(weights,nrow=n,ncol=m)
-  out$coords <- coords
-  out$is.pp <- is.pp
-  out$modified.pp <- modified.pp
-  
-  if(is.pp){out$knot.coords <- knot.coords}
+  run.time <- proc.time() - ptm
 
-  out$family <- family
-  out$Y <- Y
-  out$X <- X
-  out$n <- n
-  out$m <- m
-  out$q <- q
-  out$p <- p
-  out$knots.D <- knots.D
-  out$coords.D <- coords.D
-  out$coords.knots.D <- coords.knots.D
-  out$cov.model <- cov.model
-  out$verbose <- verbose
-  #out$n.samples <- n.samples
-  out$sub.samples <- sub.samples
-  out$recovered.effects <- TRUE ##forced recovery
+  ##parameter names
+  out$p.beta.theta.samples <-  mcmc(t(out$p.beta.theta.samples))
 
-  if(is.amcmc){
-    out$tuning.w <- exp(out$tuning.w)
-    out$tuning <- exp(out$tuning)
-  }
+  col.names <- rep("null",ncol(out$p.beta.theta.samples))
   
-  ##subsample 
-  out$sp.effects <- out$sp.effects[,seq(sub.samples[1], sub.samples[2], by=as.integer(sub.samples[3]))]
-  if(is.pp){out$sp.effects.knots <- out$sp.effects.knots[,seq(sub.samples[1], sub.samples[2], by=as.integer(sub.samples[3]))]}
-  out$p.samples <- mcmc(t(out$p.samples[,seq(sub.samples[1], sub.samples[2], by=as.integer(sub.samples[3]))]))
-  out$n.samples <- nrow(out$p.samples)##get adjusted n.samples
-  
-  col.names <- rep("null",ncol(out$p.samples))
-
-  nltr <- m*(m-1)/2+m
-  
-  col.names[1:p] <- x.names
   if(cov.model != "matern"){
-    col.names[(p+1):ncol(out$p.samples)] <- c(rep("K",nltr), paste("phi_",1:m,sep=""))
+    col.names <- c(x.names, rep("K",n.ltr), paste("phi[",1:m,"]",sep=""))
   }else{
-    col.names[(p+1):ncol(out$p.samples)] <- c(rep("K",nltr), paste("phi.",1:m,sep=""), paste("nu_",1:m,sep=""))
+    col.names <- c(x.names, rep("K",n.ltr), paste("phi[",1:m,"]",sep=""), paste("nu[",1:m,"]",sep=""))
   }
     
-  colnames(out$p.samples) <- col.names
-
+  colnames(out$p.beta.theta.samples) <- col.names
+  
   AtA <- function(x, m){
     A <- matrix(0, m, m)
     A[lower.tri(A, diag=TRUE)] <- x
     (A%*%t(A))[lower.tri(A, diag=TRUE)]
   }
-
-  ##K.names <- paste("K_",1:nltr,sep="")
+  
   K.names <- paste("K[",matrix(apply(cbind(expand.grid(1:m,1:m)), 1, function(x) paste(x, collapse=",")),m,m)[lower.tri(matrix(0,m,m), diag=TRUE)],"]",sep="")
-
-  colnames(out$p.samples)[colnames(out$p.samples)%in%"K"] <- K.names
-  out$p.samples[,K.names] <- t(apply(out$p.samples[,K.names], 1, AtA, m))
-
-  out$p.samples <- mcmc(out$p.samples)
+  
+  colnames(out$p.beta.theta.samples)[colnames(out$p.beta.theta.samples)%in%"K"] <- K.names
+  out$p.beta.theta.samples[,K.names] <- t(apply(out$p.beta.theta.samples[,K.names,drop=FALSE], 1, AtA, m))
+    
+  out$weights <- matrix(weights,nrow=n,ncol=m)
+  out$family <- family
+  out$Y <- Y
+  out$X <- X
+  out$m <- m
+  out$coords <- coords
+  out$is.pp <- is.pp
+  if(is.pp){
+    out$knot.coords <- knot.coords
+  }
+  out$cov.model <- cov.model
+  out$run.time <- run.time
   
   class(out) <- "spMvGLM"
   out  

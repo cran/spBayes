@@ -8,12 +8,11 @@ using namespace std;
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
-#include "covmodel.h"
 
 extern "C" {
 
   SEXP spPPGLM_AMCMC(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP coordsD_r, SEXP family_r, SEXP weights_r,
-		     SEXP isModPp_r, SEXP m_r, SEXP knotsD_r, SEXP coordsKnotsD_r, 
+		     SEXP m_r, SEXP knotsD_r, SEXP knotsCoordsD_r, 
 		     SEXP betaPrior_r, SEXP betaNorm_r, SEXP sigmaSqIG_r, SEXP nuUnif_r, SEXP phiUnif_r,
 		     SEXP phiStarting_r, SEXP sigmaSqStarting_r, SEXP nuStarting_r, SEXP betaStarting_r, SEXP w_strStarting_r,
 		     SEXP phiTuning_r, SEXP sigmaSqTuning_r, SEXP nuTuning_r, SEXP betaTuning_r, SEXP w_strTuning_r,
@@ -53,10 +52,7 @@ extern "C" {
 
     int m = INTEGER(m_r)[0];
     double *knotsD = REAL(knotsD_r);
-    double *coordsKnotsD = REAL(coordsKnotsD_r);
-
-    //if predictive process
-    bool isModPp = static_cast<bool>(INTEGER(isModPp_r)[0]);
+    double *knotsCoordsD = REAL(knotsCoordsD_r);
 
     //priors and starting
     string betaPrior = CHAR(STRING_ELT(betaPrior_r,0));
@@ -106,10 +102,7 @@ extern "C" {
       Rprintf("Number of covariates %i (including intercept if specified).\n\n", p);
       Rprintf("Using the %s spatial correlation model.\n\n", covModel.c_str());
       
-      if(isModPp)
-	Rprintf("Using modified predictive process with %i knots.\n\n", m);
-      else
-	Rprintf("Using non-modified predictive process with %i knots.\n\n", m);
+      Rprintf("Using non-modified predictive process with %i knots.\n\n", m);
     
       Rprintf("Number of MCMC samples %i.\n\n", nSamples);
 
@@ -138,30 +131,6 @@ extern "C" {
       Rprintf("Adaptive Metropolis with target acceptance rate: %.1f%\n", 100*acceptRate);
  
     } 
-
-    /*****************************************
-        Set-up cov. model function pointer
-    *****************************************/
-     int nPramPtr = 1;
-    
-    void (covmodel::*cov1ParamPtr)(double, double &, double &) = NULL; 
-    void (covmodel::*cov2ParamPtr)(double, double, double &, double&) = NULL;
-    
-    if(covModel == "exponential"){
-      cov1ParamPtr = &covmodel::exponential;
-    }else if(covModel == "spherical"){
-      cov1ParamPtr = &covmodel::spherical;
-    }else if(covModel == "gaussian"){
-      cov1ParamPtr = &covmodel::gaussian;
-    }else if(covModel == "matern"){
-      cov2ParamPtr = &covmodel::matern;
-      nPramPtr = 2;
-    }else{
-      error("c++ error: cov.model is not correctly specified");
-    }
-   
-    //my covmodel object for calling cov function
-    covmodel *covModelObj = new covmodel;
 
     /*****************************************
          Set-up MCMC sample matrices etc.
@@ -221,10 +190,10 @@ extern "C" {
     PROTECT(w_r = allocMatrix(REALSXP, n, nSamples)); nProtect++; 
     PROTECT(w_str_r = allocMatrix(REALSXP, m, nSamples)); nProtect++; 
     PROTECT(samples_r = allocMatrix(REALSXP, nParams, nSamples)); nProtect++; 
-    PROTECT(accept_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++; //just to monitor acceptance rate
-    PROTECT(accept_w_str_r = allocMatrix(REALSXP, m, nBatch)); nProtect++; //just to monitor acceptance rate
-    PROTECT(tuning_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++; //just to monitor acceptance rate
-    PROTECT(tuning_w_str_r = allocMatrix(REALSXP, m, nBatch)); nProtect++; //just to monitor acceptance rate
+    PROTECT(accept_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++;
+    PROTECT(accept_w_str_r = allocMatrix(REALSXP, m, nBatch)); nProtect++;
+    PROTECT(tuning_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++;
+    PROTECT(tuning_w_str_r = allocMatrix(REALSXP, m, nBatch)); nProtect++;
 
     /*****************************************
        Set-up MCMC alg. vars. matrices etc.
@@ -235,8 +204,8 @@ extern "C" {
     double *accept = (double *) R_alloc(nParams, sizeof(double));
     double *accept_w_str = (double *) R_alloc(m, sizeof(double));
 
-    double *ct = (double *) R_alloc(nm, sizeof(double));
-    double *C_str = (double *) R_alloc(mm, sizeof(double));
+    double *K = (double *) R_alloc(mm, sizeof(double));
+    double *P = (double *) R_alloc(nm, sizeof(double));
     double *tmp_n = (double *) R_alloc(n, sizeof(double));
     double *tmp_m = (double *) R_alloc(m, sizeof(double));
     double *tmp_nm = (double *) R_alloc(nm, sizeof(double));
@@ -244,6 +213,7 @@ extern "C" {
     double sigmaSq, phi, nu;
     double *beta = (double *) R_alloc(p, sizeof(double));
     double *w = (double *) R_alloc(n, sizeof(double)); zeros(w, n);
+    double *theta = (double *) R_alloc(3, sizeof(double)); //phi, nu, and perhaps more in the future
 
     double logMHRatio;
 
@@ -271,42 +241,26 @@ extern "C" {
  
 	  //extract and transform
 	  F77_NAME(dcopy)(&p, &spParams[betaIndx], &incOne, beta, &incOne);
-	  sigmaSq = exp(spParams[sigmaSqIndx]);
-	  phi = logitInv(spParams[phiIndx], phiUnifa, phiUnifb);
+	  sigmaSq = theta[0] = exp(spParams[sigmaSqIndx]);
+	  phi = theta[1] = logitInv(spParams[phiIndx], phiUnifa, phiUnifb);
 	  
 	  if(covModel == "matern"){
-	    nu = logitInv(spParams[nuIndx], nuUnifa, nuUnifb);
+	    nu = theta[2] = logitInv(spParams[nuIndx], nuUnifa, nuUnifb);
 	  }
 	  
-	  //make the correlation matrix
-	  for(k = 0; k < mm; k++){
-	    if(nPramPtr == 1)
-	      (covModelObj->*cov1ParamPtr)(phi, C_str[k], knotsD[k]);
-	    else //i.e., 2 parameter matern
-	      (covModelObj->*cov2ParamPtr)(phi, nu, C_str[k], knotsD[k]);
-	  }
-	  
-	  for(k = 0; k < nm; k++){
-	    if(nPramPtr == 1)
-	      (covModelObj->*cov1ParamPtr)(phi, ct[k], coordsKnotsD[k]);
-	    else //i.e., 2 parameter matern
-	      (covModelObj->*cov2ParamPtr)(phi, nu, ct[k], coordsKnotsD[k]);
-	  }
-	  
-	  //scale by sigma^2
-	  F77_NAME(dscal)(&mm, &sigmaSq, C_str, &incOne);	
-	  F77_NAME(dscal)(&nm, &sigmaSq, ct, &incOne);
-	  
+	  //construct covariance matrices 
+	  spCovLT(knotsD, m, theta, covModel, K);
+	  spCov(knotsCoordsD, nm, theta, covModel, P);
+  
 	  //invert C and log det cov
 	  detCand = 0;
-	  F77_NAME(dpotrf)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
-	  for(k = 0; k < m; k++) detCand += 2*log(C_str[k*m+k]);
-	  F77_NAME(dpotri)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
-	  
-	  F77_NAME(dsymm)(rside, upper, &n, &m, &one, C_str, &m, ct, &n, &zero, tmp_nm, &n);
+	  F77_NAME(dpotrf)(lower, &m, K, &m, &info); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
+	  for(k = 0; k < m; k++) detCand += 2*log(K[k*m+k]);
+	  F77_NAME(dpotri)(lower, &m, K, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
 	  
 	  //make \tild{w}
-	  F77_NAME(dgemv)(ntran, &n, &m, &one, tmp_nm, &n, w_str, &incOne, &zero, w, &incOne);
+	  F77_NAME(dsymv)(lower, &m, &one, K, &m, w_str, &incOne, &zero, tmp_m, &incOne);     
+	  F77_NAME(dgemv)(ytran, &m, &n, &one, P, &m, tmp_m, &incOne, &zero, w, &incOne);
 	  
 	  //Likelihood with Jacobian  
 	  logPostCand = 0.0;
@@ -330,13 +284,12 @@ extern "C" {
 	  if(family == "binomial"){
 	    logPostCand += binomial_logpost(n, Y, tmp_n, w, weights);
 	  }else if(family == "poisson"){
-	    logPostCand += poisson_logpost(n, Y, tmp_n, w);
+	    logPostCand += poisson_logpost(n, Y, tmp_n, w, weights);
 	  }else{
 	    error("c++ error: family misspecification in spGLM\n");
 	  }
 	  
 	  //(-1/2) * tmp_n` *  C^-1 * tmp_n
-	  F77_NAME(dsymv)(upper, &m, &one,  C_str, &m, w_str, &incOne, &zero, tmp_m, &incOne);
 	  logPostCand += -0.5*detCand-0.5*F77_NAME(ddot)(&m, w_str, &incOne, tmp_m, &incOne);
 
 	  //
@@ -361,41 +314,27 @@ extern "C" {
 
 	//extract and transform
 	F77_NAME(dcopy)(&p, &spParams[betaIndx], &incOne, beta, &incOne);
-	sigmaSq = exp(spParams[sigmaSqIndx]);
-	phi = logitInv(spParams[phiIndx], phiUnifa, phiUnifb);
+	sigmaSq = theta[0] = exp(spParams[sigmaSqIndx]);
+	phi = theta[1] = logitInv(spParams[phiIndx], phiUnifa, phiUnifb);
 	
 	if(covModel == "matern"){
-	  nu = logitInv(spParams[nuIndx], nuUnifa, nuUnifb);
+	  nu = theta[2] = logitInv(spParams[nuIndx], nuUnifa, nuUnifb);
 	}
 	
-	//make the correlation matrix
-	for(k = 0; k < mm; k++){
-	  if(nPramPtr == 1)
-	    (covModelObj->*cov1ParamPtr)(phi, C_str[k], knotsD[k]);
-	  else //i.e., 2 parameter matern
-	    (covModelObj->*cov2ParamPtr)(phi, nu, C_str[k], knotsD[k]);
-	}
-	
-	for(k = 0; k < nm; k++){
-	  if(nPramPtr == 1)
-	    (covModelObj->*cov1ParamPtr)(phi, ct[k], coordsKnotsD[k]);
-	  else //i.e., 2 parameter matern
-	    (covModelObj->*cov2ParamPtr)(phi, nu, ct[k], coordsKnotsD[k]);
-	}
-
-	//scale by sigma^2
-	F77_NAME(dscal)(&mm, &sigmaSq, C_str, &incOne);	
-	F77_NAME(dscal)(&nm, &sigmaSq, ct, &incOne);
+	//construct covariance matrices 
+	spCovLT(knotsD, m, theta, covModel, K);
+	spCov(knotsCoordsD, nm, theta, covModel, P);
 	
 	//invert C and log det cov
 	detCand = 0;
-	F77_NAME(dpotrf)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
-	for(k = 0; k < m; k++) detCand += 2*log(C_str[k*m+k]);
-	F77_NAME(dpotri)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
-	
-	F77_NAME(dsymm)(rside, upper, &n, &m, &one, C_str, &m, ct, &n, &zero, tmp_nm, &n);
+	F77_NAME(dpotrf)(lower, &m, K, &m, &info); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
+	for(k = 0; k < m; k++) detCand += 2*log(K[k*m+k]);
+	F77_NAME(dpotri)(lower, &m, K, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
+		
+	F77_NAME(dsymm)(lside, lower, &m, &n, &one, K, &m, P, &m, &zero, tmp_nm, &m);
 
-	
+	F77_NAME(dgemv)(ntran, &n, &p, &one, X, &n, beta, &incOne, &zero, tmp_n, &incOne);
+
 	for(j = 0; j < m; j++){
 	  
 	  //propose
@@ -403,7 +342,7 @@ extern "C" {
 	  w_str[j] = rnorm(w_strjCurrent, exp(w_strTuning[j]));
 
 	  //make \tild{w}
-	  F77_NAME(dgemv)(ntran, &n, &m, &one, tmp_nm, &n, w_str, &incOne, &zero, w, &incOne);
+	  F77_NAME(dgemv)(ytran, &m, &n, &one, tmp_nm, &m, w_str, &incOne, &zero, w, &incOne);
 	  
 	  //Likelihood with Jacobian  
 	  logPostCand = 0.0;
@@ -421,19 +360,17 @@ extern "C" {
 	  if(covModel == "matern"){
 	    logPostCand += log(nu - nuUnifa) + log(nuUnifb - nu);   
 	  }
-	  
-	  F77_NAME(dgemv)(ntran, &n, &p, &one, X, &n, beta, &incOne, &zero, tmp_n, &incOne);
-	  
+	  	  
 	  if(family == "binomial"){
 	    logPostCand += binomial_logpost(n, Y, tmp_n, w, weights);
 	  }else if(family == "poisson"){
-	    logPostCand += poisson_logpost(n, Y, tmp_n, w);
+	    logPostCand += poisson_logpost(n, Y, tmp_n, w, weights);
 	  }else{
 	    error("c++ error: family misspecification in spGLM\n");
 	  }
 	  
 	  //(-1/2) * tmp_n` *  C^-1 * tmp_n
-	  F77_NAME(dsymv)(upper, &m, &one,  C_str, &m, w_str, &incOne, &zero, tmp_m, &incOne);
+	  F77_NAME(dsymv)(lower, &m, &one, K, &m, w_str, &incOne, &zero, tmp_m, &incOne);
 	  logPostCand += -0.5*detCand-0.5*F77_NAME(ddot)(&m, w_str, &incOne, tmp_m, &incOne);
 	  
 	  //
@@ -541,25 +478,25 @@ extern "C" {
     
     //samples
     SET_VECTOR_ELT(result, 0, samples_r);
-    SET_VECTOR_ELT(resultNames, 0, mkChar("p.samples")); 
+    SET_VECTOR_ELT(resultNames, 0, mkChar("p.beta.theta.samples")); 
 
     SET_VECTOR_ELT(result, 1, accept_r);
     SET_VECTOR_ELT(resultNames, 1, mkChar("acceptance"));
 
     SET_VECTOR_ELT(result, 2, accept_w_str_r);
-    SET_VECTOR_ELT(resultNames, 2, mkChar("acceptance.w.str"));
+    SET_VECTOR_ELT(resultNames, 2, mkChar("acceptance.w.knots"));
     
     SET_VECTOR_ELT(result, 3, w_r);
-    SET_VECTOR_ELT(resultNames, 3, mkChar("sp.effects"));
+    SET_VECTOR_ELT(resultNames, 3, mkChar("p.w.samples"));
 
     SET_VECTOR_ELT(result, 4, w_str_r);
-    SET_VECTOR_ELT(resultNames, 4, mkChar("sp.effects.knots"));
+    SET_VECTOR_ELT(resultNames, 4, mkChar("p.w.knots.samples"));
 
     SET_VECTOR_ELT(result, 5, tuning_r);
     SET_VECTOR_ELT(resultNames, 5, mkChar("tuning"));
 
     SET_VECTOR_ELT(result, 6, tuning_w_str_r);
-    SET_VECTOR_ELT(resultNames, 6, mkChar("tuning.w.str"));
+    SET_VECTOR_ELT(resultNames, 6, mkChar("tuning.w.knots"));
   
     namesgets(result, resultNames);
    

@@ -8,474 +8,276 @@ using namespace std;
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
-#include "covmodel.h"
-
 
 
 extern "C" {
-
-  SEXP spLMPredict(SEXP X_r, SEXP Y_r, SEXP isPp_r, SEXP isModPp_r, SEXP n_r, SEXP m_r, SEXP p_r, SEXP nugget_r, SEXP beta_r, SEXP sigmaSq_r, 
-		   SEXP tauSq_r, SEXP phi_r, SEXP nu_r,
-		   SEXP nPred_r, SEXP predX_r, SEXP obsD_r, SEXP predD_r, SEXP predObsD_r, SEXP obsKnotsD_r, SEXP knotsD_r, SEXP predKnotsD_r,
-		   SEXP covModel_r, SEXP nSamples_r, SEXP w_r, SEXP w_str_r, SEXP spEffects_r, SEXP verbose_r){
-
-
+  SEXP spLMPredict(SEXP X_r, SEXP Y_r, SEXP n_r, SEXP p_r, SEXP Z_r, SEXP q_r,
+		   SEXP samples_r, SEXP nSamples_r, 
+		   SEXP betaPrior_r, SEXP betaNorm_r, SEXP beta_r, SEXP sigmaSqIndx_r, SEXP tauSqIndx_r, SEXP phiIndx_r, SEXP nuIndx_r, 
+		   SEXP obsD_r, SEXP obsPredD_r, SEXP covModel_r, SEXP nugget_r, SEXP verbose_r, SEXP nReport_r){
+    
     /*****************************************
                 Common variables
     *****************************************/
-    int i,j,k,l,info,nProtect= 0;
-    const char *lower = "L";
-    const char *upper = "U";
-    const char *ntran = "N";
-    const char *ytran = "T";
-    const char *rside = "R";
-    const char *lside = "L";
+    int i, j, k, l, s, info, nProtect=0;
+    char const *lower = "L";
+    char const *upper = "U";
+    char const *nUnit = "N";
+    char const *yUnit = "U";
+    char const *ntran = "N";
+    char const *ytran = "T";
+    char const *rside = "R";
+    char const *lside = "L";
     const double one = 1.0;
     const double negOne = -1.0;
     const double zero = 0.0;
     const int incOne = 1;
-
+    
     /*****************************************
                      Set-up
     *****************************************/
-
     double *Y = REAL(Y_r);
     double *X = REAL(X_r);
     int p = INTEGER(p_r)[0];
+    int pp = p*p;
     int n = INTEGER(n_r)[0];
-    bool verbose = static_cast<bool>(INTEGER(verbose_r)[0]);
-
-    int q = INTEGER(nPred_r)[0];
-    double *predX = REAL(predX_r);
-
-    int nSamples = INTEGER(nSamples_r)[0];
-
-    //covariance model
-    string covModel = CHAR(STRING_ELT(covModel_r,0));
-
-    //pre-computed effects
-    bool spEffects = static_cast<bool>(INTEGER(spEffects_r)[0]);
-
-    //if predictive process
-    bool isPp = static_cast<bool>(INTEGER(isPp_r)[0]);
-    bool isModPp = static_cast<bool>(INTEGER(isModPp_r)[0]);
-
-    int m = 0;
-    double *knotsD = NULL;
-    double *obsKnotsD = NULL;
-    double *predKnotsD = NULL;
-    double *obsD = NULL;
-    double *predObsD = NULL;
-    double *predD = REAL(predD_r);
-
-    if(isPp){
-      m = INTEGER(m_r)[0];
-      knotsD = REAL(knotsD_r);
-      obsKnotsD = REAL(obsKnotsD_r);
-      predKnotsD = REAL(predKnotsD_r);
-    }else{
-      obsD = REAL(obsD_r);
-      predObsD = REAL(predObsD_r);
-    }
-
     int nn = n*n;
-    int nm = n*m;
-    int mm = m*m;
-    int qn = q*n;
-    int qq = q*q;
-    int qm = q*m;
-   
-    //if nugget
+    int np = n*p;
+    double *Z = REAL(Z_r);
+    int q = INTEGER(q_r)[0];
+    int nq = n*q;
+    int qp = q*p;
+    
+    int nSamples = INTEGER(nSamples_r)[0];
+    
+    double *beta = REAL(beta_r);
+    int sigmaSqIndx = INTEGER(sigmaSqIndx_r)[0]; 
+    int tauSqIndx  = INTEGER(tauSqIndx_r)[0]; 
+    int phiIndx = INTEGER(phiIndx_r)[0]; 
+    int nuIndx  = INTEGER(nuIndx_r)[0];
+    
+    double *obsD = REAL(obsD_r);
+    double *obsPredD = REAL(obsPredD_r);
+    
+    //priors
+    string betaPrior = CHAR(STRING_ELT(betaPrior_r,0));
+    double *betaMu = NULL;
+    double *betaC = NULL;
+    
+    if(betaPrior == "normal"){
+      betaMu = (double *) R_alloc(p, sizeof(double));
+      F77_NAME(dcopy)(&p, REAL(VECTOR_ELT(betaNorm_r, 0)), &incOne, betaMu, &incOne);
+      
+      betaC = (double *) R_alloc(pp, sizeof(double)); 
+      F77_NAME(dcopy)(&pp, REAL(VECTOR_ELT(betaNorm_r, 1)), &incOne, betaC, &incOne);
+    }
+    
+    string covModel = CHAR(STRING_ELT(covModel_r,0));
     bool nugget = static_cast<bool>(INTEGER(nugget_r)[0]);
-    double *tauSq = NULL;
-
-    if(nugget){
-      tauSq = REAL(tauSq_r);
-    }
-
-    //if matern
-    double *nu = NULL;
-    if(covModel == "matern"){
-      nu = REAL(nu_r);
-    }
-
-    double *phi = NULL;
-    double *sigmaSq = NULL;
-    double *beta = NULL;
-
-    phi = REAL(phi_r);
-    sigmaSq = REAL(sigmaSq_r);
-    beta = REAL(beta_r);
-
-    /*****************************************
-        Set-up cov. model function pointer
-    *****************************************/
-    bool onePramPtr = true;
+    int verbose = INTEGER(verbose_r)[0];
+    int nReport = INTEGER(nReport_r)[0];
     
-    void (covmodel::*cov1ParamPtr)(double, double &, double &) = NULL; 
-    void (covmodel::*cov2ParamPtr)(double, double, double &, double&) = NULL;
+    if(verbose){
+      Rprintf("----------------------------------------\n");
+      Rprintf("\tGeneral model description\n");
+      Rprintf("----------------------------------------\n");
+      Rprintf("Model fit with %i observations.\n\n", n);
+      Rprintf("Prediction at %i locations.\n\n", q);
+      Rprintf("Number of covariates %i (including intercept if specified).\n\n", p);
+      Rprintf("Using the %s spatial correlation model.\n\n", covModel.c_str());
+      
+      if(!nugget){
+    	Rprintf("tau.sq not included in the model (i.e., no nugget model).\n\n");
+      }
+      
+    } 
     
-    if(covModel == "exponential"){
-      cov1ParamPtr = &covmodel::exponential;
-    }else if(covModel == "spherical"){
-      cov1ParamPtr = &covmodel::spherical;
-    }else if(covModel == "gaussian"){
-      cov1ParamPtr = &covmodel::gaussian;
-    }else if(covModel == "matern"){
-      cov2ParamPtr = &covmodel::matern;
-      onePramPtr = false;
-    }else{
-      error("c++ error: cov.model is not correctly specified");
-    }
-   
-    //my covmodel object for calling cov function
-    covmodel *covModelObj = new covmodel;
-
-    /*****************************************
-         Set-up sample matrices etc.
-    *****************************************/
-    SEXP w_pred_r, y_pred_r;
-
-    PROTECT(w_pred_r = allocMatrix(REALSXP, q, nSamples)); nProtect++; 
-    double *w_pred = REAL(w_pred_r);
-
-    PROTECT(y_pred_r = allocMatrix(REALSXP, q, nSamples)); nProtect++; 
-    double *y_pred = REAL(y_pred_r);
-  
     /*****************************************
        Set-up MCMC alg. vars. matrices etc.
-    *****************************************/
-    int s=0, status=0, nReport = 100;
-
-    double *C = (double *) R_alloc(nn, sizeof(double)); 
-    double *ct = NULL;
-    double *C_str = NULL;
-    double *wMu = NULL;
-    double *w_strMu = NULL;
-    double *E = NULL;
-    double *Einv = NULL;
-    double *tmp_m = NULL;
-    double *tmp_nm = NULL;
-    double *tmp_nm1 = NULL;
-    double *tmp_mm = NULL;
-    double *tmp_qm = NULL;
-    double *tmp_qm1 = NULL;
-
-    double *w = REAL(w_r);
-    double *w_str = NULL;
+    *****************************************/  
+    SEXP predSamples_r;
+    PROTECT(predSamples_r = allocMatrix(REALSXP, q, nSamples)); nProtect++; 
     
-    if(isPp){
-      w_str = REAL(w_str_r);
-    }  
+    int status=1;
+    double a, b;
 
-    if(isPp){
-      ct = (double *) R_alloc(nm, sizeof(double));
-      C_str = (double *) R_alloc(mm, sizeof(double));
-      w_strMu = (double *) R_alloc(m, sizeof(double));
-      E = (double *) R_alloc(n, sizeof(double));
-      Einv = (double *) R_alloc(n, sizeof(double)); 
-      tmp_m = (double *) R_alloc(m, sizeof(double));
-      tmp_nm = (double *) R_alloc(nm, sizeof(double));
-      tmp_nm1 = (double *) R_alloc(nm, sizeof(double));
-      tmp_mm = (double *) R_alloc(mm, sizeof(double));
-      tmp_qm = (double *) R_alloc(qm, sizeof(double));
-      tmp_qm1 = (double *) R_alloc(qm, sizeof(double));
-    }else{
-      wMu = (double *) R_alloc(n, sizeof(double)); zeros(wMu, n);
+    double *theta = (double *) R_alloc(3, sizeof(double)); //phi, nu, and perhaps more in the future
+    double *C = (double *) R_alloc(nn, sizeof(double)); 
+    double *c = (double *) R_alloc(nq, sizeof(double)); 
+    double *z = (double *) R_alloc(n, sizeof(double)); 
+    double *u = (double *) R_alloc(n, sizeof(double)); 
+   
+    double *sigmaSq = &REAL(samples_r)[sigmaSqIndx*nSamples];
+    double *tauSq = NULL;
+    if(nugget){
+      tauSq = &REAL(samples_r)[tauSqIndx*nSamples];
     }
+    double *phi = &REAL(samples_r)[phiIndx*nSamples];
+    double *nu = NULL;
+    if(covModel == "matern"){
+      nu = &REAL(samples_r)[nuIndx*nSamples];
+    }
+
+    double *tmp_p = (double *) R_alloc(p, sizeof(double)); 
+    double *tmp_np = NULL;
+    double *tmp_qp = NULL;
+    double *tmp_nn = NULL;
+    double *tmp_nq = NULL;
      
-    double *tmp_n = (double *) R_alloc(n, sizeof(double));
-    double *tmp_nn = (double *) R_alloc(nn, sizeof(double));     
-    double *tmp_qn = (double *) R_alloc(qn, sizeof(double));
-    double *tmp_qn1 = (double *) R_alloc(qn, sizeof(double)); 
-    double *tmp_qq = (double *) R_alloc(qq, sizeof(double));
-    double *tmp_qq1 = (double *) R_alloc(qq, sizeof(double));
-    double *tmp_q = (double *) R_alloc(q, sizeof(double));
-    double *tmp_q1 = (double *) R_alloc(q, sizeof(double));
-    double *tmp_q2 = (double *) R_alloc(q, sizeof(double));
-    double sigmaSqTmp, tauSqTmp;
+    if(betaPrior == "normal"){
+      tmp_np = (double *) R_alloc(np, sizeof(double));
+      tmp_qp = (double *) R_alloc(qp, sizeof(double));
+      tmp_nn = (double *) R_alloc(nn, sizeof(double));
+      tmp_nq = (double *) R_alloc(nq, sizeof(double));
 
-     GetRNGstate();
-     
-     if(verbose){
-       Rprintf("-------------------------------------------------\n");
-       Rprintf("\t\tStarting prediction\n");
-       Rprintf("-------------------------------------------------\n");
-       #ifdef Win32
-       R_FlushConsole();
-       #endif
-     }
-
-     status = 0; 
-
-     if(!isPp){
-
-       for(s = 0; s < nSamples; s++){
-	 
-	 //make the correlation matrix
-	 for(i = 0; i < nn; i++){
-	   if(onePramPtr)
-	     (covModelObj->*cov1ParamPtr)(phi[s], tmp_nn[i], obsD[i]);
-	   else //i.e., 2 parameter matern
-	     (covModelObj->*cov2ParamPtr)(phi[s], nu[s], tmp_nn[i], obsD[i]);
-	 }
-	 
-    	 for(i = 0; i < qn; i++){
-	   if(onePramPtr)
-	     (covModelObj->*cov1ParamPtr)(phi[s], tmp_qn[i], predObsD[i]);
-	   else //i.e., 2 parameter matern
-	     (covModelObj->*cov2ParamPtr)(phi[s], nu[s], tmp_qn[i], predObsD[i]);
-	 }
-
-    	 for(i = 0; i < qq; i++){
-	   if(onePramPtr)
-	     (covModelObj->*cov1ParamPtr)(phi[s], tmp_qq[i], predD[i]);
-	   else //i.e., 2 parameter matern
-	     (covModelObj->*cov2ParamPtr)(phi[s], nu[s], tmp_qq[i], predD[i]);
-	 }
-
-	 //scale by sigma^2
-	 F77_NAME(dscal)(&nn, &sigmaSq[s], tmp_nn, &incOne);	
-	 F77_NAME(dscal)(&qn, &sigmaSq[s], tmp_qn, &incOne);
-	 F77_NAME(dscal)(&qq, &sigmaSq[s], tmp_qq, &incOne);
-	 
-	 //invert C_str
-	 F77_NAME(dpotrf)(upper, &n, tmp_nn, &n, &info); if(info != 0){error("c++ error: Cholesky failed in spLMPredict\n");}
-	 F77_NAME(dpotri)(upper, &n, tmp_nn, &n, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spLMPredict\n");}
-	 
-	 //get Mu
-	 F77_NAME(dsymm)(rside, upper, &q, &n, &one, tmp_nn, &n, tmp_qn, &q, &zero, tmp_qn1, &q);
-	 F77_NAME(dgemv)(ntran, &q, &n, &one, tmp_qn1, &q, &w[s*n], &incOne, &zero, tmp_q, &incOne);
-
-	 //get Sigma
-	 F77_NAME(dgemm)(ntran, ytran, &q, &q, &n, &one, tmp_qn1, &q, tmp_qn, &q, &zero, tmp_qq1, &q);
-	 for(i = 0; i < qq; i++) tmp_qq[i] -= tmp_qq1[i];
-
-	 F77_NAME(dpotrf)(upper, &q, tmp_qq, &q, &info); if(info != 0){error("c++ error: Cholesky failed in spLMPredict\n");}
-	 mvrnorm(&w_pred[s*q], tmp_q, tmp_qq, q, true);
-
-	 F77_NAME(dgemv)(ntran, &q, &p, &one, predX, &q, &beta[s*p], &incOne, &zero, tmp_q, &incOne);
-
-	 if(nugget){
-	   for(i = 0; i < q; i++) y_pred[s*q+i] = rnorm(tmp_q[i]+w_pred[s*q+i], sqrt(tauSq[s]));
-	 }else{
-	   for(i = 0; i < q; i++) y_pred[s*q+i] = tmp_q[i]+w_pred[s*q+i];
-	 }
-
-	 report(s, nSamples, status, nReport, verbose);
-       } //end sample loop
-
-     }else{//predictive process prediction
+      F77_NAME(dgemv)(ntran, &n, &p, &negOne, X, &n, betaMu, &incOne, &zero, z, &incOne);
+      F77_NAME(daxpy)(&n, &one, Y, &incOne, z, &incOne);
        
-       for(s = 0; s < nSamples; s++){	 
-	 
-	 //got w* above now get the mean components MVN(XB + ct C^{*-1} w* + \tild{\eps}, (sigma^2 - ct C^{*-1} c)^{-1})
-	 
-	 //make the correlation matrix
-	 for(i = 0; i < mm; i++){
-	   if(onePramPtr)
-	     (covModelObj->*cov1ParamPtr)(phi[s], C_str[i], knotsD[i]);
-	   else //i.e., 2 parameter matern
-	     (covModelObj->*cov2ParamPtr)(phi[s], nu[s], C_str[i], knotsD[i]);
-	 }
-	 
-	 for(i = 0; i < qm; i++){
-	   if(onePramPtr)
-	     (covModelObj->*cov1ParamPtr)(phi[s], tmp_qm[i], predKnotsD[i]);
-	   else //i.e., 2 parameter matern
-	     (covModelObj->*cov2ParamPtr)(phi[s], nu[s], tmp_qm[i], predKnotsD[i]);
-	 }
-	 
-	 //scale by sigma^2
-	 F77_NAME(dscal)(&mm, &sigmaSq[s], C_str, &incOne);	
-	 F77_NAME(dscal)(&qm, &sigmaSq[s], tmp_qm, &incOne);
-	 
-	 //invert C_str
-	 F77_NAME(dpotrf)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky failed in spLMPredict\n");}
-	 F77_NAME(dpotri)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spLMPredict\n");}
-	 
-	 //ct C^{*-1}, where ct is now qxm 
-	 F77_NAME(dsymm)(rside, upper, &q, &m, &one, C_str, &m, tmp_qm, &q, &zero, tmp_qm1, &q);
-	 
-	 //ct C^{*-1} c
-	 F77_NAME(dgemm)(ntran, ytran, &q, &q, &m, &one, tmp_qm1, &q, tmp_qm, &q, &zero, tmp_qq, &q);
+      F77_NAME(dsymm)(rside, lower, &n, &p, &one, betaC, &p, X, &n, &zero, tmp_np, &n);
+      F77_NAME(dgemm)(ntran, ytran, &n, &n, &p, &one, tmp_np, &n, X, &n, &zero, tmp_nn, &n);
+ 
+      F77_NAME(dsymm)(rside, lower, &q, &p, &one, betaC, &p, Z, &q, &zero, tmp_qp, &q);
+      F77_NAME(dgemm)(ntran, ytran, &q, &n, &p, &one, tmp_qp, &q, X, &n, &zero, tmp_nq, &q);
+    }
 
-	 //ct C^{*-1} w*, tmp_q will be the mean
-	 F77_NAME(dgemv)(ntran, &q, &m, &one, tmp_qm1, &q, &w_str[s*m], &incOne, &zero, &w_pred[s*q], &incOne);
+    //check if any prediction locations are observed
+    int *fitted = (int *) R_alloc(q, sizeof(int));
+    for(i = 0; i < q; i++){
+      fitted[i] = 0;
+      for(j = 0; j < n; j++){
+    	if(obsPredD[i*n+j] == 0){
+    	  fitted[i] = 1;
+    	  break;
+    	}
+      }
+    }
 
-	 //\tild{\eps}
-	 if(isModPp){
-	   for(i = 0; i < q; i++) w_pred[s*q+i] += rnorm(0.0, sqrt(sigmaSq[s]-tmp_qq[i*q+i]));
-	 }
+    if(verbose){
+      Rprintf("-------------------------------------------------\n");
+      Rprintf("\t\tSampling\n");
+      Rprintf("-------------------------------------------------\n");
+      #ifdef Win32
+        R_FlushConsole();
+      #endif
+    }
 
-	 //XB
-	 F77_NAME(dgemv)(ntran, &q, &p, &one, predX, &q, &beta[s*p], &incOne, &zero, tmp_q2, &incOne);
-	 
-	 for(i = 0; i < q; i++) y_pred[s*q+i] = rnorm(tmp_q2[i]+w_pred[s*q+i], sqrt(tauSq[s]));
-	 
-	 report(s, nSamples, status, nReport, verbose);
-       } //end sample loop
-     }
+    GetRNGstate();
+    
+    for(s = 0; s < nSamples; s++){    
+      
+      theta[0] = sigmaSq[s];
+      theta[1] = phi[s];
+      
+      if(covModel == "matern"){
+      	theta[2] = nu[s];
+      }
+      
+      spCovLT(obsD, n, theta, covModel, C);
+      spCov(obsPredD, nq, theta, covModel, c);
+   
+      if(nugget){
+      	for(k = 0; k < n; k++){
+      	  C[k*n+k] += tauSq[s];
+      	}
+      }
 
-     PutRNGstate();
+      if(betaPrior == "normal"){
+      	for(k = 0; k < n; k++){
+      	  for(l = k; l < n; l++){
+      	    C[k*n+l] += tmp_nn[k*n+l];
+      	  }
+      	}
+      
+      	for(k = 0; k < n; k++){
+      	  for(l = 0; l < q; l++){
+      	    c[l*n+k] += tmp_nq[k*q+l];
+      	  }
+      	}
+      }
+      
+      for(k = 0; k < nq; k++){
+      	if(obsPredD[k] == 0 && nugget){
+      	  c[k] += tauSq[s];
+      	}
+      }
+	
+      F77_NAME(dpotrf)(lower, &n, C, &n, &info); if(info != 0){error("c++ error: dpotrf failed\n");}//L_1
+      
+      if(betaPrior == "normal"){
+      	F77_NAME(dcopy)(&n, z, &incOne, u, &incOne);
+      }else{
+      	F77_NAME(dgemv)(ntran, &n, &p, &negOne, X, &n, &beta[s], &nSamples, &zero, u, &incOne);
+       	F77_NAME(daxpy)(&n, &one, Y, &incOne, u, &incOne);
+      }
 
-     //make return object
-     SEXP result, resultNames;
+      F77_NAME(dtrsv)(lower, ntran, nUnit, &n, C, &n, u, &incOne);//L_1u = (y-X\mu_beta) or (y-X\beta)
      
-     int nResultListObjs = 0;
-     
-     nResultListObjs = 2;
-     
-     PROTECT(result = allocVector(VECSXP, nResultListObjs)); nProtect++;
-     PROTECT(resultNames = allocVector(VECSXP, nResultListObjs)); nProtect++;
-     
-     
-     SET_VECTOR_ELT(result, 0, w_pred_r);
-     SET_VECTOR_ELT(resultNames, 0, mkChar("w.pred"));
+      F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &n, &q, &one, C, &n, c, &n);//L_1v = c_0
 
-     SET_VECTOR_ELT(result, 1, y_pred_r);
-     SET_VECTOR_ELT(resultNames, 1, mkChar("y.pred"));
-     
-     namesgets(result, resultNames);
-     
-     //unprotect
-     UNPROTECT(nProtect);
-     
-     return(result);
 
+      //for each location
+      for(j = 0; j < q; j++){
+	
+	if(betaPrior == "normal"){
+	  a = F77_NAME(ddot)(&p, &Z[j], &q, betaMu, &incOne) + F77_NAME(ddot)(&n, u, &incOne, &c[n*j], &incOne);
+	  
+	  if(nugget){
+	    F77_NAME(dsymv)(lower, &p, &one, betaC, &p, &Z[j], &q, &zero, tmp_p, &incOne);
+	    b = sqrt(F77_NAME(ddot)(&p, tmp_p, &incOne, &Z[j], &q) + sigmaSq[s] + tauSq[s] - F77_NAME(ddot)(&n, &c[n*j], &incOne, &c[n*j], &incOne));
+	  }else{
+	    b = 0;
+	  }
+	}else{
+	  a = F77_NAME(ddot)(&p, &Z[j], &q, &beta[s], &nSamples) + F77_NAME(ddot)(&n, u, &incOne, &c[n*j], &incOne);
+	  
+	  if(nugget){
+	    b = sqrt(sigmaSq[s] + tauSq[s] - F77_NAME(ddot)(&n, &c[n*j], &incOne, &c[n*j], &incOne));
+	  }else{
+	    b = 0;
+	  }
+	  
+	}
+
+	if(fitted[j] == 0){
+	  REAL(predSamples_r)[s*q+j] = rnorm(a, b);
+	}else{
+	  REAL(predSamples_r)[s*q+j] = a;
+	}	
+
+	R_CheckUserInterrupt();
+      	}//end prediction location loop
+     
+      if(verbose){
+      	if(status == nReport){
+      	  Rprintf("Sampled: %i of %i, %3.2f%%\n", s+1, nSamples, 100.0*s/nSamples);
+          #ifdef Win32
+      	  R_FlushConsole();
+          #endif
+      	  status = 0;
+      	}
+      }
+      status++;
+      R_CheckUserInterrupt();
+      }//end sample loop
+    
+    PutRNGstate();
+
+    //make return object
+    SEXP result_r, resultName_r;
+    int nResultListObjs = 1;
+
+    PROTECT(result_r = allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(resultName_r = allocVector(VECSXP, nResultListObjs)); nProtect++;
+
+    //samples
+    SET_VECTOR_ELT(result_r, 0, predSamples_r);
+    SET_VECTOR_ELT(resultName_r, 0, mkChar("p.predictive.samples")); 
+
+    namesgets(result_r, resultName_r);
+   
+    //unprotect
+    UNPROTECT(nProtect);
+    
+    return(result_r);
   }
 }
-
-
-//   //recover w or w_str if not pre-computed
-//      if(!spEffects){
-       
-       
-//        if(verbose){
-// 	 Rprintf("-------------------------------------------------\n");
-// 	 Rprintf("Recovering random spatial effects for prediction\n");
-// 	 Rprintf("-------------------------------------------------\n");
-//          #ifdef Win32
-// 	 R_FlushConsole();
-//          #endif
-//        }
-
-//        if(!isPp){
-	 
-// 	 for(s = 0; s < nSamples; s++){
-	   
-// 	   if(nugget){
-// 	     //make the correlation matrix
-// 	     for(i = 0; i < nn; i++){
-// 	       if(onePramPtr)
-// 		 (covModelObj->*cov1ParamPtr)(phi[s], C[i], obsD[i]);
-// 	       else //i.e., 2 parameter matern
-// 		 (covModelObj->*cov2ParamPtr)(phi[s], nu[s], C[i], obsD[i]);
-// 	     }
-	     
-// 	     //invert C
-// 	     F77_NAME(dpotrf)(upper, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky failed in spLMPredict\n");}
-// 	     F77_NAME(dpotri)(upper, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spLMPredict\n");}
-	     
-// 	     //scale correlation matrix with 1/sigmasq and add 1/nugget to diag
-// 	     sigmaSqTmp = 1.0/sigmaSq[s];
-// 	     F77_NAME(dscal)(&nn, &sigmaSqTmp, C, &incOne);
-	     
-// 	     for(i = 0; i < n; i++) C[i*n+i] = C[i*n+i]+1.0/tauSq[s];
-	     
-// 	     //invert C
-// 	     F77_NAME(dpotrf)(upper, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky failed in spLMPredict\n");}
-// 	     F77_NAME(dpotri)(upper, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spLMPredict\n");}
-	     
-// 	     //make w mu
-// 	     F77_NAME(dgemv)(ntran, &n, &p, &negOne, X, &n, &beta[s*p], &incOne, &zero, tmp_n, &incOne);
-// 	     F77_NAME(daxpy)(&n, &one, Y, &incOne, tmp_n, &incOne);
-	     
-// 	     tauSqTmp = 1.0/tauSq[s];
-// 	     F77_NAME(dscal)(&n, &tauSqTmp, tmp_n, &incOne);
-	     
-// 	     F77_NAME(dsymv)(upper, &n, &one, C, &n, tmp_n, &incOne, &zero, wMu, &incOne);
-	     
-// 	     //chol for the mvnorm and draw
-// 	     F77_NAME(dpotrf)(upper, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky failed in spLMPredict\n");}
-	     
-// 	     mvrnorm(&w[s*n], wMu, C, n, true);
-	     
-// 	   }else{//no nugget so w is just resids
-// 	     F77_NAME(dgemv)(ntran, &n, &p, &negOne, X, &n, &beta[s*p], &incOne, &zero, &w[s*n], &incOne);
-// 	     F77_NAME(daxpy)(&n, &one, Y, &incOne, &w[s*n], &incOne);
-// 	   }
-
-// 	   report(s, nSamples, status, nReport, verbose);
-// 	 } //end sample loop
-	 
-//        }else{//is pp
-	 
-// 	 for(s = 0; s < nSamples; s++){	 
-	   
-// 	   //make the correlation matrix
-// 	   for(i = 0; i < mm; i++){
-// 	     if(onePramPtr)
-// 	       (covModelObj->*cov1ParamPtr)(phi[s], C_str[i], knotsD[i]);
-// 	     else //i.e., 2 parameter matern
-// 	       (covModelObj->*cov2ParamPtr)(phi[s], nu[s], C_str[i], knotsD[i]);
-// 	   }
-	   
-// 	   for(i = 0; i < nm; i++){
-// 	     if(onePramPtr)
-// 	       (covModelObj->*cov1ParamPtr)(phi[s], ct[i], obsKnotsD[i]);
-// 	     else //i.e., 2 parameter matern
-// 	       (covModelObj->*cov2ParamPtr)(phi[s], nu[s], ct[i], obsKnotsD[i]);
-// 	   }
-	   
-// 	   //scale by sigma^2
-// 	   F77_NAME(dscal)(&mm, &sigmaSq[s], C_str, &incOne);	
-// 	   F77_NAME(dscal)(&nm, &sigmaSq[s], ct, &incOne);
-	   
-// 	   //invert C_str
-// 	   F77_NAME(dpotrf)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky failed in spLMPredict\n");}
-// 	   F77_NAME(dpotri)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spLMPredict\n");}
-	   
-// 	   //make w* Sigma
-// 	   //ct C^{*-1}
-// 	   F77_NAME(dsymm)(rside, upper, &n, &m, &one, C_str, &m, ct, &n, &zero, tmp_nm, &n);
-	   	   
-// 	   if(!isModPp){
-// 	     for(i = 0; i < n; i++) Einv[i] = 1.0/(tauSq[s]);
-// 	   }else{
-// 	     //ct C^{*-1} c
-// 	     F77_NAME(dgemm)(ntran, ytran, &n, &n, &m, &one, tmp_nm, &n, ct, &n, &zero, tmp_nn, &n);
-
-// 	     for(i = 0; i < n; i++) Einv[i] = 1.0/(tauSq[s]+sigmaSq[s]-tmp_nn[i*n+i]);
-// 	   }
-
-// 	   diagmm(n, m, Einv, tmp_nm, tmp_nm1);
-	   
-// 	   //(C^{*-1} c) (1/E ct C^{*-1})
-// 	   F77_NAME(dgemm)(ytran, ntran, &m, &m, &n, &one, tmp_nm, &n, tmp_nm1, &n, &zero, tmp_mm, &m);
-	   
-// 	   for(i = 0; i < mm; i++) C_str[i] = C_str[i] + tmp_mm[i];
-	   
-// 	   //invert C_str
-// 	   F77_NAME(dpotrf)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky failed in sp.lm\n");}
-// 	   F77_NAME(dpotri)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in sp.lm\n");}
-	   
-// 	   //make w* mu
-// 	   F77_NAME(dgemv)(ntran, &n, &p, &negOne, X, &n, &beta[s*p], &incOne, &zero, tmp_n, &incOne);
-// 	   F77_NAME(daxpy)(&n, &one, Y, &incOne, tmp_n, &incOne);
-	   
-// 	   //(1/E ct C^{*-1})'(Y-XB)
-// 	   F77_NAME(dgemv)(ytran, &n, &m, &one, tmp_nm1, &n, tmp_n, &incOne, &zero, tmp_m, &incOne);
-// 	   F77_NAME(dsymv)(upper, &m, &one, C_str, &m, tmp_m, &incOne, &zero, w_strMu, &incOne);
-	  
-// 	   //chol for the mvnorm and draw
-// 	   F77_NAME(dpotrf)(upper, &m, C_str, &m, &info); if(info != 0){error("c++ error: Cholesky failed in sp.lm\n");}
-// 	   mvrnorm(&w_str[s*m], w_strMu, C_str, m, true);
-	  
-// 	   //make \tild{w}
-// 	   F77_NAME(dgemv)(ntran, &n, &m, &one, tmp_nm, &n, &w_str[s*m], &incOne, &zero, &w[s*n], &incOne);
-
-// 	   report(s, nSamples, status, nReport, verbose);
-// 	 } //end sample loop
-//        } 
-//      }

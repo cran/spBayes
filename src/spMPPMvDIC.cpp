@@ -8,12 +8,11 @@ using namespace std;
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
-#include "covmodel.h"
 
 extern"C" {
 
   SEXP spMPPMvDIC(SEXP Q_r, SEXP knotsD_r, SEXP coordsKnotsD_r, SEXP n_r, SEXP m_r, SEXP q_r, 
-		  SEXP Psi_r, SEXP V_r, SEXP theta_r, SEXP covModel_r){
+		  SEXP Psi_r, SEXP V_r, SEXP phi_r, SEXP nu_r, SEXP covModel_r, SEXP CEps_r){
     
   int n = INTEGER(n_r)[0];
   int m = INTEGER(m_r)[0];
@@ -26,7 +25,7 @@ extern"C" {
   int nmnm = nm*nm;
   int qmqm = qm*qm;
   int nmqm = nm*qm;
-  int i, j, k, l, info;
+  int h, i, j, k, l, ii, jj, info;
  
   //BLAS and LAPACK vars
   char const *lower = "L";
@@ -48,108 +47,67 @@ extern"C" {
   double *tmp_mm1 = (double *) R_alloc(mm, sizeof(double));
   double *tmp_nm = (double *) R_alloc(nm, sizeof(double));
   double *A = (double *) R_alloc(mm, sizeof(double));
+  double *theta = (double *) R_alloc(2, sizeof(double));
  
   double logDet = 0.0;
 
-  int nPramPtr = 1;
   string covModel = CHAR(STRING_ELT(covModel_r,0));
-  
-  void (covmodel::*cov1ParamPtr)(double, double &, double &) = NULL; 
-  void (covmodel::*cov2ParamPtr)(double, double, double &, double&) = NULL;
-  
-  if(covModel == "exponential"){
-    cov1ParamPtr = &covmodel::exponential;
-  }else if(covModel == "spherical"){
-    cov1ParamPtr = &covmodel::spherical;
-  }else if(covModel == "gaussian"){
-    cov1ParamPtr = &covmodel::gaussian;
-  }else if(covModel == "matern"){
-    cov2ParamPtr = &covmodel::matern;
-    nPramPtr = 2;
-  }else{
-    error("c++ error: cov.model is not correctly specified");
-  }
-  
-  //my covmodel object for calling cov function
-  covmodel *covModelObj = new covmodel;
   
   //Get A
   F77_NAME(dcopy)(&mm, REAL(V_r), &incOne, A, &incOne);
-  F77_NAME(dpotrf)(lower, &m, A, &m, &info); 
-  if(info != 0){error("mvMPPMvDIC: Cholesky failed (1)\n");}
+  F77_NAME(dpotrf)(lower, &m, A, &m, &info); if(info != 0){error("c++ error: dpotrf failed 1\n");}
 
   SEXP D_r;
   PROTECT(D_r = allocVector(REALSXP, 1)); 
   REAL(D_r)[0] = 0.0;
 
   //clear upper tri
-  for(i = 0; i < m-1; i++){
-    for(j = i+1; j < m; j++){
-      A[j*m+i] = 0.0;
-    }
-  }
+  clearUT(A, m);
   
   //make ct
-  for(i = 0; i < n; i++){
-    for(j = 0; j < q; j++){
-      
-      zeros(tmp_mm, mm);
-      
-      for(k = 0; k < m; k++){
-	if(nPramPtr == 1)
-	  (covModelObj->*cov1ParamPtr)(REAL(theta_r)[k], tmp_mm[k*m+k], REAL(coordsKnotsD_r)[j*n+i]);
-	else //i.e., 2 parameter matern
-	  (covModelObj->*cov2ParamPtr)(REAL(theta_r)[k], REAL(theta_r)[m+k], tmp_mm[k*m+k], REAL(coordsKnotsD_r)[j*n+i]);
-      }
-      
-      F77_NAME(dgemm)(ntran, ntran, &m, &m, &m, &one, A, &m, tmp_mm, &m, &zero, tmp_mm1, &m);
-      F77_NAME(dgemm)(ntran, ytran, &m, &m, &m, &one, tmp_mm1, &m, A, &m, &zero, tmp_mm, &m);
-      
+  for(jj = 0; jj < q; jj++){
+    for(ii = 0; ii < n; ii++){	
       for(k = 0; k < m; k++){
 	for(l = 0; l < m; l++){
-	  ct[((j*m+l)*nm)+(i*m+k)] = tmp_mm[l*m+k];
-	  tmp_mm[l*m+k] = 0.0; //zero out
+	  ct[(k+jj*m)*nm+(ii*m+l)] = 0.0; 
+	  for(h = 0; h < m; h++){
+	    theta[0] = REAL(phi_r)[h];
+	    if(covModel == "matern"){
+	      theta[1] = REAL(nu_r)[h];
+	    }
+	    ct[(k+jj*m)*nm+(ii*m+l)] += A[k+m*h]*A[l+m*h]*spCor(REAL(coordsKnotsD_r)[jj*n+ii], theta, covModel);
+	  }
 	}
       }
     }
   }
-    
-  //
+
   //make C_str
-  //
-  for(i = 0; i < q; i++){
-    for(j = 0; j < q; j++){
-      
-      zeros(tmp_mm, mm);
-      
-      for(k = 0; k < m; k++){
-	if(nPramPtr == 1)
-	  (covModelObj->*cov1ParamPtr)(REAL(theta_r)[k], tmp_mm[k*m+k], REAL(knotsD_r)[j*q+i]);
-	else //i.e., 2 parameter matern
-	  (covModelObj->*cov2ParamPtr)(REAL(theta_r)[k], REAL(theta_r)[m+k], tmp_mm[k*m+k], REAL(knotsD_r)[j*q+i]);
-      }
-      
-      F77_NAME(dgemm)(ntran, ntran, &m, &m, &m, &one, A, &m, tmp_mm, &m, &zero, tmp_mm1, &m);
-      F77_NAME(dgemm)(ntran, ytran, &m, &m, &m, &one, tmp_mm1, &m, A, &m, &zero, tmp_mm, &m);
-      
+  for(jj = 0; jj < q; jj++){
+    for(ii = jj; ii < q; ii++){	
       for(k = 0; k < m; k++){
 	for(l = 0; l < m; l++){
-	  C_str[((j*m+l)*qm)+(i*m+k)] = tmp_mm[l*m+k];
-	  tmp_mm[l*m+k] = 0.0; //zero out
+	  C_str[(k+jj*m)*qm+(ii*m+l)] = 0.0; 
+	  for(h = 0; h < m; h++){
+	    theta[0] = REAL(phi_r)[h];
+	    if(covModel == "matern"){
+	      theta[1] = REAL(nu_r)[h];
+	    }
+	    C_str[(k+jj*m)*qm+(ii*m+l)] += A[k+m*h]*A[l+m*h]*spCor(REAL(knotsD_r)[jj*q+ii], theta, covModel);
+	  }
 	}
       }
     }
   }
-  
-  F77_NAME(dpotrf)(lower, &qm, C_str, &qm, &info); if(info != 0){error("mvMPPMvDIC: Cholesky failed (2)\n");}
-  F77_NAME(dpotri)(lower, &qm, C_str, &qm, &info); if(info != 0){error("mvMPPMvDIC: Cholesky failed (3)\n");}
+
+  F77_NAME(dpotrf)(lower, &qm, C_str, &qm, &info); if(info != 0){error("c++ error: dpotrf failed 2\n");}
+  F77_NAME(dpotri)(lower, &qm, C_str, &qm, &info); if(info != 0){error("c++ error: dpotri failed 3\n");}
   
   //C = ct C_str^{-1} t(ct)
   F77_NAME(dsymm)(rside, lower, &nm, &qm, &one, C_str, &qm, ct, &nm, &zero, tmp_nmqm, &nm);
   F77_NAME(dgemm)(ntran, ytran, &nm, &nm, &qm, &one, tmp_nmqm, &nm, ct, &nm, &zero, C, &nm);
-  
-  
-  for(i = 0, j = 0; i < n; i++){
+    
+  for(i = 0; i < n; i++){
     
     for(k = 0; k < m; k++){
       for(l = 0; l < m; l++){
@@ -157,8 +115,12 @@ extern"C" {
       }
     }
     
-    logDet += mtrxInvLogDet(tmp_mm, m, info);
-    
+    F77_NAME(dcopy)(&mm, tmp_mm, &incOne, &REAL(CEps_r)[i*mm], &incOne);
+
+    F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info); if(info != 0){error("c++ error: dpotrf failed 4\n");}
+    for(j = 0; j < m; j++) logDet += 2.0*log(tmp_mm[j*m+j]);
+    F77_NAME(dpotri)(lower, &m, tmp_mm, &m, &info); if(info != 0){error("c++ error: dpotri failed 5\n");}
+     
     F77_NAME(dsymv)(lower, &m, &one, tmp_mm, &m, &REAL(Q_r)[i*m], &incOne, &zero, &tmp_nm[i*m], &incOne);
   }
   

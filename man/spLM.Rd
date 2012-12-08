@@ -10,8 +10,8 @@
 
 \usage{
 spLM(formula, data = parent.frame(), coords, knots,
-      starting, sp.tuning, priors, cov.model,
-      modified.pp = TRUE, n.samples, sub.samples,
+      starting, tuning, priors, cov.model,
+      modified.pp = TRUE, amcmc, n.samples, 
       verbose=TRUE, n.report=100, ...)
 }
 
@@ -28,23 +28,19 @@ spLM(formula, data = parent.frame(), coords, knots,
     or a vector of length two or three with the first and second elements recording the
     number of columns and rows in the desired knot grid. The third,
     optional, element sets the offset of the outermost knots from the
-    extent of the \code{coords} extent. } 
+    extent of the \code{coords}. } 
   \item{starting}{a list with each tag corresponding to a
-    parameter name. Valid list tags are \code{beta}, \code{sigma.sq},
-    \code{tau.sq}, \code{phi}, and \code{nu}.  The value portion of each
-    of each tag is the parameter's starting value. }
-  \item{sp.tuning}{a list with each tag corresponding to a
-    parameter name. Valid list tags are \code{sigma.sq},
-    \code{tau.sq}, \code{phi}, and \code{nu}. The value portion of each
-    of each tag defines the variance of the Metropolis normal proposal distribution.}
-  \item{modified.pp}{a logical value indicating if the \emph{modified
-    predictive process} should be used (see references below for
-    details). Note, if a predictive process model is not used (i.e., \code{knots} is not specified) then
-    this argument is ignored. }
+    parameter name. Valid tags are \code{beta}, \code{sigma.sq},
+    \code{tau.sq}, \code{phi}, and \code{nu}.  The value portion of each tag is the parameter's starting value. }
+
+  \item{tuning}{a list with each tag corresponding to a
+    parameter name. Valid tags are \code{sigma.sq},
+    \code{tau.sq}, \code{phi}, and \code{nu}. The value portion of each tag defines the variance of the Metropolis sampler Normal proposal distribution.}
+
   \item{priors}{a list with each tag corresponding to a
-    parameter name. Valid list tags are \code{sigma.sq.ig},
-    \code{tau.sq.ig}, \code{phi.unif}, and \code{nu.unif} (\code{Beta} priors are
-    assumed \emph{flat}). Variance parameters, \code{simga.sq} and
+    parameter name. Valid tags are \code{sigma.sq.ig},
+    \code{tau.sq.ig}, \code{phi.unif}, \code{nu.unif},
+  \code{beta.norm}, and \code{beta.flat}. Variance parameters, \code{simga.sq} and
     \code{tau.sq}, are assumed to follow an
     inverse-Gamma distribution, whereas the spatial decay \code{phi}
     and smoothness \code{nu} parameters are assumed to follow Uniform distributions. The
@@ -53,20 +49,32 @@ spLM(formula, data = parent.frame(), coords, knots,
     to the \emph{shape} and \emph{scale}, respectively. The hyperparameters
     of the Uniform are also passed as a vector of length two with the first
     and second elements corresponding to the lower and upper support,
-    respectively. }
-  \item{cov.model}{a quoted key word that specifies the covariance
+    respectively. If the regression coefficients, i.e., \code{beta}
+    vector, are assumed to follow a multivariate Normal distribution then pass the
+  hyperparameters as a list of length two with the first
+  and second elements corresponding to the mean vector and positive
+  definite covariance matrix, respectively. If
+  \code{beta} is assumed flat then no arguments are passed. The default
+  is a flat prior.
+ }
+  \item{cov.model}{a quoted keyword that specifies the covariance
     function used to model the spatial dependence structure among the
     observations.  Supported covariance model key words are:
     \code{"exponential"}, \code{"matern"}, \code{"spherical"}, and
     \code{"gaussian"}.  See below for details.  }
-  \item{n.samples}{the number of MCMC iterations. }
-  \item{sub.samples}{a vector of length 3 that specifies \emph{start},
-  \emph{end}, and \emph{thin}, respectively, of the MCMC samples. The
-  default is \code{c(1, n.samples, 1)} (i.e., all samples). }
+    \item{modified.pp}{a logical value indicating if the \emph{modified
+    predictive process} should be used (see references below for
+    details). Note, if a predictive process model is not used (i.e., \code{knots} is not specified) then
+    this argument is ignored. }
+  \item{amcmc}{a list with tags \code{n.batch}, \code{batch.length}, and
+  \code{accept.rate}. Specifying this argument invokes an adaptive MCMC
+  sampler, see Roberts and Rosenthal (2007) for an explanation.}
+  \item{n.samples}{the number of MCMC iterations. This argument is
+  ignored if \code{amcmc} is specified.}
   \item{verbose}{if \code{TRUE}, model specification and progress of the
     sampler is printed to the screen. Otherwise, nothing is printed to
     the screen.  }
-  \item{n.report}{the interval to report Metropolis acceptance and MCMC progress. }  
+  \item{n.report}{the interval to report Metropolis sampler acceptance and MCMC progress. }  
   \item{...}{currently no additional arguments.  }
 }
 
@@ -76,33 +84,36 @@ spLM(formula, data = parent.frame(), coords, knots,
   \item{coords}{the \eqn{n \times 2}{n x 2} matrix specified by
     \code{coords}.  }
   \item{knot.coords}{the \eqn{m \times 2}{m x 2} matrix as specified by \code{knots}.  }
-  \item{p.samples}{a \code{coda} object of posterior samples for the defined
+  \item{p.theta.samples}{a \code{coda} object of posterior samples for the defined
     parameters. }
   \item{acceptance}{the Metropolis sampling
     acceptance rate. }
-  \item{sp.effects}{a matrix that holds samples from the posterior
-    distribution of the spatial random effects. The rows of this matrix
-    correspond to the \eqn{n}{n} point observations and the columns are the
-    posterior samples. }
   The return object might include additional data used for subsequent
   prediction and/or model fit evaluation.
 }
 
+\details{
+Model parameters can be fixed at their \code{starting} values by setting their
+\code{tuning} values to zero.
+
+The \emph{no nugget} model is specified by removing \code{tau.sq} from the \code{starting} list.
+}
+  
 \seealso{
-  \code{\link{spGGT}}, \code{\link{spMvLM}}
+  \code{\link{spMvLM}}
 }
 
 \references{
   Banerjee, S., A.E. Gelfand, A.O. Finley, and H. Sang. (2008) Gaussian Predictive Process Models for Large Spatial Datasets. \emph{Journal of the Royal Statistical Society Series B}, 70:825--848.
 
-  Finley, A.O., S. Banerjee, P. Waldmann, and T. Ericsson. (2008).
-  Hierarchical spatial modeling of additive and dominance genetic
-  variance for large spatial trial datasets. \emph{Biometrics}. DOI: 10.1111/j.1541-0420.2008.01115.x
+  Banerjee, S., Carlin, B.P., and Gelfand, A.E. (2004). Hierarchical
+  modeling and analysis for spatial data. Chapman and Hall/CRC Press,
+  Boca Raton, FL.
 
-  Finley, A.O,. H. Sang, S. Banerjee, and A.E. Gelfand. (2008). Improving the performance of predictive process modeling for
-large datasets. \emph{Computational Statistics and Data Analysis}, DOI: 10.1016/j.csda.2008.09.008    
+  Finley, A.O., H. Sang, S. Banerjee, and A.E. Gelfand. (2009) Improving the performance of predictive process modeling for large datasets. \emph{Computational Statistics and Data Analysis}, 53:2873--2884.
   
-  Banerjee, S., Carlin, B.P., and Gelfand, A.E. (2004). Hierarchical modeling and analysis for spatial data. Chapman and Hall/CRC Press, Boca Raton, Fla.
+  Roberts G.O. and Rosenthal J.S. (2006). Examples of Adaptive MCMC. \url{http://probability.ca/jeff/ftpdir/adaptex.pdf}.
+
 }
 
 \author{
@@ -112,119 +123,100 @@ large datasets. \emph{Computational Statistics and Data Analysis}, DOI: 10.1016/
 
 \examples{
 \dontrun{
-data(rf.n200.dat)
-
-Y <- rf.n200.dat$Y
-coords <- as.matrix(rf.n200.dat[,c("x.coords","y.coords")])
-w <- rf.n200.dat$w
-
-##############################
-##Simple spatial regression
-##############################
-m.1 <- spLM(Y~1, coords=coords,
-             starting=list("phi"=0.6,"sigma.sq"=1, "tau.sq"=1),
-             sp.tuning=list("phi"=0.01, "sigma.sq"=0.05, "tau.sq"=0.05),
-             priors=list("phi.Unif"=c(0.3, 3), "sigma.sq.IG"=c(2, 1),
-               "tau.sq.IG"=c(2, 1)),
-             cov.model="exponential",
-             n.samples=1000, verbose=TRUE, n.report=100)
-
-print(summary(m.1$p.samples))
-plot(m.1$p.samples)
-
-##Requires MBA package to
-##make surfaces
-library(MBA)
-par(mfrow=c(1,2))
-obs.surf <-
-  mba.surf(cbind(coords, Y), no.X=100, no.Y=100, extend=TRUE)$xyz.est
-image(obs.surf, xaxs = "r", yaxs = "r", main="Observed response")
-points(coords)
-contour(obs.surf, add=T)
-
-w.hat <- rowMeans(m.1$sp.effects)
-w.surf <-
-  mba.surf(cbind(coords, w.hat), no.X=100, no.Y=100, extend=TRUE)$xyz.est
-image(w.surf, xaxs = "r", yaxs = "r", main="Estimated random effects")
-points(coords)
-points(m.1$knot.coords, pch=19, cex=1)
-contour(w.surf, add=T)
-
-##############################
-##Predictive process
-##############################
-##Use some more observations
-data(rf.n500.dat)
-
-Y <- rf.n500.dat$Y
-coords <- as.matrix(rf.n500.dat[,c("x.coords","y.coords")])
-w <- rf.n500.dat$w
-
-m.2 <- spLM(Y~1, coords=coords, knots=c(6,6,0),
-             starting=list("phi"=0.6,"sigma.sq"=1, "tau.sq"=1),
-             sp.tuning=list("phi"=0.01, "sigma.sq"=0.01, "tau.sq"=0.01),
-             priors=list("phi.Unif"=c(0.3, 3), "sigma.sq.IG"=c(2, 1),
-               "tau.sq.IG"=c(2, 1)),
-             cov.model="exponential",
-             modified.pp=FALSE, n.samples=2000, verbose=TRUE, n.report=100)
-
-print(summary(m.2$p.samples))
-plot(m.2$p.samples)
-
-##Requires MBA package to
-##make surfaces
-library(MBA)
-par(mfrow=c(1,2))
-obs.surf <-
-  mba.surf(cbind(coords, w), no.X=100, no.Y=100, extend=TRUE)$xyz.est
-image(obs.surf, xaxs = "r", yaxs = "r", main="Observed response")
-points(coords)
-contour(obs.surf, add=T)
-
-w.hat <- rowMeans(m.2$sp.effects)
-w.surf <-
-  mba.surf(cbind(coords, w.hat), no.X=100, no.Y=100, extend=TRUE)$xyz.est
-image(w.surf, xaxs = "r", yaxs = "r", main="Estimated random effects")
-contour(w.surf, add=T)
-points(coords, pch=1, cex=1)
-points(m.2$knot.coords, pch=19, cex=1)
-legend(1.5,2.5, legend=c("Obs.", "Knots"), pch=c(1,19), bg="white")
-
-##############################
-##Modified predictive process
-##############################
-m.3 <- spLM(Y~1, coords=coords, knots=c(6,6,0),
-             starting=list("phi"=0.6,"sigma.sq"=1, "tau.sq"=1),
-             sp.tuning=list("phi"=0.01, "sigma.sq"=0.01, "tau.sq"=0.01),
-             priors=list("phi.Unif"=c(0.3, 3), "sigma.sq.IG"=c(2, 1),
-               "tau.sq.IG"=c(2, 1)),
-             cov.model="exponential",
-             n.samples=2000, verbose=TRUE, n.report=100)
-
-print(summary(m.3$p.samples))
-plot(m.3$p.samples)
-
-##Requires MBA package to
-##make surfaces
-library(MBA)
-par(mfrow=c(1,2))
-obs.surf <-
-  mba.surf(cbind(coords, w), no.X=100, no.Y=100, extend=TRUE)$xyz.est
-image(obs.surf, xaxs = "r", yaxs = "r", main="Observed response")
-points(coords)
-contour(obs.surf, add=T)
-
-w.hat <- rowMeans(m.3$sp.effects)
-w.surf <-
-  mba.surf(cbind(coords, w.hat), no.X=100, no.Y=100, extend=TRUE)$xyz.est
-image(w.surf, xaxs = "r", yaxs = "r", main="Estimated random effects")
-contour(w.surf, add=T)
-points(coords, pch=1, cex=1)
-points(m.3$knot.coords, pch=19, cex=1)
-legend(1.5,2.5, legend=c("Obs.", "Knots"), pch=c(1,19), bg="white")
-
-
-}
+rmvn <- function(n, mu=0, V = matrix(1)){
+  p <- length(mu)
+  if(any(is.na(match(dim(V),p))))
+    stop("Dimension problem!")
+  D <- chol(V)
+  t(matrix(rnorm(n*p), ncol=p)\%*\%D + rep(mu,rep(n,p)))
 }
 
-\keyword{misc}
+set.seed(1)
+
+n <- 100
+coords <- cbind(runif(n,0,1), runif(n,0,1))
+X <- as.matrix(cbind(1, rnorm(n)))
+
+B <- as.matrix(c(1,5))
+p <- length(B)
+
+sigma.sq <- 2
+tau.sq <- 0.1
+phi <- 3/0.5
+
+D <- as.matrix(dist(coords))
+R <- exp(-phi*D)
+w <- rmvn(1, rep(0,n), sigma.sq*R)
+y <- rnorm(n, X\%*\%B + w, sqrt(tau.sq))
+
+n.samples <- 2000
+
+starting <- list("phi"=3/0.5, "sigma.sq"=50, "tau.sq"=1)
+
+tuning <- list("phi"=0.1, "sigma.sq"=0.1, "tau.sq"=0.1)
+
+priors.1 <- list("beta.Norm"=list(rep(0,p), diag(1000,p)),
+                 "phi.Unif"=c(3/1, 3/0.1), "sigma.sq.IG"=c(2, 2),
+                 "tau.sq.IG"=c(2, 0.1))
+
+priors.2 <- list("beta.Flat", "phi.Unif"=c(3/1, 3/0.1),
+                 "sigma.sq.IG"=c(2, 2), "tau.sq.IG"=c(2, 0.1))
+
+cov.model <- "exponential"
+
+n.report <- 500
+verbose <- TRUE
+
+m.1 <- spLM(y~X-1, coords=coords, starting=starting,
+            tuning=tuning, priors=priors.1, cov.model=cov.model,
+            n.samples=n.samples, verbose=verbose, n.report=n.report)
+
+m.2 <- spLM(y~X-1, coords=coords, starting=starting,
+            tuning=tuning, priors=priors.2, cov.model=cov.model,
+            n.samples=n.samples, verbose=verbose, n.report=n.report)
+
+burn.in <- 0.5*n.samples
+
+##recover beta and spatial random effects
+m.1 <- spRecover(m.1, start=burn.in, verbose=FALSE)
+m.2 <- spRecover(m.2, start=burn.in, verbose=FALSE)
+
+round(summary(m.1$p.theta.recover.samples)$quantiles[,c(3,1,5)],2)
+round(summary(m.2$p.theta.recover.samples)$quantiles[,c(3,1,5)],2)
+
+round(summary(m.1$p.beta.recover.samples)$quantiles[,c(3,1,5)],2)
+round(summary(m.2$p.beta.recover.samples)$quantiles[,c(3,1,5)],2)
+
+m.1.w.summary <- summary(mcmc(t(m.1$p.w.recover.samples)))$quantiles[,c(3,1,5)]
+m.2.w.summary <- summary(mcmc(t(m.2$p.w.recover.samples)))$quantiles[,c(3,1,5)]
+
+plot(w, m.1.w.summary[,1], xlab="Observed w", ylab="Fitted w",
+     xlim=range(w), ylim=range(m.1.w.summary), main="Spatial random effects")
+arrows(w, m.1.w.summary[,1], w, m.1.w.summary[,2], length=0.02, angle=90)
+arrows(w, m.1.w.summary[,1], w, m.1.w.summary[,3], length=0.02, angle=90)
+lines(range(w), range(w))
+
+points(w, m.2.w.summary[,1], col="blue", pch=19, cex=0.5)
+arrows(w, m.2.w.summary[,1], w, col="blue", m.2.w.summary[,2], length=0.02, angle=90)
+arrows(w, m.2.w.summary[,1], w, col="blue", m.2.w.summary[,3], length=0.02, angle=90)
+
+###########################
+##Predictive process model
+###########################
+m.1 <- spLM(y~X-1, coords=coords, knots=c(6,6,0.1), starting=starting,
+            tuning=tuning, priors=priors.1, cov.model=cov.model,
+            n.samples=n.samples, verbose=verbose, n.report=n.report)
+
+m.2 <- spLM(y~X-1, coords=coords, knots=c(6,6,0.1), starting=starting,
+            tuning=tuning, priors=priors.2, cov.model=cov.model,
+            n.samples=n.samples, verbose=verbose, n.report=n.report)
+
+burn.in <- 0.5*n.samples
+
+round(summary(window(m.1$p.beta.samples, start=burn.in))$quantiles[,c(3,1,5)],2)
+round(summary(window(m.2$p.beta.samples, start=burn.in))$quantiles[,c(3,1,5)],2)
+
+round(summary(window(m.1$p.theta.samples, start=burn.in))$quantiles[,c(3,1,5)],2)
+round(summary(window(m.2$p.theta.samples, start=burn.in))$quantiles[,c(3,1,5)],2)
+}
+}

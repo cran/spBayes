@@ -1,7 +1,7 @@
-#include <iostream>
-#include <vector>
-#include <fstream>
-using namespace std;
+//#include <iostream>
+//#include <vector>
+//#include <fstream>
+//using namespace std;
 
 #include <R.h>
 #include <Rinternals.h>
@@ -157,7 +157,7 @@ extern "C" {
     
     //samples
     SET_VECTOR_ELT(result_r, 0, samples_r);
-    SET_VECTOR_ELT(resultNames_r, 0, mkChar("p.samples")); 
+    SET_VECTOR_ELT(resultNames_r, 0, mkChar("p.theta.samples")); 
     
     SET_VECTOR_ELT(result_r, 1, acceptance_r);
     SET_VECTOR_ELT(resultNames_r, 1, mkChar("acceptance"));
