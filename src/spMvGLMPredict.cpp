@@ -105,7 +105,7 @@ extern "C" {
     for(i = 0; i < q; i++){
       fitted[i] = -1;
       for(j = 0; j < n; j++){
-    	if(obsPredD[j*n+i] == 0){
+    	if(obsPredD[i*n+j] == 0){
     	  fitted[i] = j;
     	  break;
     	}

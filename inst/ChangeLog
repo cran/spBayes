@@ -1,8 +1,14 @@
+2013-01-02  andy  <andy@darkstar>
+
+	* 0.3-1
+	* Fixed bug in spMvGLMPredict.cpp that effected prediction using spGLM and spMvGLM for observed locations only. Prediction for unobserved locations was not effected.
+	* Added three example data sets.
+
 2012-12-17  andy  <andy@darkstar>
 
 	* 0.3-0
 	* Fixed Rprint typos in all _amcmc.cpp file.
-	* Added pointsInPoly.R and associated code
+	* Added pointsInPoly.R and associated code.
 
 2012-12-13  andy  <andy@darkstar>
 
