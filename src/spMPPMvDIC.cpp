@@ -1,7 +1,4 @@
-#include <iostream>
 #include <string>
-using namespace std;
-
 #include <R.h>
 #include <Rinternals.h>
 #include <R_ext/Linpack.h>
@@ -51,7 +48,7 @@ extern"C" {
  
   double logDet = 0.0;
 
-  string covModel = CHAR(STRING_ELT(covModel_r,0));
+  std::string covModel = CHAR(STRING_ELT(covModel_r,0));
   
   //Get A
   F77_NAME(dcopy)(&mm, REAL(V_r), &incOne, A, &incOne);

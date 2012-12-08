@@ -1,7 +1,4 @@
-#include <iostream>
 #include <string>
-using namespace std;
-
 #include <R.h>
 #include <Rinternals.h>
 #include <R_ext/Linpack.h>
@@ -36,7 +33,7 @@ extern"C" {
     double *Psi = REAL(Psi_r);
     double *V = REAL(V_r);
     double *theta = REAL(theta_r);
-    string covModel = CHAR(STRING_ELT(covModel_r,0));
+    std::string covModel = CHAR(STRING_ELT(covModel_r,0));
     
     double *gamma = (double *) R_alloc(2, sizeof(double));
     

@@ -1,10 +1,8 @@
-#include <iostream>
+#include <algorithm>
 #include <string>
 #ifdef _OPENMP
 #include <omp.h>
 #endif
-//using namespace std;
-
 #include <R.h>
 #include <Rinternals.h>
 #include <R_ext/Linpack.h>
@@ -56,18 +54,18 @@ extern "C" {
     int qmqm = qm*qm;
     int nLTr = m*(m-1)/2+m;
 
-    string family = CHAR(STRING_ELT(family_r,0));
+    std::string family = CHAR(STRING_ELT(family_r,0));
 
     int *weights = INTEGER(weights_r);
 
     //covariance model
-    string covModel = CHAR(STRING_ELT(covModel_r,0));
+    std::string covModel = CHAR(STRING_ELT(covModel_r,0));
 
     double *knotsD = REAL(knotsD_r);
     double *knotsCoordsD = REAL(knotsCoordsD_r);
 
     //priors and starting
-    string betaPrior = CHAR(STRING_ELT(betaPrior_r,0));
+    std::string betaPrior = CHAR(STRING_ELT(betaPrior_r,0));
 
     double *betaMu = NULL;
     double *betaSd = NULL;
@@ -561,9 +559,9 @@ extern "C" {
 	REAL(tuning_r)[b*nParams+j] = spTuning[j];
 	
 	if(accept[j]/batchLength > acceptRate){
-	  spTuning[j] += min(0.01, 1.0/sqrt(static_cast<double>(b)));
+	  spTuning[j] += std::min(0.01, 1.0/sqrt(static_cast<double>(b)));
 	}else{
-	  spTuning[j] -= min(0.01, 1.0/sqrt(static_cast<double>(b)));
+	  spTuning[j] -= std::min(0.01, 1.0/sqrt(static_cast<double>(b)));
 	}
 	accept[j] = 0.0;
       }
@@ -573,9 +571,9 @@ extern "C" {
 	REAL(tuning_w_str_r)[b*qm+j] = w_strTuning[j];
 	
 	if(accept_w_str[j]/batchLength > acceptRate){
-	  w_strTuning[j] += min(0.01, 1.0/sqrt(static_cast<double>(b)));
+	  w_strTuning[j] += std::min(0.01, 1.0/sqrt(static_cast<double>(b)));
 	}else{
-	  w_strTuning[j] -= min(0.01, 1.0/sqrt(static_cast<double>(b)));
+	  w_strTuning[j] -= std::min(0.01, 1.0/sqrt(static_cast<double>(b)));
 	}
 	accept_w_str[j] = 0.0;
       }

@@ -1,10 +1,8 @@
-#include <iostream>
+#include <algorithm>
 #include <string>
 #ifdef _OPENMP
 #include <omp.h>
 #endif
-//using namespace std;
-
 #include <R.h>
 #include <Rinternals.h>
 #include <R_ext/Linpack.h>
@@ -59,10 +57,10 @@ extern "C" {
 
     double *coordsD = REAL(coordsD_r);
 
-    string covModel = CHAR(STRING_ELT(covModel_r,0));
+    std::string covModel = CHAR(STRING_ELT(covModel_r,0));
 
     //priors
-    string betaPrior = CHAR(STRING_ELT(betaPrior_r,0));
+    std::string betaPrior = CHAR(STRING_ELT(betaPrior_r,0));
     double *betaMu = NULL;
     double *betaC = NULL;
     
@@ -76,7 +74,7 @@ extern "C" {
 
     double *phiUnif = REAL(phiUnif_r);
 
-    string KPriorName = CHAR(STRING_ELT(KPriorName_r,0));
+    std::string KPriorName = CHAR(STRING_ELT(KPriorName_r,0));
     double KIW_df = 0; double *KIW_S = NULL;
     double *ANormMu = NULL; double *ANormC = NULL;
 
@@ -94,7 +92,7 @@ extern "C" {
     }
 
     bool nugget = static_cast<bool>(INTEGER(nugget_r)[0]);
-    string PsiPriorName;
+    std::string PsiPriorName;
     bool PsiDiag = static_cast<bool>(INTEGER(PsiDiag_r)[0]);
     double PsiIW_df = 0; double *PsiIW_S = NULL;
     double *LNormMu = NULL; double *LNormC = NULL;
@@ -697,9 +695,9 @@ extern "C" {
 	  REAL(tuning_r)[b*nParams+j] = tuning[j];
 	  
 	  if(accept[j]/batchLength > acceptRate){
-	    tuning[j] += min(0.01, 1.0/sqrt(static_cast<double>(b)));
+	    tuning[j] += std::min(0.01, 1.0/sqrt(static_cast<double>(b)));
 	  }else{
-	    tuning[j] -= min(0.01, 1.0/sqrt(static_cast<double>(b)));
+	    tuning[j] -= std::min(0.01, 1.0/sqrt(static_cast<double>(b)));
 	  }
 	  accept[j] = 0.0;
 	}

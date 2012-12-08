@@ -1,15 +1,10 @@
-//#include <iostream>
-//#include <vector>
-//#include <fstream>
-//using namespace std;
-
+#include <algorithm>
 #include <R.h>
 #include <Rinternals.h>
 #include <R_ext/Linpack.h>
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
-
 
 double ltd(SEXP ltd_r, SEXP theta_r, SEXP rho_r){
   
@@ -116,9 +111,9 @@ extern "C" {
 	REAL(acceptance_r)[b*nTheta+j] = accept[j]/batchLength;
 	
 	if(accept[j]/batchLength > REAL(acceptRate_r)[j]){
-	  tuning[j] += min(0.01, 1.0/sqrt(static_cast<double>(b)));
+	  tuning[j] += std::min(0.01, 1.0/sqrt(static_cast<double>(b)));
 	}else{
-	  tuning[j] -= min(0.01, 1.0/sqrt(static_cast<double>(b)));
+	  tuning[j] -= std::min(0.01, 1.0/sqrt(static_cast<double>(b)));
 	}
 	accept[j] = 0.0;
       }

@@ -1,12 +1,4 @@
-#include <iostream>
-#include <iomanip>
-#include <fstream>
 #include <string>
-#include <sstream>
-#include <vector>
-#include <map>
-using namespace std;
-
 #include <R.h>
 #include <Rmath.h>
 #include <Rinternals.h>
@@ -14,51 +6,6 @@ using namespace std;
 #include <R_ext/BLAS.h>
 #include <R_ext/Utils.h>
 #include "util.h"
-
-void updateThetaGibbs(double *x, double *y, int &xnrow, int &xncol, double *fixedEffectSamples, 
-		 double *covInv, double *tmpXRowCol, double *tmpXColCol, double *tmpXRow, 
-		 double *tmpXCol, double *tmpXCol1, string &thetaPrior, double *thetaPriorMu, double *thetaPriorV){
-  int info;
-  const int incOne = 1;
-  const double one = 1.0;
-  const double zero = 0.0;
-  const char upper = 'U';
-  const char lower = 'L';
-  const char ntran = 'N';
-  const char ytran = 'T';
-  const char rside = 'R';
-  const char lside = 'L';
-  
-  //B ~ N(chol2inv(chol(t(x)%*%inv(cov)%*%x))%*%t(x)%*%s%*%y, chol2inv(chol(t(x)%*%inv(cov)%*%x)))
-  //assumed the upper chol2inv(chol(cov)) was sent in as covInv
-
-  //(t(x)%*%s%*%x)^{-1}
-  F77_NAME(dsymm)(&lside, &upper, &xnrow, &xncol, &one, covInv, &xnrow, x, &xnrow, &zero, tmpXRowCol, &xnrow);
-  F77_NAME(dgemm)(&ytran, &ntran, &xncol, &xncol, &xnrow, &one, x, &xnrow, tmpXRowCol, &xnrow, &zero, tmpXColCol, &xncol);
-
-  if(thetaPrior == "NORMAL"){
-    F77_NAME(daxpy)(&xncol, &one, thetaPriorV, &incOne, tmpXColCol, &incOne);
-  }
-
-  F77_CALL(dpotrf)(&lower, &xncol, tmpXColCol, &xncol, &info); if(info != 0){error("Cholesky failed\n");}
-  F77_CALL(dpotri)(&lower, &xncol, tmpXColCol, &xncol, &info); if(info != 0){error("Cholesky inverse failed\n");}
-
-  //mvrnorm mean
-  //chol2inv(chol(t(x)%*%s%*%x))%*%t(x)%*%s%*%y
-  F77_NAME(dsymv)(&upper, &xnrow, &one, covInv, &xnrow, y, &incOne, &zero, tmpXRow, &incOne);
-  F77_NAME(dgemv)(&ytran, &xnrow, &xncol, &one, x, &xnrow, tmpXRow, &incOne, &zero, tmpXCol, &incOne);
-
-  if(thetaPrior == "NORMAL"){
-    F77_NAME(dgemv)(&ntran, &xncol, &xncol, &one, thetaPriorV, &xncol, thetaPriorMu, &incOne, &one, tmpXCol, &incOne);
-  }
-
-  F77_NAME(dsymv)(&lower, &xncol, &one, tmpXColCol, &xncol, tmpXCol, &incOne, &zero, tmpXCol1, &incOne);
-
-  //my mvrnorm wants a lower Cholesky so
-  F77_CALL(dpotrf)(&lower, &xncol, tmpXColCol, &xncol, &info); if(info != 0){error("Cholesky failed third\n");}
-  mvrnorm(fixedEffectSamples, tmpXCol1, tmpXColCol, xncol); 
-}
-
 
 void mvrnorm(double *des, double *mu, double *cholCov, int dim){
   
@@ -100,36 +47,6 @@ void mvrnorm(double *des, double *mu, double *cholCov, int dim, bool upper){
   F77_NAME(daxpy)(&dim, &one, mu, &inc, des, &inc);
 
 }
-
-// void showMatrix(double *x, int xnrow, int xncol){
-//   int i,j;
-//   for(i = 0; i < xnrow; i++){
-//     for(j = 0; j < xncol; j++){
-//       cout << x[j*xnrow+i] << "\t";
-//     }
-//     cout << endl;
-//   }      
-// }
-
-
-
-// void writeRMatrix(string outfile, double * a, int nrow, int ncol){
-//     ofstream file(outfile.c_str());
-//     if ( !file ) {
-//       cout << "Data file could not be opened." << endl;
-//       //exit(1);
-//     }
-  
-
-//   for(int i = 0; i < nrow; i++){
-//     for(int j = 0; j < ncol-1; j++){
-//       file << setprecision(20) << fixed << a[j*nrow+i] << "\t";
-//     }
-//     file << setprecision(20) << fixed << a[(ncol-1)*nrow+i] << endl;    
-
-//   }
-//   file.close();
-// }
 
 SEXP getList(SEXP list, const char *str){
   SEXP elmt = R_NilValue, names = getAttrib(list, R_NamesSymbol);
@@ -205,14 +122,6 @@ void setLowerChol(double *A, double *S, int dim){
   }
 }
 
-
-string toString(int &x) {
-  ostringstream oss;
-  oss << x;
-  return oss.str();
-}
- 
-
 double dTNorm(double x, double mu, double sd, double a, double b){
   if(x < a || x > b)
     return 0.0;
@@ -227,8 +136,6 @@ void diagmm(int &nrow_b, int &ncol_b, double *a, double *b, double *c){
     }
   }
 }
-
-
 
 void subsetCovRow(double *x, int n, int p, int begin, int end, double *cov, double *means){
   
@@ -294,42 +201,6 @@ void subsetCovCol(double *x, int p, int begin, int end, double *cov, double *mea
 
 }
 
-  
-
-// double mtrxInvLogDet(double *m, int dim, int info){
-
-//   double logDet = 0.0;
-//   int i,j;
-
-//   F77_NAME(dpotrf)("L", &dim, m, &dim, &info); if(info != 0){cout << "c++ error: mtrxInvLogDet Cholesky failed\n" << endl;}
-//   for(j = 0; j < dim; j++) logDet += 2.0*log(m[j*dim+j]);
-//   F77_NAME(dpotri)("L", &dim, m, &dim, &info); if(info != 0){cout << "c++ error: mtrxInvLogDet Cholesky inverse failed\n" << endl;}
-  
-//   for(i = 1; i < dim; i++){
-//     for(j = 0; j < i; j++){
-//       m[i*dim+j] = m[j*dim+i];
-//     }
-//   }
-
-//   return(logDet);
-// }
-
-
-// void mtrxInv(double *m, int dim, int info){
-
-//   int i,j;
-
-//   F77_NAME(dpotrf)("L", &dim, m, &dim, &info); if(info != 0){cout << "c++ error: mtrxInv Cholesky failed\n" << endl;}
-//   F77_NAME(dpotri)("L", &dim, m, &dim, &info); if(info != 0){cout << "c++ error: mtrxInv Cholesky inverse failed\n" << endl;}
-  
-//   for(i = 1; i < dim; i++){
-//     for(j = 0; j < i; j++){
-//       m[i*dim+j] = m[j*dim+i];
-//     }
-//   }
-
-// }
-
 double logit(double theta, double a, double b){
   return log((theta-a)/(b-theta));
 }
@@ -337,7 +208,6 @@ double logit(double theta, double a, double b){
 double logitInv(double z, double a, double b){
   return b-(b-a)/(1+exp(z));
 }
-
 
 void covTransInv(double *z, double *v, int m){
   int i, j, k;
@@ -413,8 +283,6 @@ void printVec(double *m, int n){
     Rprintf("\n");
 }
 
-
-
 double logit_logpost(int &n, double *Y, double *eta, double *w){
   double loglike = 0.0;
   int i;  
@@ -445,7 +313,7 @@ double poisson_logpost(int &n, double *Y, double *eta, double *w, int *r){
   int i;  
 
   for(i = 0; i < n; i++){
-    loglike += Y[i]*(eta[i]+w[i]+log(r[i]))-exp(eta[i]+w[i]+log(r[i]));
+    loglike += Y[i]*(eta[i]+w[i]+log(static_cast<double>(r[i])))-exp(eta[i]+w[i]+log(static_cast<double>(r[i])));
   }
 
   return loglike;
@@ -468,7 +336,7 @@ double poisson_logpost(int &n, double *Y, double *eta, int *r){
   int i;  
 
   for(i = 0; i < n; i++){
-    loglike += Y[i]*(eta[i]+log(r[i]))-exp(eta[i]+log(r[i]));
+    loglike += Y[i]*(eta[i]+log(static_cast<double>(r[i])))-exp(eta[i]+log(static_cast<double>(r[i])));
   }
 
   return loglike;
@@ -491,49 +359,7 @@ void report(int &s, int &nSamples, int &status, int &nReport, bool &verbose){
   R_CheckUserInterrupt();  
 }
 
-// void dnscsr(double *A, int nrowA, int ncolA, double *a, int *indxa, int *pntrb, int *pntre){
-//   //untested!!!
-//   //int nzmaxa = nrowA*ncolA;
-//   //int *indxa = (int *) R_alloc(nzmaxa, sizeof(int));
-//   //int *pntrb = (int *) R_alloc(nrowA, sizeof(int)); 
-//   //int *pntre = (int *) R_alloc(nrowA, sizeof(int)); 
-//   //double *a = (double *) R_alloc(nzmaxa, sizeof(double));
-  
-//   //Convert dense matrix to NIST one-based indexing (following intel MKL docs)
-//   //todo: add eps if needed
-  
-//   int i, j, k, l, ll;
-//   for(i = 0; i < nrowA; i++){
-//     pntrb[i]=pntre[i]=indxa[i]=0;
-//   }
-  
-//   bool first;
-//   for(i = 0, l = 0, ll = 0; i < nrowA; i++, ll = 0){
-//     first = true;
-//     for(j = 0; j < ncolA; j++){
-//       if(A[j*nrowA+i] != 0.0){
-// 	a[k] = A[j*nrowA+i];
-// 	indxa[k] = j+1;
-// 	if(first){
-// 	  pntrb[l] = k+1;
-// 	  first = false;
-// 	  l++;
-// 	}
-// 	ll++;
-// 	k++;
-//       }
-//     }
-//     if(!first){
-//       pntre[l-1]=pntrb[l-1]+ll;
-//     }else{
-//       pntrb[l] = 0;
-//       pntre[l] = 0;
-//       l++;
-//     }
-//   }
-// }
-
-void spCor(double *D, int n, double *theta, string &covModel, double *C){
+void spCor(double *D, int n, double *theta, std::string &covModel, double *C){
   int i;
   
   if(covModel == "exponential"){
@@ -578,7 +404,7 @@ void spCor(double *D, int n, double *theta, string &covModel, double *C){
   }
 }
 
-double spCor(double D, double *theta, string &covModel){
+double spCor(double D, double *theta, std::string &covModel){
   
   if(covModel == "exponential"){
     
@@ -615,7 +441,7 @@ double spCor(double D, double *theta, string &covModel){
   }
 }
 
-double spCor(double D, double phi, double nu, string &covModel){
+double spCor(double D, double phi, double nu, std::string &covModel){
   
   if(covModel == "exponential"){
     
@@ -650,9 +476,7 @@ double spCor(double D, double phi, double nu, string &covModel){
   }
 }
 
-
-
-void spCov(double *D, int n, double *theta, string &covModel, double *C){
+void spCov(double *D, int n, double *theta, std::string &covModel, double *C){
   int i;
   
   if(covModel == "exponential"){
@@ -697,7 +521,7 @@ void spCov(double *D, int n, double *theta, string &covModel, double *C){
   }
 }
 
-void spCovLT(double *D, int n, double *theta, string &covModel, double *C){
+void spCovLT(double *D, int n, double *theta, std::string &covModel, double *C){
   int i,j;
   
   if(covModel == "exponential"){

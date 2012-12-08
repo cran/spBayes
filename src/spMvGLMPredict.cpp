@@ -1,9 +1,7 @@
-#include <iostream>
+#include <string>
 #ifdef _OPENMP
 #include <omp.h>
 #endif
-//using namespace std;
-
 #include <R.h>
 #include <Rinternals.h>
 #include <R_ext/Linpack.h>
@@ -36,7 +34,7 @@ extern "C" {
                      Set-up
     *****************************************/
 
-    string family = CHAR(STRING_ELT(family_r,0));
+    std::string family = CHAR(STRING_ELT(family_r,0));
     double *Y = REAL(Y_r);
     double *X = REAL(X_r);
     int n = INTEGER(n_r)[0];
@@ -52,7 +50,7 @@ extern "C" {
     double *wSamples = REAL(wSamples_r);
     
     int nSamples = INTEGER(nSamples_r)[0];
-    string covModel = CHAR(STRING_ELT(covModel_r,0));
+    std::string covModel = CHAR(STRING_ELT(covModel_r,0));
     bool verbose = static_cast<bool>(INTEGER(verbose_r)[0]);
     int nReport = INTEGER(nReport_r)[0];
  

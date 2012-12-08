@@ -1,7 +1,4 @@
-#include <iostream>
 #include <string>
-using namespace std;
-
 #include <R.h>
 #include <Rinternals.h>
 #include <R_ext/Linpack.h>
@@ -42,19 +39,19 @@ extern "C" {
     int pp = p*p;
     int n = INTEGER(n_r)[0];
 
-    string family = CHAR(STRING_ELT(family_r,0));
+    std::string family = CHAR(STRING_ELT(family_r,0));
 
     int *weights = INTEGER(weights_r);
 
     //covariance model
-    string covModel = CHAR(STRING_ELT(covModel_r,0));
+    std::string covModel = CHAR(STRING_ELT(covModel_r,0));
 
     int m = INTEGER(m_r)[0];
     double *knotsD = REAL(knotsD_r);
     double *knotsCoordsD = REAL(knotsCoordsD_r);
 
     //priors and starting
-    string betaPrior = CHAR(STRING_ELT(betaPrior_r,0));
+    std::string betaPrior = CHAR(STRING_ELT(betaPrior_r,0));
 
     double *betaMu = NULL;
     double *betaSd = NULL;

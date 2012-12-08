@@ -1,7 +1,4 @@
-#include <iostream>
 #include <string>
-using namespace std;
-
 #include <R.h>
 #include <Rinternals.h>
 #include <R_ext/Linpack.h>
@@ -64,7 +61,7 @@ extern "C" {
     bool modPP = static_cast<bool>(INTEGER(modPP_r)[0]);
     bool nugget = static_cast<bool>(INTEGER(nugget_r)[0]);
     bool PsiDiag = static_cast<bool>(INTEGER(PsiDiag_r)[0]);
-    string covModel = CHAR(STRING_ELT(covModel_r,0));
+    std::string covModel = CHAR(STRING_ELT(covModel_r,0));
     int verbose = INTEGER(verbose_r)[0];
     int nReport = INTEGER(nReport_r)[0];
 

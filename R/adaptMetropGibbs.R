@@ -40,7 +40,7 @@ adaptMetropGibbs <- function(ltd, starting, tuning=1, accept.rate=0.44,
                verbose, ntheta, report, env)
 
   out$proc.time <- proc.time() - ptm
-  out$p.samples <- mcmc(t(out$p.samples))
+  out$p.theta.samples <- mcmc(t(out$p.theta.samples))
   out$acceptance <- mcmc(t(out$acceptance))
   out$ltd <- ltd
   out$tuning <- tuning

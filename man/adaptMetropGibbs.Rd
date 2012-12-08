@@ -33,7 +33,7 @@ adaptMetropGibbs(ltd, starting, tuning=1, accept.rate=0.44,
 
 \value{
   A list with the following tags:
-  \item{p.samples}{a \code{coda} object of posterior samples for the parameters. }
+  \item{p.theta.samples}{a \code{coda} object of posterior samples for the parameters. }
   \item{acceptance}{the Metropolis acceptance rate at the end of each
     batch. }
   \item{ltd}{\code{ltd} }
@@ -60,6 +60,14 @@ Rosenthal J.S. (2007). AMCMC: An R interface for adaptive MCMC. \emph{Computatio
 
 \examples{
 \dontrun{
+rmvn <- function(n, mu=0, V = matrix(1)){
+  p <- length(mu)
+  if(any(is.na(match(dim(V),p))))
+    stop("Dimension problem!")
+  D <- chol(V)
+  t(matrix(rnorm(n*p), ncol=p)\%*\%D + rep(mu,rep(n,p)))
+}
+
 ###########################
 ##Fit a spatial regression
 ###########################
@@ -76,8 +84,8 @@ tausq <- 20
 mu <- 150
 
 s <- (sigmasq*exp(-phi*D))
-w <-  mvrnorm(1, rep(0, n), s)
-Y <- mvrnorm(1, rep(mu, n) + w, tausq*diag(n))
+w <-  rmvn(1, rep(0, n), s)
+Y <- rmvn(1, rep(mu, n) + w, tausq*diag(n))
 X <- as.matrix(rep(1, length(Y)))
 
 ##Priors
@@ -138,20 +146,20 @@ chain.2 <- adaptMetropGibbs(ltd=target, starting=inits,
 plot(mcmc.list(mcmc(chain.1$acceptance), mcmc(chain.2$acceptance)))
 
 ##Back transform
-chain.1$p.samples[,2] <- exp(chain.1$p.samples[,2])
-chain.1$p.samples[,3] <- exp(chain.1$p.samples[,3])
-chain.1$p.samples[,4] <- 3/logit.inv(chain.1$p.samples[,4], a.phi, b.phi)
+chain.1$p.theta.samples[,2] <- exp(chain.1$p.theta.samples[,2])
+chain.1$p.theta.samples[,3] <- exp(chain.1$p.theta.samples[,3])
+chain.1$p.theta.samples[,4] <- 3/logit.inv(chain.1$p.theta.samples[,4], a.phi, b.phi)
 
-chain.2$p.samples[,2] <- exp(chain.2$p.samples[,2])
-chain.2$p.samples[,3] <- exp(chain.2$p.samples[,3])
-chain.2$p.samples[,4] <- 3/logit.inv(chain.2$p.samples[,4], a.phi, b.phi)
+chain.2$p.theta.samples[,2] <- exp(chain.2$p.theta.samples[,2])
+chain.2$p.theta.samples[,3] <- exp(chain.2$p.theta.samples[,3])
+chain.2$p.theta.samples[,4] <- 3/logit.inv(chain.2$p.theta.samples[,4], a.phi, b.phi)
 
 par.names <- c("mu", "sigma.sq", "tau.sq", "effective range (-log(0.05)/phi)")
-colnames(chain.1$p.samples) <- par.names
-colnames(chain.2$p.samples) <- par.names
+colnames(chain.1$p.theta.samples) <- par.names
+colnames(chain.2$p.theta.samples) <- par.names
 
 ##Discard burn.in and plot and do some convergence diagnostics
-chains <- mcmc.list(mcmc(chain.1$p.samples), mcmc(chain.2$p.samples))
+chains <- mcmc.list(mcmc(chain.1$p.theta.samples), mcmc(chain.2$p.theta.samples))
 plot(window(chains, start=as.integer(0.5*n.batch*batch.length)))
 
 gelman.diag(chains)
@@ -241,9 +249,9 @@ run.3 <- adaptMetropGibbs(ltd=ltd, starting=theta.starting, tuning=theta.tuning,
                           batch=n.batch, batch.length=batch.length, report=100)
 
 ##Back transform
-samples.1 <- cbind(run.1$p.samples[,1], exp(run.1$p.samples[,2:4]))
-samples.2 <- cbind(run.2$p.samples[,1], exp(run.2$p.samples[,2:4]))
-samples.3 <- cbind(run.3$p.samples[,1], exp(run.3$p.samples[,2:4]))
+samples.1 <- cbind(run.1$p.theta.samples[,1], exp(run.1$p.theta.samples[,2:4]))
+samples.2 <- cbind(run.2$p.theta.samples[,1], exp(run.2$p.theta.samples[,2:4]))
+samples.3 <- cbind(run.3$p.theta.samples[,1], exp(run.3$p.theta.samples[,2:4]))
 
 samples <- mcmc.list(mcmc(samples.1), mcmc(samples.2), mcmc(samples.3))
 

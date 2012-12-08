@@ -1,7 +1,4 @@
-#include <iostream>
 #include <string>
-using namespace std;
-
 #include <R.h>
 #include <Rinternals.h>
 #include <R_ext/Linpack.h>
@@ -58,7 +55,7 @@ extern "C" {
     int tauSqIndx  = INTEGER(tauSqIndx_r)[0]; 
 
     //priors
-    string betaPrior = CHAR(STRING_ELT(betaPrior_r,0));
+    std::string betaPrior = CHAR(STRING_ELT(betaPrior_r,0));
     double *betaMu = NULL;
     double *betaC = NULL;
     
@@ -71,7 +68,7 @@ extern "C" {
     }
      
     bool nugget = static_cast<bool>(INTEGER(nugget_r)[0]);
-    string covModel = CHAR(STRING_ELT(covModel_r,0));
+    std::string covModel = CHAR(STRING_ELT(covModel_r,0));
     bool getBeta = static_cast<bool>(INTEGER(beta_r)[0]);
     bool getW = static_cast<bool>(INTEGER(w_r)[0]);
     int verbose = INTEGER(verbose_r)[0];
