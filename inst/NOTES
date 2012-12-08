@@ -1,0 +1,4 @@
+2012-12-13  andy  <andy@darkstar>
+
+	* First record of package changes. Staring with 0.2-6, nearly all c/c++ and R functions have been rewritten in an attempt to improve computational efficiency. 
+

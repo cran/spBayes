@@ -138,7 +138,7 @@ extern "C" {
 	Rprintf("\n\n");   
       }
 
-      Rprintf("Adaptive Metropolis with target acceptance rate: %.1f%\n", 100*acceptRate);
+      Rprintf("Adaptive Metropolis with target acceptance rate: %.1f\n", 100*acceptRate);
       Rprintf("\n");   
 
       Rprintf("Metropolis starting values:\n");
@@ -237,8 +237,8 @@ extern "C" {
     double logPostCurrent = 0, logPostCand = 0, detCand = 0, logDetK, SKtrace;
     double spParamsjCurrent, wjCurrent;
 
-    double *accept = (double *) R_alloc(nParams, sizeof(double));
-    double *accept_w = (double *) R_alloc(nm, sizeof(double));
+    double *accept = (double *) R_alloc(nParams, sizeof(double)); zeros(accept, nParams);
+    double *accept_w = (double *) R_alloc(nm, sizeof(double)); zeros(accept_w, nm);
 
     double *C = (double *) R_alloc(nm*nm, sizeof(double)); 
         
@@ -529,21 +529,21 @@ extern "C" {
 	  Rprintf("Batch: %i of %i, %3.2f%%\n", b, nBatch, 100.0*b/nBatch);
 	  Rprintf("\tparameter\tacceptance\ttuning\n");	  
 	  for(j = 0; j < p; j++){
-	    Rprintf("\tbeta[%i]\t\t%3.1f%\t\t%1.5f\n", j, 100.0*REAL(accept_r)[b*nParams+betaIndx+j], exp(spTuning[betaIndx+j]));
+	    Rprintf("\tbeta[%i]\t\t%3.1f\t\t%1.5f\n", j, 100.0*REAL(accept_r)[b*nParams+betaIndx+j], exp(spTuning[betaIndx+j]));
 	  }
 	  
 	  covTransInvExpand(&spParams[AIndx], A, m);
 	  
 	  for(k = 0, i = 0; k < m; k++){
 	    for(j = k; j < m; j++, i++){
-	      Rprintf("\tA[%i,%i]\t\t%3.1f%\t\t%1.5f\n",j, k, 100.0*REAL(accept_r)[b*nParams+AIndx+j], exp(spTuning[AIndx+i]));
+	      Rprintf("\tA[%i,%i]\t\t%3.1f\t\t%1.5f\n",j, k, 100.0*REAL(accept_r)[b*nParams+AIndx+j], exp(spTuning[AIndx+i]));
 	    }
 	  }
 	  
 	  for(j = 0; j < m; j++){
-	    Rprintf("\tphi[%i]\t\t%3.1f%\t\t%1.5f\n", j, 100.0*REAL(accept_r)[b*nParams+phiIndx+j], exp(spTuning[phiIndx+j]));	
+	    Rprintf("\tphi[%i]\t\t%3.1f\t\t%1.5f\n", j, 100.0*REAL(accept_r)[b*nParams+phiIndx+j], exp(spTuning[phiIndx+j]));	
 	    if(covModel == "matern")
-	      Rprintf("\tnu[%i]\t\t%3.1f%\t\t%1.5f\n", j, 100.0*REAL(accept_r)[b*nParams+nuIndx+j], exp(spTuning[nuIndx+j]));
+	      Rprintf("\tnu[%i]\t\t%3.1f\t\t%1.5f\n", j, 100.0*REAL(accept_r)[b*nParams+nuIndx+j], exp(spTuning[nuIndx+j]));
 	  } 
 	  
 	  Rprintf("-------------------------------------------------\n");

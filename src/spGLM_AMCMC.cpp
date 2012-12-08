@@ -121,7 +121,7 @@ extern "C" {
 	Rprintf("\n");
       }
 
-      Rprintf("Adaptive Metropolis with target acceptance rate: %.1f%\n", 100*acceptRate);
+      Rprintf("Adaptive Metropolis with target acceptance rate: %.1f\n", 100*acceptRate);
  
     } 
 
@@ -193,8 +193,8 @@ extern "C" {
     int s=0, status=0;
     double logPostCurrent = 0, logPostCand = 0, detCand = 0, spParamsjCurrent, wjCurrent;
 
-    double *accept = (double *) R_alloc(nParams, sizeof(double));
-    double *accept_w = (double *) R_alloc(n, sizeof(double));
+    double *accept = (double *) R_alloc(nParams, sizeof(double)); zeros(accept, nParams);
+    double *accept_w = (double *) R_alloc(n, sizeof(double)); zeros(accept_w, n);
 
     double *C = (double *) R_alloc(nn, sizeof(double));
     double *tmp_n = (double *) R_alloc(n, sizeof(double));
@@ -410,12 +410,12 @@ extern "C" {
 	  Rprintf("Batch: %i of %i, %3.2f%%\n", b, nBatch, 100.0*b/nBatch);
 	  Rprintf("\tparameter\tacceptance\ttuning\n");	  
 	  for(j = 0; j < p; j++){
-	    Rprintf("\tbeta[%i]\t\t%3.1f%\t\t%1.5f\n", j, 100.0*REAL(accept_r)[b*nParams+betaIndx+j], exp(spTuning[betaIndx+j]));
+	    Rprintf("\tbeta[%i]\t\t%3.1f\t\t%1.5f\n", j, 100.0*REAL(accept_r)[b*nParams+betaIndx+j], exp(spTuning[betaIndx+j]));
 	  }
-	  Rprintf("\tsigma.sq\t%3.1f%\t\t%1.5f\n", 100.0*REAL(accept_r)[b*nParams+sigmaSqIndx], exp(spTuning[sigmaSqIndx]));
-	  Rprintf("\tphi\t\t%3.1f%\t\t%1.5f\n", 100.0*REAL(accept_r)[b*nParams+phiIndx], exp(spTuning[phiIndx]));
+	  Rprintf("\tsigma.sq\t%3.1f\t\t%1.5f\n", 100.0*REAL(accept_r)[b*nParams+sigmaSqIndx], exp(spTuning[sigmaSqIndx]));
+	  Rprintf("\tphi\t\t%3.1f\t\t%1.5f\n", 100.0*REAL(accept_r)[b*nParams+phiIndx], exp(spTuning[phiIndx]));
 	  if(covModel == "matern")
-	    Rprintf("\tnu\t\t%3.1f%\t\t%1.5f\n", 100.0*REAL(accept_r)[b*nParams+nuIndx], exp(spTuning[nuIndx]));
+	    Rprintf("\tnu\t\t%3.1f\t\t%1.5f\n", 100.0*REAL(accept_r)[b*nParams+nuIndx], exp(spTuning[nuIndx]));
 	  Rprintf("-------------------------------------------------\n");
           #ifdef Win32
 	  R_FlushConsole();

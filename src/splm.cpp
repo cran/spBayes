@@ -485,13 +485,13 @@ extern "C" {
       	  if(amcmc){
       	    Rprintf("Batch: %i of %i, %3.2f%%\n", b+1, nBatch, 100.0*(b+1)/nBatch);
       	    Rprintf("\tparameter\tacceptance\ttuning\n");	  
-      	    Rprintf("\tsigma.sq\t%3.1f%\t\t%1.5f\n", 100.0*REAL(accept_r)[b*nParams+sigmaSqIndx], exp(tuning[sigmaSqIndx]));
+      	    Rprintf("\tsigma.sq\t%3.1f\t\t%1.5f\n", 100.0*REAL(accept_r)[b*nParams+sigmaSqIndx], exp(tuning[sigmaSqIndx]));
       	    if(nugget){
-      	      Rprintf("\ttau.sq\t\t%3.1f%\t\t%1.5f\n", 100.0*REAL(accept_r)[b*nParams+tauSqIndx], exp(tuning[tauSqIndx]));
+	      Rprintf("\ttau.sq\t\t%3.1f\t\t%1.5f\n", 100.0*REAL(accept_r)[b*nParams+tauSqIndx], exp(tuning[tauSqIndx]));
       	    }
-      	    Rprintf("\tphi\t\t%3.1f%\t\t%1.5f\n", 100.0*REAL(accept_r)[b*nParams+phiIndx], exp(tuning[phiIndx]));
+      	    Rprintf("\tphi\t\t%3.1f\t\t%1.5f\n", 100.0*REAL(accept_r)[b*nParams+phiIndx], exp(tuning[phiIndx]));
       	    if(covModel == "matern"){
-      	      Rprintf("\tnu\t\t%3.1f%\t\t%1.5f\n", 100.0*REAL(accept_r)[b*nParams+nuIndx], exp(tuning[nuIndx]));
+      	      Rprintf("\tnu\t\t%3.1f\t\t%1.5f\n", 100.0*REAL(accept_r)[b*nParams+nuIndx], exp(tuning[nuIndx]));
       	    }
       	  }else{
       	    Rprintf("Sampled: %i of %i, %3.2f%%\n", s, nSamples, 100.0*s/nSamples);
