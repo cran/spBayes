@@ -1,3 +1,8 @@
+2013-02-05  andy  <andy@darkstar>
+
+	* 0.3-3
+	* Fixed bug in spLMPredict.cpp that caused the posterior predictive distribution to be too narrow when spLM was called with no nugget.
+	
 2013-01-28  andy  <andy@darkstar>
 
 	* 0.3-2

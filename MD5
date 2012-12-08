@@ -1,4 +1,4 @@
-604a225eab6f6db4911a11196dc43148 *DESCRIPTION
+8b32eb45ca7730ebb175077cb0ded91b *DESCRIPTION
 92d25b851efaac3e8286bc10f70ff915 *NAMESPACE
 92e68259d6dd3e539816b7e847cd3b64 *R/adaptMetropGibbs.R
 d905170ecda7dff20b2d97cab92dcaa1 *R/bayesLMRef.R
@@ -17,7 +17,7 @@ ba398a4fda6daac3a06c8da3d7db4c06 *R/spPredict.R
 1e03d714545401d1321a3d4c0b3c35aa *data/BEF.dat.tab.gz
 d3d1506d71992fc0039934124f597f49 *data/WEF.dat.csv.gz
 fc1e01474aece5b483230d0ca4f7b988 *data/Zurich.dat.tab.gz
-617d8c1d678151da022ee1067f32d0b2 *inst/ChangeLog
+5f88cadd4b563ea1cb85aec54c686104 *inst/ChangeLog
 c31f15e48d4789bf5954504137c6a05b *inst/NOTES
 d16bcc410f632fb500366b0a36b70c5c *man/BEF.dat.Rd
 22c648b98621cfba8dbe9ea6c7b60e7f *man/WEF.dat.Rd
@@ -44,7 +44,7 @@ b249efaccbef0c45507a72c00e00455d *src/mkSpCov.cpp
 2eef8118c2402c11bcfd29491450c5dc *src/spGLM.cpp
 ef68ef45cb932085952f3bfb8f4cbb7b *src/spGLM_AMCMC.cpp
 dbca27fba579f7d6e71bb148ea3ee186 *src/spLM.cpp
-811a6b5df72df9c6d7f9b3b76632f478 *src/spLMPredict.cpp
+5e94e2db89b8876b9659125226eb1566 *src/spLMPredict.cpp
 3348edcb5bb980f813200656e235feba *src/spLMRecover.cpp
 1fa061f3266a318fb4ee32cc8d678697 *src/spMPPMvDIC.cpp
 21aa4b0042036255741089d1842bdf4a *src/spMvGLM.cpp

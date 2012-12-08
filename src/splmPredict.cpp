@@ -6,7 +6,6 @@
 #include <R_ext/BLAS.h>
 #include "util.h"
 
-
 extern "C" {
   SEXP spLMPredict(SEXP X_r, SEXP Y_r, SEXP n_r, SEXP p_r, SEXP Z_r, SEXP q_r,
 		   SEXP samples_r, SEXP nSamples_r, 
@@ -218,11 +217,11 @@ extern "C" {
 	if(betaPrior == "normal"){
 	  a = F77_NAME(ddot)(&p, &Z[j], &q, betaMu, &incOne) + F77_NAME(ddot)(&n, u, &incOne, &c[n*j], &incOne);
 	  
+	  F77_NAME(dsymv)(lower, &p, &one, betaC, &p, &Z[j], &q, &zero, tmp_p, &incOne);
 	  if(nugget){
-	    F77_NAME(dsymv)(lower, &p, &one, betaC, &p, &Z[j], &q, &zero, tmp_p, &incOne);
 	    b = sqrt(F77_NAME(ddot)(&p, tmp_p, &incOne, &Z[j], &q) + sigmaSq[s] + tauSq[s] - F77_NAME(ddot)(&n, &c[n*j], &incOne, &c[n*j], &incOne));
 	  }else{
-	    b = 0;
+	    b = sqrt(F77_NAME(ddot)(&p, tmp_p, &incOne, &Z[j], &q) + sigmaSq[s] - F77_NAME(ddot)(&n, &c[n*j], &incOne, &c[n*j], &incOne));	    
 	  }
 	}else{
 	  a = F77_NAME(ddot)(&p, &Z[j], &q, &beta[s], &nSamples) + F77_NAME(ddot)(&n, u, &incOne, &c[n*j], &incOne);
@@ -230,7 +229,7 @@ extern "C" {
 	  if(nugget){
 	    b = sqrt(sigmaSq[s] + tauSq[s] - F77_NAME(ddot)(&n, &c[n*j], &incOne, &c[n*j], &incOne));
 	  }else{
-	    b = 0;
+	    b = sqrt(sigmaSq[s] - F77_NAME(ddot)(&n, &c[n*j], &incOne, &c[n*j], &incOne));
 	  }
 	  
 	}
