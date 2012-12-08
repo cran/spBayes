@@ -130,3 +130,5 @@ print(spDiag(m.2))
 print(spDiag(m.3))
 }
 }
+
+\keyword{utilities}

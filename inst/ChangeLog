@@ -1,3 +1,8 @@
+2013-01-28  andy  <andy@darkstar>
+
+	* 0.3-2
+	* Fixed bug in spDiag.R and spPredict.R associated with bayesLMRef. Added keywords to serveral Rd files. Added spPPMvGLMPredict.cpp.
+
 2013-01-02  andy  <andy@darkstar>
 
 	* 0.3-1

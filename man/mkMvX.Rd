@@ -41,3 +41,5 @@ X.3 <- cbind(rep(1, 10), matrix(rnorm(30), nrow=10))
 X.mv <- mkMvX(list(X.1, X.2, X.3))
 }
 }
+
+\keyword{manip}

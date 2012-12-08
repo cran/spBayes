@@ -77,7 +77,7 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, ve
     s.indx <- seq(start, end, by=as.integer(thin))
     
     p.beta.tauSq.samples <- p.beta.tauSq.samples[s.indx,]
-    n.samples <- nrow(p.beta.samples)
+    n.samples <- nrow(p.beta.tauSq.samples)
     
     ##check covars
     if(missing(pred.covars)){stop("error: pred.covars must be specified\n")}

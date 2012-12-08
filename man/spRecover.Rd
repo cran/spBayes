@@ -96,3 +96,5 @@ w.hat <- apply(m.1$p.w.recover.samples, 1, mean)
 plot(w, w.hat, xlab="Observed w", ylab="Fitted w")
 }
 }
+
+\keyword{utilities}

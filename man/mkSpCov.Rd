@@ -107,3 +107,5 @@ Psi <- diag(1,q)
 C <- mkSpCov(coords, K, Psi, theta, cov.model="exponential")
 }
 }
+
+\keyword{utilities}

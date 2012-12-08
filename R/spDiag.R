@@ -52,13 +52,13 @@ spDiag <- function(sp.obj, start=1, end, thin=1, verbose=TRUE, n.report=100, ...
     GRS <- -sum(((y-mu.rep)/var.rep)^2) - sum(log(var.rep)^2)
     GRS
   }
-  
-  
+    
   if(class(sp.obj) == "bayesLMRef"){
 
     X <- sp.obj$X
     Y <- sp.obj$Y
     p <- ncol(X)
+    n <- nrow(X)
     
     p.beta.tauSq.samples <- sp.obj$p.beta.tauSq.samples
     n.samples <- nrow(p.beta.tauSq.samples)

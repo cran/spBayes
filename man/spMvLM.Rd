@@ -215,3 +215,5 @@ arrows(w.2, m.1.w.2.hat[,1], w.2, m.1.w.2.hat[,3], length=0.02, angle=90)
 lines(range(w), range(w))
 }
 }
+
+\keyword{model}

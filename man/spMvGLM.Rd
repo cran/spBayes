@@ -287,3 +287,5 @@ contour(surf, add=TRUE)
 points(coords)
 }
 }
+
+\keyword{model}

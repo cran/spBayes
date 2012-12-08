@@ -39,3 +39,5 @@ p2 <- cbind(runif(m),runif(m))
 D <- iDist(p1, p2)
 }
 }
+
+\keyword{utilities}

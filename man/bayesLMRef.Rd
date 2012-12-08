@@ -60,3 +60,5 @@ m.1 <- bayesLMRef(lm.obj, n.samples)
 summary(m.1$p.beta.tauSq.samples)
 }
 }
+
+\keyword{model}

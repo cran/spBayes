@@ -220,3 +220,5 @@ round(summary(window(m.1$p.theta.samples, start=burn.in))$quantiles[,c(3,1,5)],2
 round(summary(window(m.2$p.theta.samples, start=burn.in))$quantiles[,c(3,1,5)],2)
 }
 }
+
+\keyword{model}

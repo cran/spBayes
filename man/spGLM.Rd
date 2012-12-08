@@ -312,3 +312,5 @@ contour(surf, add=TRUE)
 text(coords, labels=round(y.hat.mu,0), cex=1)
 }
 }
+
+\keyword{model}
