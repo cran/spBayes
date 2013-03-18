@@ -255,7 +255,7 @@ extern "C" {
 
     //samples
     SET_VECTOR_ELT(result_r, 0, predSamples_r);
-    SET_VECTOR_ELT(resultName_r, 0, mkChar("p.predictive.samples")); 
+    SET_VECTOR_ELT(resultName_r, 0, mkChar("p.y.predictive.samples")); 
 
     namesgets(result_r, resultName_r);
    

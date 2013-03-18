@@ -1,8 +1,8 @@
 #include <algorithm>
 #include <string>
-#ifdef _OPENMP
-#include <omp.h>
-#endif
+// #ifdef _OPENMP
+// #include <omp.h>
+// #endif
 #include <R.h>
 #include <Rinternals.h>
 #include <R_ext/Linpack.h>
@@ -705,80 +705,80 @@ extern "C" {
 	  }
 	}//end params
 	
-	// //only update beta's mu and var if theta has changed
-	// if(updateBeta){
+	//only update beta's mu and var if theta has changed
+	if(updateBeta){
 	  
-	//   F77_NAME(dcopy)(&nm, Y, &incOne, tmp_nm, &incOne);
-	//   F77_NAME(dcopy)(&nmp, X, &incOne, tmp_nmp, &incOne);
+	  F77_NAME(dcopy)(&nm, Y, &incOne, tmp_nm, &incOne);
+	  F77_NAME(dcopy)(&nmp, X, &incOne, tmp_nmp, &incOne);
 
-	//   for(k = 0; k < n; k++){
-	//     F77_NAME(dtrmv)(lower, ntran, nUnit, &m, &DCurrent[k*mm], &m, &tmp_nm[k*m], &incOne);//\tilda{y}
-	//     F77_NAME(dtrmm)(rside, lower, ytran, nUnit, &p, &m, &one, &DCurrent[k*mm], &m, &tmp_nmp[k*m*p], &p);//V 
-	//   }
+	  for(k = 0; k < n; k++){
+	    F77_NAME(dtrmv)(lower, ntran, nUnit, &m, &DCurrent[k*mm], &m, &tmp_nm[k*m], &incOne);//\tilda{y}
+	    F77_NAME(dtrmm)(rside, lower, ytran, nUnit, &p, &m, &one, &DCurrent[k*mm], &m, &tmp_nmp[k*m*p], &p);//V 
+	  }
   
-	//   F77_NAME(dgemm)(ntran, ytran, &gm, &p, &nm, &one, HCurrent, &gm, tmp_nmp, &p, &zero, tmp_gmp, &gm);//\tilda{V}
-	//   F77_NAME(dgemm)(ntran, ytran, &p, &p, &nm, &one, tmp_nmp, &p, tmp_nmp, &p, &zero, tmp_pp, &p);//V'V
-	//   F77_NAME(dgemm)(ytran, ntran, &p, &p, &gm, &one, tmp_gmp, &gm, tmp_gmp, &gm, &zero, tmp_pp2, &p);//\tilda{V}'\tilda{V}
+	  F77_NAME(dgemm)(ntran, ytran, &gm, &p, &nm, &one, HCurrent, &gm, tmp_nmp, &p, &zero, tmp_gmp, &gm);//\tilda{V}
+	  F77_NAME(dgemm)(ntran, ytran, &p, &p, &nm, &one, tmp_nmp, &p, tmp_nmp, &p, &zero, tmp_pp, &p);//V'V
+	  F77_NAME(dgemm)(ytran, ntran, &p, &p, &gm, &one, tmp_gmp, &gm, tmp_gmp, &gm, &zero, tmp_pp2, &p);//\tilda{V}'\tilda{V}
 	  
-	//   for(k = 0; k < p; k++){
-	//     for(l = k; l < p; l++){
-	//       tmp_pp[k*p+l] -= tmp_pp2[k*p+l];//Z
+	  for(k = 0; k < p; k++){
+	    for(l = k; l < p; l++){
+	      tmp_pp[k*p+l] -= tmp_pp2[k*p+l];//Z
 	      
-	//       if(betaPrior == "normal"){
-	// 	tmp_pp[k*p+l] += betaCInv[k*p+l];
-	//       }
+	      if(betaPrior == "normal"){
+		tmp_pp[k*p+l] += betaCInv[k*p+l];
+	      }
 	      
-	//     }
-	//   }
+	    }
+	  }
  	  
-	//   //B
-	//   F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
-	//   F77_NAME(dpotri)(lower, &p, tmp_pp, &p, &info); if(info != 0){error("c++ error: dpotri failed\n");}
+	  //B
+	  F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+	  F77_NAME(dpotri)(lower, &p, tmp_pp, &p, &info); if(info != 0){error("c++ error: dpotri failed\n");}
    
-	//   //b
-	//   F77_NAME(dgemv)(ntran, &p, &nm, &one, tmp_nmp, &p, tmp_nm, &incOne, &zero, tmp_p, &incOne); //V'\tilda{y}
-	//   F77_NAME(dgemv)(ntran, &gm, &nm, &one, HCurrent, &gm, tmp_nm, &incOne, &zero, tmp_gm, &incOne); //H\tilda{y}
-	//   F77_NAME(dgemv)(ytran, &gm, &p, &one, tmp_gmp, &gm, tmp_gm, &incOne, &zero, tmp_pp2, &incOne); //\tilda{V}'(H\tilda{y})
+	  //b
+	  F77_NAME(dgemv)(ntran, &p, &nm, &one, tmp_nmp, &p, tmp_nm, &incOne, &zero, tmp_p, &incOne); //V'\tilda{y}
+	  F77_NAME(dgemv)(ntran, &gm, &nm, &one, HCurrent, &gm, tmp_nm, &incOne, &zero, tmp_gm, &incOne); //H\tilda{y}
+	  F77_NAME(dgemv)(ytran, &gm, &p, &one, tmp_gmp, &gm, tmp_gm, &incOne, &zero, tmp_pp2, &incOne); //\tilda{V}'(H\tilda{y})
 	  
-	//   for(k = 0; k < p; k++){
-	//     tmp_p[k] -= tmp_pp2[k]; 
+	  for(k = 0; k < p; k++){
+	    tmp_p[k] -= tmp_pp2[k]; 
 	    
-	//     if(betaPrior == "normal"){
-	//       tmp_p[k] += betaCInvMu[k];
-	//     }
-	//   }
+	    if(betaPrior == "normal"){
+	      tmp_p[k] += betaCInvMu[k];
+	    }
+	  }
 	  
-	//   F77_NAME(dsymv)(lower, &p, &one, tmp_pp, &p, tmp_p, &incOne, &zero, tmp_p2, &incOne); //Bb
-	//   F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+	  F77_NAME(dsymv)(lower, &p, &one, tmp_pp, &p, tmp_p, &incOne, &zero, tmp_p2, &incOne); //Bb
+	  F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
 
-	// }//end updateBeta
+	}//end updateBeta
 
-	// //set to false so beta's mu and var are only updated when theta has changed
-       	// updateBeta = false;
+	//set to false so beta's mu and var are only updated when theta has changed
+       	updateBeta = false;
 	
-	// //draw beta
-	// mvrnorm(beta, tmp_p2, tmp_pp, p, false);//note, tmp_p2 and tmp_pp will carry over when theta is not updated
+	//draw beta
+	mvrnorm(beta, tmp_p2, tmp_pp, p, false);//note, tmp_p2 and tmp_pp will carry over when theta is not updated
 	
-	// //update logPostCurrent (beta changes on every iteration so logPostCurrent must be updated)
-	// F77_NAME(dgemv)(ytran, &p, &nm, &negOne, X, &p, beta, &incOne, &zero, u, &incOne);
-	// F77_NAME(daxpy)(&nm, &one, Y, &incOne, u, &incOne);//u
+	//update logPostCurrent (beta changes on every iteration so logPostCurrent must be updated)
+	F77_NAME(dgemv)(ytran, &p, &nm, &negOne, X, &p, beta, &incOne, &zero, u, &incOne);
+	F77_NAME(daxpy)(&nm, &one, Y, &incOne, u, &incOne);//u
 	  
-	// F77_NAME(dcopy)(&nm, u, &incOne, tmp_nm, &incOne);
-	// for(k = 0; k < n; k++){
-	//   F77_NAME(dtrmv)(lower, ntran, nUnit, &m, &DCurrent[k*mm], &m, &tmp_nm[k*m], &incOne);//v
-	// }
+	F77_NAME(dcopy)(&nm, u, &incOne, tmp_nm, &incOne);
+	for(k = 0; k < n; k++){
+	  F77_NAME(dtrmv)(lower, ntran, nUnit, &m, &DCurrent[k*mm], &m, &tmp_nm[k*m], &incOne);//v
+	}
 	  
-	// F77_NAME(dgemv)(ntran, &gm, &nm, &one, HCurrent, &gm, tmp_nm, &incOne, &zero, tmp_gm, &incOne); //w = Hv
+	F77_NAME(dgemv)(ntran, &gm, &nm, &one, HCurrent, &gm, tmp_nm, &incOne, &zero, tmp_gm, &incOne); //w = Hv
 	  
-	// Q = F77_NAME(ddot)(&nm, tmp_nm, &incOne, tmp_nm, &incOne) - F77_NAME(ddot)(&gm, tmp_gm, &incOne, tmp_gm, &incOne);
+	Q = F77_NAME(ddot)(&nm, tmp_nm, &incOne, tmp_nm, &incOne) - F77_NAME(ddot)(&gm, tmp_gm, &incOne, tmp_gm, &incOne);
 
-	// logPostCurrent = priorsCurrent-0.5*detCurrent-0.5*Q;
+	logPostCurrent = priorsCurrent-0.5*detCurrent-0.5*Q;
 
-	// /******************************
-        //        Save samples
-	// *******************************/
-	// F77_NAME(dcopy)(&p, beta, &incOne, &REAL(betaSamples_r)[s*p], &incOne);
-	// F77_NAME(dcopy)(&nParams, params, &incOne, &REAL(samples_r)[s*nParams], &incOne);
+	/******************************
+               Save samples
+	*******************************/
+	F77_NAME(dcopy)(&p, beta, &incOne, &REAL(betaSamples_r)[s*p], &incOne);
+	F77_NAME(dcopy)(&nParams, params, &incOne, &REAL(samples_r)[s*nParams], &incOne);
 
 	R_CheckUserInterrupt();
       }//end batch

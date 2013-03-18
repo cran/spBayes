@@ -1,14 +1,13 @@
 #include <string>
-#ifdef _OPENMP
-#include <omp.h>
-#endif
+// #ifdef _OPENMP
+// #include <omp.h>
+// #endif
 #include <R.h>
 #include <Rinternals.h>
 #include <R_ext/Linpack.h>
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
-#include <omp.h>
 
 extern "C" {
 

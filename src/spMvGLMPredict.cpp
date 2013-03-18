@@ -1,7 +1,7 @@
 #include <string>
-#ifdef _OPENMP
-#include <omp.h>
-#endif
+// #ifdef _OPENMP
+// #include <omp.h>
+// #endif
 #include <R.h>
 #include <Rinternals.h>
 #include <R_ext/Linpack.h>

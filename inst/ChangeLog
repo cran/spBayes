@@ -1,3 +1,10 @@
+2013-03-18  andy  <andy@darkstar>
+
+	* 0.3-6
+	* Removed second inclusion of #include <omp.h> from spPPMvGLM.cpp.
+	* Added regression coefficient update back into spPPMvLM.cpp.
+	* Changed output from spPredict spLM and spMvLM objects to match the documentation, i.e., p.posterior.samples is now p.y.posterior.samples.
+
 2013-03-01  andy  <andy@darkstar>
 
 	* 0.3-5
