@@ -87,7 +87,8 @@ spLM(formula, data = parent.frame(), coords, knots,
   \item{p.theta.samples}{a \code{coda} object of posterior samples for the defined
     parameters. }
   \item{acceptance}{the Metropolis sampling
-    acceptance rate. }
+    acceptance percent. Reported at \code{batch.length} or \code{n.report}
+  intervals for \code{amcmc} specified and non-specified, respectively.}
   The return object might include additional data used for subsequent
   prediction and/or model fit evaluation.
 }

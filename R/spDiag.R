@@ -635,11 +635,8 @@ spDiag <- function(sp.obj, start=1, end, thin=1, verbose=TRUE, n.report=100, ...
     cov.model <- sp.obj$cov.model
     p.beta.theta.samples <- sp.obj$p.beta.theta.samples
     n.samples <- nrow(p.beta.theta.samples)
-
-    if(family == "binomial"){
-      weights <- as.vector(t(sp.obj$weights))
-    }
-    
+    weights <- as.vector(t(sp.obj$weights))
+        
     ##subsamples
     if(missing(end)){end <- n.samples}
     

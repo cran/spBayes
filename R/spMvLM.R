@@ -1,7 +1,6 @@
 spMvLM <- function(formula, data = parent.frame(), coords, knots,
                    starting, tuning, priors, cov.model,
                    modified.pp=TRUE, amcmc, n.samples,
-                   ##get.beta=FALSE, start=1, end, thin=1,
                    verbose=TRUE, n.report=100, ...){
 
   ####################################################
@@ -38,11 +37,11 @@ spMvLM <- function(formula, data = parent.frame(), coords, knots,
   }else{
     stop("error: formula is misspecified")
   }
-
+ 
   p <- ncol(X)
   n <- nrow(X)/m 
   n.ltr <- m*(m+1)/2
-  
+
   ##make sure storage mode is correct
   storage.mode(Y) <- "double"
   storage.mode(X) <- "double"
@@ -93,7 +92,7 @@ spMvLM <- function(formula, data = parent.frame(), coords, knots,
   ####################################################
   ##Distance matrices
   ####################################################
- 
+
   ####################
   ##Coords
   ####################
@@ -383,30 +382,6 @@ spMvLM <- function(formula, data = parent.frame(), coords, knots,
   storage.mode(nu.tuning) <- "double"
 
   ####################################################
-  ##Recover beta (removed for now)
-  ####################################################
-  n.samples <- batch.length*n.batch
-  
-  ## if(missing(end)){end <- n.samples}
-  
-  ## if(!is.numeric(start) || start >= n.samples)
-  ##   stop("error: invalid start for recovery of beta")
-  ## if(!is.numeric(end) || end > n.samples) 
-  ##   stop("error: invalid end for recovery of beta")
-  ## if(!is.numeric(thin) || thin >= n.samples) 
-  ##   stop("error: invalid thin for recovery of beta")
-
-  ##identifies which samples should be used for recovery
-  r.indx <- rep(0,n.samples)
-  ## r.indx[seq(start, end, by=as.integer(thin))] <- 1 
-
-  ##switch off for now
-  get.beta <- FALSE
-  
-  storage.mode(r.indx) <- "integer"
-  storage.mode(get.beta) <- "integer"
-  
-  ####################################################
   ##Other stuff
   ####################################################
   storage.mode(n.report) <- "integer"
@@ -464,7 +439,6 @@ spMvLM <- function(formula, data = parent.frame(), coords, knots,
                  nu.Unif, phi.Unif,
                  phi.starting, A.starting, L.starting, nu.starting, 
                  phi.tuning, A.tuning, L.tuning, nu.tuning,
-                 get.beta, r.indx,
                  nugget, cov.model, is.amcmc, n.batch, batch.length, accept.rate, verbose, n.report)
   }
   
@@ -474,12 +448,7 @@ spMvLM <- function(formula, data = parent.frame(), coords, knots,
   if(is.pp){
     out$p.beta.samples <- mcmc(t(out$p.beta.samples))
     colnames(out$p.beta.samples) <- x.names
-  }## else{
-  ##   if(get.beta){
-  ##     out$p.beta.samples <- mcmc(t(out$p.beta.samples))
-  ##     colnames(out$p.beta.samples) <- x.names
-  ##   }
-  ## }
+  }
   
   out$p.theta.samples <- mcmc(t(out$p.theta.samples))
 
@@ -541,8 +510,6 @@ spMvLM <- function(formula, data = parent.frame(), coords, knots,
   out$Psi.diag <- Psi.diag
   out$beta.prior <- beta.prior
   out$beta.Norm <- beta.Norm
-  ## out$r.indx <- r.indx
-  ## out$get.beta <- get.beta
   out$x.names <- x.names
   out$run.time <- run.time
   

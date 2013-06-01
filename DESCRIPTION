@@ -1,6 +1,6 @@
 Package: spBayes
-Version: 0.3-6
-Date: 2013-3-18
+Version: 0.3-7
+Date: 2013-6-1
 Title: Univariate and Multivariate Spatial-temporal Modeling
 Author: Andrew O. Finley <finleya@msu.edu>, Sudipto Banerjee
         <sudiptob@biostat.umn.edu>
@@ -12,6 +12,6 @@ Description: spBayes fits univariate and multivariate spatio-temporal
 License: GPL (>= 2)
 URL: http://blue.for.msu.edu/software
 Repository: CRAN
-Packaged: 2013-03-19 14:37:32 UTC; andy
-Date/Publication: 2013-03-19 16:57:32
+Packaged: 2013-06-02 17:41:37 UTC; andy
+Date/Publication: 2013-06-02 19:41:53
 NeedsCompilation: yes

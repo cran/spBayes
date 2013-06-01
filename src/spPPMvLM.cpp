@@ -812,10 +812,9 @@ extern "C" {
       	    if(nugget){
       	      if(PsiDiag){
       		for(j = 0; j < m; j++){
-      		  Rprintf("\tPsi[%j,%j]\t\t%3.1f%\t\t%1.2f\n", j+1, j+1, 100.0*REAL(accept_r)[b*nParams+LIndx+j], exp(tuning[LIndx+j]));
+      		  Rprintf("\tPsi[%i,%i]\t%3.1f%\t\t%1.2f\n", j+1, j+1, 100.0*REAL(accept_r)[b*nParams+LIndx+j], exp(tuning[LIndx+j]));
       		}
       	      }else{
-      		Rprintf("\n");
       		for(j = 0, i = 0; j < m; j++){
       		  for(k = j; k < m; k++, i++){
       		    Rprintf("\tL[%i,%i]\t\t%3.1f%\t\t%1.2f\n", j+1, k+1, 100.0*REAL(accept_r)[b*nParams+LIndx+i], exp(tuning[LIndx+i]));
@@ -823,7 +822,6 @@ extern "C" {
       		}
       	      }
       	    }
-      	    Rprintf("\n");
       	    for(j = 0; j < m; j++){
       	      Rprintf("\tphi[%i]\t\t%3.1f%\t\t%1.2f\n", j+1, 100.0*REAL(accept_r)[b*nParams+phiIndx+j], exp(tuning[phiIndx+j]));
       	    }

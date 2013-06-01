@@ -19,7 +19,6 @@ extern "C" {
 	      SEXP nuUnif_r, SEXP phiUnif_r,
 	      SEXP phiStarting_r, SEXP AStarting_r, SEXP LStarting_r, SEXP nuStarting_r, 
 	      SEXP phiTuning_r, SEXP ATuning_r, SEXP LTuning_r, SEXP nuTuning_r, 
-	      SEXP getBeta_r, SEXP rIndx_r,
 	      SEXP nugget_r, SEXP covModel_r, SEXP amcmc_r, SEXP nBatch_r, SEXP batchLength_r, SEXP acceptRate_r, SEXP verbose_r, SEXP nReport_r){
 
     /*****************************************
@@ -131,10 +130,6 @@ extern "C" {
       nuUnif = REAL(nuUnif_r);
     }
 
-    //recover beta
-    // bool getBeta = static_cast<bool>(INTEGER(getBeta_r)[0]);
-    // int *rIndx = INTEGER(rIndx_r);
-
     bool amcmc = static_cast<bool>(INTEGER(amcmc_r)[0]);
     int nBatch = INTEGER(nBatch_r)[0];
     int batchLength = INTEGER(batchLength_r)[0];
@@ -164,10 +159,6 @@ extern "C" {
       if(!nugget){
 	Rprintf("tau.sq not included in the model (i.e., no nugget model).\n\n");
       }
-
-      // if(getBeta){
-      // 	Rprintf("Recovering beta samples.\n\n");
-      // }
 
       Rprintf("Priors and hyperpriors:\n");
       
@@ -337,24 +328,19 @@ extern "C" {
     }
 
     //return stuff  
-    SEXP samples_r, accept_r, tuning_r;//, betaSamples_r;
+    SEXP samples_r, accept_r, tuning_r;
     PROTECT(samples_r = allocMatrix(REALSXP, nParams, nSamples)); nProtect++;
-    PROTECT(accept_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++; 
-    PROTECT(tuning_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++;  
     
-    // int nRIndx = 0;
-    // if(getBeta){
-    //   for(i = 0; i < nSamples; i++){
-    // 	if(rIndx[i] == 1)
-    // 	  nRIndx++;
-    //   }
-    //   PROTECT(betaSamples_r = allocMatrix(REALSXP, p, nRIndx)); nProtect++; 
-    // }
-
+    if(amcmc){
+      PROTECT(accept_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++; 
+      PROTECT(tuning_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++;  
+    }else{
+      PROTECT(accept_r = allocMatrix(REALSXP, 1, floor(static_cast<double>(nSamples/nReport)))); nProtect++; 
+    }
     /*****************************************
        Set-up MCMC alg. vars. matrices etc.
     *****************************************/
-    int status=0, batchAccept=0;
+    int status=1, batchAccept=0, reportCnt=0;
     double logMHRatio =0, logPostCurrent = R_NegInf, logPostCand = 0, det = 0, paramsjCurrent = 0;
     double Q, logDetK, SKtrace;
 
@@ -382,29 +368,6 @@ extern "C" {
     //double *tmp_p2 = (double *) R_alloc(p, sizeof(double));
     double *tmp_nmnm = NULL;
     double *Cbeta = NULL;
-
-    //recover stuff
-    // double *B = NULL;
-    // double *bb = NULL;
-    // double *betaCInv = NULL;
-    // double *betaCInvMu = NULL;
-    // int rCnt = 0;
-
-    // if(getBeta){
-    //   B = (double *) R_alloc(pp, sizeof(double));
-    //   bb = (double *) R_alloc(p, sizeof(double));
-      
-    //   if(betaPrior == "normal"){
-    // 	betaCInv = (double *) R_alloc(pp, sizeof(double));
-    // 	betaCInvMu = (double *) R_alloc(p, sizeof(double));
-
-    // 	F77_NAME(dcopy)(&pp, betaC, &incOne, betaCInv, &incOne);
-    // 	F77_NAME(dpotrf)(lower, &p, betaCInv, &p, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
-    // 	F77_NAME(dpotri)(lower, &p, betaCInv, &p, &info); if(info != 0){error("c++ error: dpotri failed\n");}
-	
-    // 	F77_NAME(dsymv)(lower, &p, &one, betaCInv, &p, betaMu, &incOne, &zero, betaCInvMu, &incOne);      
-    //   }
-    // }
 
     if(betaPrior == "normal"){
       tmp_nmnm = (double *) R_alloc(nmnm, sizeof(double));
@@ -622,43 +585,6 @@ extern "C" {
 	      batchAccept++;
 	    }
 	    
-	    // //recover beta
-	    // if(getBeta && rIndx[s] == 1){
-	      
-	    //   if(betaPrior == "normal"){
-	    // 	F77_NAME(dpotrf)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
-	    // 	F77_NAME(dcopy)(&nm, Y, &incOne, vU, &incOne);
-	    // 	F77_NAME(dcopy)(&nmp, X, &incOne, &vU[nm], &incOne);
-	    // 	F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &nm, &p1, &one, C, &nm, vU, &nm); //L[v:U] = [y:X]
-	    //   }
-	      
-	    //   //B
-	    //   F77_NAME(dgemm)(ytran, ntran, &p, &p, &nm, &one, &vU[nm], &nm, &vU[nm], &nm, &zero, B, &p); //U'U
-	      
-	    //   if(betaPrior == "normal"){
-	    // 	for(k = 0; k < p; k++){
-	    // 	  for(l = k; l < p; l++){
-	    // 	    B[k*p+l] += betaCInv[k*p+l];
-	    // 	  }
-	    // 	}
-	    //   }
-	      
-	    //   F77_NAME(dpotrf)(lower, &p, B, &p, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
-	    //   F77_NAME(dpotri)(lower, &p, B, &p, &info); if(info != 0){error("c++ error: dpotri failed\n");}
-	      
-	    //   //bb
-	    //   F77_NAME(dgemv)(ytran, &nm, &p, &one, &vU[nm], &nm, vU, &incOne, &zero, tmp_p, &incOne); //U'v
-	      
-	    //   if(betaPrior == "normal"){
-	    // 	for(k = 0; k < p; k++){
-	    // 	  tmp_p[k] += betaCInvMu[k];
-	    // 	}
-	    //   }
-	      
-	    //   F77_NAME(dsymv)(lower, &p, &one, B, &p, tmp_p, &incOne, &zero, bb, &incOne); 
-	    //   F77_NAME(dpotrf)(lower, &p, B, &p, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
-	    // }//end update beta
-	    
 	  }else{
 	    if(amcmc){
 	      params[j] = paramsjCurrent;
@@ -676,15 +602,7 @@ extern "C" {
                Save samples
 	*******************************/
 	F77_NAME(dcopy)(&nParams, params, &incOne, &REAL(samples_r)[s*nParams], &incOne);
-	
-	// /******************************
-        //       Recover beta
-	// *******************************/
-	// if(getBeta && rIndx[s] == 1){
-	//   mvrnorm(&REAL(betaSamples_r)[rCnt*p], bb, B, p, false);
-	//   rCnt++;
-	// }
-	
+
 	R_CheckUserInterrupt();
       }//end batch
       
@@ -704,10 +622,11 @@ extern "C" {
       }
       
       //report
-      if(verbose){
-	if(status == nReport){
+      if(status == nReport){
+	
+	if(verbose){
 	  if(amcmc){
-	    Rprintf("Batch: %i of %i, %3.2f%%\n", b, nBatch, 100.0*b/nBatch);
+	    Rprintf("Batch: %i of %i, %3.2f%%\n", b+1, nBatch, 100.0*(b+1)/nBatch);
 	    Rprintf("\tparameter\tacceptance\ttuning\n");
 	    for(j = 0, i = 0; j < m; j++){
 	      for(k = j; k < m; k++, i++){
@@ -717,7 +636,7 @@ extern "C" {
 	    if(nugget){
 	      if(PsiDiag){
 		for(j = 0; j < m; j++){
-		  Rprintf("\tPsi[%i,%i]\t%3.1f\t\t%1.2f\n", j+1, j+1, 100.0*REAL(accept_r)[b*nParams+LIndx+j], exp(tuning[LIndx+j]));
+		  Rprintf("\tPsi[%i,%i]\t\t%3.1f\t\t%1.2f\n", j+1, j+1, 100.0*REAL(accept_r)[b*nParams+LIndx+j], exp(tuning[LIndx+j]));
 		}
 	      }else{
 		Rprintf("\n");
@@ -747,13 +666,19 @@ extern "C" {
           #ifdef Win32
 	  R_FlushConsole();
           #endif
-	  status = 0;
-	  batchAccept = 0;
 	}
+
+	if(!amcmc){
+	  REAL(accept_r)[reportCnt] = 100.0*batchAccept/nReport;
+	  reportCnt++;
+	}
+	
+	status = 0;
+	batchAccept = 0;
       }
       status++;
       
-    }//end samples
+    }//end sample loop
     
     PutRNGstate();
     
@@ -783,11 +708,11 @@ extern "C" {
     
     //make return object
     SEXP result_r, resultName_r;  
-    int nResultListObjs = 3;
-    
-    // if(getBeta){
-    //   nResultListObjs++;
-    // }
+    int nResultListObjs = 2;
+
+    if(amcmc){
+      nResultListObjs++;
+    }
     
     PROTECT(result_r = allocVector(VECSXP, nResultListObjs)); nProtect++;
     PROTECT(resultName_r = allocVector(VECSXP, nResultListObjs)); nProtect++;
@@ -799,13 +724,10 @@ extern "C" {
     SET_VECTOR_ELT(result_r, 1, accept_r);
     SET_VECTOR_ELT(resultName_r, 1, mkChar("acceptance"));
     
-    SET_VECTOR_ELT(result_r, 2, tuning_r);
-    SET_VECTOR_ELT(resultName_r, 2, mkChar("tuning"));
-    
-    // if(getBeta){
-    //   SET_VECTOR_ELT(result_r, 3, betaSamples_r);
-    //   SET_VECTOR_ELT(resultName_r, 3, mkChar("p.beta.samples"));
-    // }
+    if(amcmc){
+      SET_VECTOR_ELT(result_r, 2, tuning_r);
+      SET_VECTOR_ELT(resultName_r, 2, mkChar("tuning"));
+    }
     
     namesgets(result_r, resultName_r);
     

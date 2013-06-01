@@ -115,7 +115,7 @@ extern "C" {
     int status=1;
     
     double *C = (double *) R_alloc(nmnm, sizeof(double));
- 
+    double *W = (double *) R_alloc(nmnm, sizeof(double));
     double *A = (double *) R_alloc(mm, sizeof(double)); 
     double *L = (double *) R_alloc(mm, sizeof(double));
     double *Psi = (double *) R_alloc(mm, sizeof(double));
@@ -128,6 +128,7 @@ extern "C" {
     double *bb = (double *) R_alloc(p, sizeof(double));
     double *tmp_p = (double *) R_alloc(p, sizeof(double));
     double *tmp_mm = (double *) R_alloc(mm, sizeof(double));
+    double *tmp_mm2 = (double *) R_alloc(mm, sizeof(double));
     //double *tmp_p2 = (double *) R_alloc(p, sizeof(double));
     
     int p1 = p+1;
@@ -188,6 +189,7 @@ extern "C" {
 	  covExpand(&samples[s*nParams+LIndx], Psi, m);
 	}
       }
+
       
       //construct covariance matrix
       for(jj = 0; jj < n; jj++){
@@ -224,7 +226,7 @@ extern "C" {
 	  }
 	}
       }
-            
+      
       F77_NAME(dpotrf)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: dpotrf failed 2\n");}
       
       F77_NAME(dcopy)(&nm, Y, &incOne, vU, &incOne);
@@ -263,68 +265,173 @@ extern "C" {
       if(getW){
 	
 	if(nugget){
-	  
+
+	  //v2
 	  //construct covariance matrix
 	  for(jj = 0; jj < n; jj++){
 	    for(ii = jj; ii < n; ii++){	
 	      for(k = 0; k < m; k++){
-		for(l = 0; l < m; l++){
-		  C[(k+jj*m)*nm+(ii*m+l)] = 0.0; 
-		  for(h = 0; h < m; h++){
-		    theta[0] = phi[h];
-		    if(covModel == "matern"){
-		      theta[1] = nu[h];
-		    }
-		    C[(k+jj*m)*nm+(ii*m+l)] += A[k+m*h]*A[l+m*h]*spCor(coordsD[jj*n+ii], theta, covModel);
-		  }
-		}
+	  	for(l = 0; l < m; l++){
+	  	  C[(k+jj*m)*nm+(ii*m+l)] = 0.0; 
+	  	  for(h = 0; h < m; h++){
+	  	    theta[0] = phi[h];
+	  	    if(covModel == "matern"){
+	  	      theta[1] = nu[h];
+	  	    }
+	  	    C[(k+jj*m)*nm+(ii*m+l)] += A[k+m*h]*A[l+m*h]*spCor(coordsD[jj*n+ii], theta, covModel);
+	  	  }
+	  	}
 	      }
 	    }
 	  }
-	  
-	  F77_NAME(dpotrf)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: dpotrf failed 6\n");}
-	  F77_NAME(dpotri)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: dpotri failed 7\n");}
-	  
+
+	  zeros(W, nmnm);
+
 	  if(PsiDiag){
 	    for(l = 0; l < n; l++){
 	      for(k = 0; k < m; k++){
-		C[(l*m+k)*nm+(l*m+k)] += 1.0/Psi[k];
+	  	C[(l*m+k)*nm+(l*m+k)] += Psi[k];
+	  	W[(l*m+k)*nm+(l*m+k)] = Psi[k];
 	      }
 	    }
 	  }else{
-	    F77_NAME(dpotrf)(lower, &m, Psi, &m, &info); if(info != 0){error("c++ error: dpotrf failed 8\n");}
-	    F77_NAME(dpotri)(lower, &m, Psi, &m, &info); if(info != 0){error("c++ error: dpotri failed 9\n");}
-	    
+	    //fill in the upper tri of Psi for W
+	    for(k = 0; k < m; k++){
+	      for(l = 0; l < m; l++){
+	  	Psi[l*m+k] =  Psi[k*m+l];
+	      }
+	    }
+ 
 	    for(i = 0; i < n; i++){
 	      for(k = 0; k < m; k++){
-		for(l = 0; l < m; l++){
-		  C[(i*m+l)*nm+(i*m+k)] += Psi[l*m+k];
-		}
+	  	for(l = 0; l < m; l++){
+	  	  C[(i*m+l)*nm+(i*m+k)] += Psi[l*m+k];
+	  	  W[(i*m+l)*nm+(i*m+k)] = Psi[l*m+k];
+	  	}
 	      }
 	    }
 	  }
-	  
-	  F77_NAME(dpotrf)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: dpotrf failed 10\n");}
-	  F77_NAME(dpotri)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: dpotri failed 11\n");}
-	  
+
+	  //L
+	  F77_NAME(dpotrf)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: 1 dpotrf failed\n");}
+
+	  //W
+	  F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &nm, &nm, &one, C, &nm, W, &nm);
+
+	  //L_B
+	  F77_NAME(dgemm)(ytran, ntran, &nm, &nm, &nm, &negOne, W, &nm, W, &nm, &zero, C, &nm);
+
+	  if(PsiDiag){
+	    for(l = 0; l < n; l++){
+	      for(k = 0; k < m; k++){
+	  	C[(l*m+k)*nm+(l*m+k)] += Psi[k];
+	      }
+	    }
+	  }else{	    
+	    for(i = 0; i < n; i++){
+	      for(k = 0; k < m; k++){
+	  	for(l = 0; l < m; l++){
+	  	  C[(i*m+l)*nm+(i*m+k)] += Psi[l*m+k];
+	  	}
+	      }
+	    }
+	  }
+
+	  F77_NAME(dpotrf)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: 2 dpotrf failed\n");}
+
 	  F77_NAME(dgemv)(ntran, &nm, &p, &negOne, X, &nm, &REAL(betaSamples_r)[s*p], &incOne, &zero, vU, &incOne);
 	  F77_NAME(daxpy)(&nm, &one, Y, &incOne, vU, &incOne);
-	  
+
+	  if(!PsiDiag){
+	    F77_NAME(dpotrf)(lower, &m, Psi, &m, &info); if(info != 0){error("c++ error: 3 dpotrf failed 8\n");}
+	    F77_NAME(dpotri)(lower, &m, Psi, &m, &info); if(info != 0){error("c++ error: 4 dpotri failed 9\n");}
+	  }
+
 	  for(k = 0; k < n; k++){
 	    if(PsiDiag){
 	      for(l = 0; l < m; l++){
-	  	vU[nm+k*m+l] = vU[k*m+l]*1.0/Psi[l];
+	  	vU[nm+k*m+l] = vU[k*m+l]/Psi[l];
 	      }
 	    }else{
 	      F77_NAME(dsymv)(lower, &m, &one, Psi, &m, &vU[k*m], &incOne, &zero, &vU[nm+k*m], &incOne); 
 	    }
 	  }
+
+	  F77_NAME(dtrmv)(lower, ytran, nUnit, &nm, C, &nm, &vU[nm], &incOne);
+	  F77_NAME(dtrmv)(lower, ntran, nUnit, &nm, C, &nm, &vU[nm], &incOne);
+
+	  for(k = 0; k < nm; k++){
+	    vU[k] = rnorm(0, 1);
+	  }
+
+	  F77_NAME(dtrmv)(lower, ntran, nUnit, &nm, C, &nm, vU, &incOne);
+
+	  for(k = 0; k < nm; k++){
+	    REAL(wSamples_r)[s*nm+k] = vU[nm+k] + vU[k];
+	  }
+
+	  // //v1	  
+	  // //construct covariance matrix
+	  // for(jj = 0; jj < n; jj++){
+	  //   for(ii = jj; ii < n; ii++){	
+	  //     for(k = 0; k < m; k++){
+	  // 	for(l = 0; l < m; l++){
+	  // 	  C[(k+jj*m)*nm+(ii*m+l)] = 0.0; 
+	  // 	  for(h = 0; h < m; h++){
+	  // 	    theta[0] = phi[h];
+	  // 	    if(covModel == "matern"){
+	  // 	      theta[1] = nu[h];
+	  // 	    }
+	  // 	    C[(k+jj*m)*nm+(ii*m+l)] += A[k+m*h]*A[l+m*h]*spCor(coordsD[jj*n+ii], theta, covModel);
+	  // 	  }
+	  // 	}
+	  //     }
+	  //   }
+	  // }
 	  
-	  F77_NAME(dsymv)(lower, &nm, &one, C, &nm, &vU[nm], &incOne, &zero, vU, &incOne);
+	  // F77_NAME(dpotrf)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: dpotrf failed 6\n");}
+	  // F77_NAME(dpotri)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: dpotri failed 7\n");}
 	  
-	  F77_NAME(dpotrf)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: dpotrf failed 12\n");}
+	  // if(PsiDiag){
+	  //   for(l = 0; l < n; l++){
+	  //     for(k = 0; k < m; k++){
+	  // 	C[(l*m+k)*nm+(l*m+k)] += 1.0/Psi[k];
+	  //     }
+	  //   }
+	  // }else{
+	  //   F77_NAME(dpotrf)(lower, &m, Psi, &m, &info); if(info != 0){error("c++ error: dpotrf failed 8\n");}
+	  //   F77_NAME(dpotri)(lower, &m, Psi, &m, &info); if(info != 0){error("c++ error: dpotri failed 9\n");}
+	    
+	  //   for(i = 0; i < n; i++){
+	  //     for(k = 0; k < m; k++){
+	  // 	for(l = 0; l < m; l++){
+	  // 	  C[(i*m+l)*nm+(i*m+k)] += Psi[l*m+k];
+	  // 	}
+	  //     }
+	  //   }
+	  // }
 	  
-	  mvrnorm(&REAL(wSamples_r)[s*nm], vU, C, nm, false);
+	  // F77_NAME(dpotrf)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: dpotrf failed 10\n");}
+	  // F77_NAME(dpotri)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: dpotri failed 11\n");}
+	  
+	  // F77_NAME(dgemv)(ntran, &nm, &p, &negOne, X, &nm, &REAL(betaSamples_r)[s*p], &incOne, &zero, vU, &incOne);
+	  // F77_NAME(daxpy)(&nm, &one, Y, &incOne, vU, &incOne);
+	  
+	  // for(k = 0; k < n; k++){
+	  //   if(PsiDiag){
+	  //     for(l = 0; l < m; l++){
+	  // 	vU[nm+k*m+l] = vU[k*m+l]*1.0/Psi[l];
+	  //     }
+	  //   }else{
+	  //     F77_NAME(dsymv)(lower, &m, &one, Psi, &m, &vU[k*m], &incOne, &zero, &vU[nm+k*m], &incOne); 
+	  //   }
+	  // }
+	  
+	  // F77_NAME(dsymv)(lower, &nm, &one, C, &nm, &vU[nm], &incOne, &zero, vU, &incOne);
+	  
+	  // F77_NAME(dpotrf)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: dpotrf failed 12\n");}
+	  
+	  // mvrnorm(&REAL(wSamples_r)[s*nm], vU, C, nm, false);
 	  
 	}else{
 	  F77_NAME(dgemv)(ntran, &nm, &p, &negOne, X, &nm, &REAL(betaSamples_r)[s*p], &incOne, &zero, &REAL(wSamples_r)[s*nm], &incOne);

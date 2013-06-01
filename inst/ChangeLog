@@ -1,3 +1,13 @@
+2013-06-01  andy  <andy@darkstar>
+
+	* 0.3-7
+	* Changed spLM and spMvLM acceptance output for non-amcmc specification.
+	* Added predictive process to spDynLM.
+	* Changed the recover spatial random effects algorithm in spLM and spMvLM to avoid singularity issues encountered using oversmooth spatial correlation functions, e.g., Gaussian.
+	* Removed a bug in the non-predictive process spDynLM.
+	* Removed a bug in spDiag associated with DIC and spGLM Poisson model weights.
+	* Added the NYOzone dataset.
+
 2013-03-18  andy  <andy@darkstar>
 
 	* 0.3-6

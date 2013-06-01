@@ -9,14 +9,13 @@ to be discrete.
 }
 
 \usage{
-spDynLM(formula, data = parent.frame(), coords, 
-      starting, tuning, priors, cov.model,
+spDynLM(formula, data = parent.frame(), coords, knots,
+      starting, tuning, priors, cov.model, get.fitted=FALSE, 
       n.samples, verbose=TRUE, n.report=100, ...)
 }
 
 \arguments{
-  \item{formula}{a list of \eqn{N_t}{N_t} symbolic regression model
-  descriptions to be fit. Each model represents a time step. See example below. }
+  \item{formula}{a list of \eqn{N_t}{N_t} symbolic regression models to be fit. Each model represents a time step. See example below. }
   \item{data}{an optional data frame containing the variables in the
     model. If not found in data, the variables are taken from
     \code{environment(formula)}, typically the environment from which \code{spDynLM} is called.  }
@@ -25,7 +24,12 @@ spDynLM(formula, data = parent.frame(), coords,
   \item{starting}{a list with each tag corresponding to a
     parameter name. Valid tags are \code{beta}, \code{sigma.sq},
     \code{tau.sq}, \code{phi}, \code{nu}, and \code{sigma.eta}.  The value portion of each tag is the parameter's starting value. }
-
+  \item{knots}{either a \eqn{m \times 2}{m x 2} matrix of the
+  \emph{predictive process} knot coordinates in \eqn{R^2}{R^2} (e.g., easting and northing)
+    or a vector of length two or three with the first and second elements recording the
+    number of columns and rows in the desired knot grid. The third,
+    optional, element sets the offset of the outermost knots from the
+    extent of the \code{coords}. } 
   \item{tuning}{a list with each tag corresponding to a
     parameter name. Valid tags are \code{phi} and \code{nu}. The value portion of each tag defines the variance of the Metropolis sampler Normal proposal distribution.}
 
@@ -46,7 +50,10 @@ spDynLM(formula, data = parent.frame(), coords,
     observations.  Supported covariance model key words are:
     \code{"exponential"}, \code{"matern"}, \code{"spherical"}, and
     \code{"gaussian"}.  See below for details.  }
-  \item{n.samples}{the number of MCMC iterations.}
+  \item{get.fitted}{if \code{TRUE}, posterior predicted and fitted
+    values are collected. Note, posterior predicted samples are only
+    collected for those \eqn{y_t(s)}{y_t(s)} that are \code{NA}.}
+    \item{n.samples}{the number of MCMC iterations.}
   \item{verbose}{if \code{TRUE}, model specification and progress of the
     sampler is printed to the screen. Otherwise, nothing is printed to
     the screen.  }
@@ -253,12 +260,14 @@ y.ho.hat.up <- as.vector(y.hat.up[holdout.station.id, miss])
 y.ho.hat.low <- as.vector(y.hat.low[holdout.station.id, miss])
 
 par(mfrow=c(2,1))
-plot(y.obs, y.obs.hat.med, pch=19, cex=0.5, xlab="observed", ylab="fitted", main="Observed vs. fitted")
+plot(y.obs, y.obs.hat.med, pch=19, cex=0.5, xlab="observed",
+ylab="fitted", main="Observed vs. fitted")
 arrows(y.obs, y.obs.hat.med, y.obs, y.obs.hat.up, length=0.02, angle=90)
 arrows(y.obs, y.obs.hat.med, y.obs, y.obs.hat.low, length=0.02, angle=90)
 lines(-50:50, -50:50, col="blue")
 
-plot(y.ho, y.ho.hat.med, pch=19, cex=0.5, xlab="observed", ylab="predicted", , main="Observed vs. predicted")
+plot(y.ho, y.ho.hat.med, pch=19, cex=0.5, xlab="observed",
+ylab="predicted", main="Observed vs. predicted")
 arrows(y.ho, y.ho.hat.med, y.ho, y.ho.hat.up, length=0.02, angle=90)
 arrows(y.ho, y.ho.hat.med, y.ho, y.ho.hat.low, length=0.02, angle=90)
 lines(-50:50, -50:50, col="blue")

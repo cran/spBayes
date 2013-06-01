@@ -1,5 +1,5 @@
-spDynLM <- function(formula, data = parent.frame(), coords, 
-                    starting, tuning, priors, cov.model,
+spDynLM <- function(formula, data = parent.frame(), coords, knots,
+                    starting, tuning, priors, cov.model, get.fitted=FALSE,
                     n.samples,  verbose=TRUE, n.report=100, ...){
   
   ####################################################
@@ -57,6 +57,85 @@ spDynLM <- function(formula, data = parent.frame(), coords,
   coords.D <- iDist(coords)
   storage.mode(coords.D) <- "double"
 
+  ####################
+  ##Knots
+  ####################
+  is.pp <- FALSE
+  
+  if(!missing(knots)){
+    
+    if(is.vector(knots) && length(knots) %in% c(2,3)){
+      
+      ##allow single knot dim
+      if(knots[1] > 1){
+        x.knots <- seq(min(coords[,1]), max(coords[,1]), length.out=knots[1])
+      }else{
+        x.knots <- (max(coords[,1])-min(coords[,1]))/2
+      }
+      
+      if(knots[2] > 1){
+        y.knots <- seq(min(coords[,2]), max(coords[,2]), length.out=knots[2])
+      }else{
+        y.knots <- (max(coords[,2])-min(coords[,2]))/2
+      }
+      
+      ##if not single knot then adjust out half distance on all sides
+      if(length(knots) == 2){
+        if(knots[1] > 1){
+          x.int <- (x.knots[2]-x.knots[1])/2
+          x.knots <- seq(min(x.knots)-x.int, max(x.knots)+x.int, length.out=knots[1])
+        }
+        
+        if(knots[2] > 1){
+          y.int <- (y.knots[2]-y.knots[1])/2
+          y.knots <- seq(min(y.knots)-y.int, max(y.knots)+y.int, length.out=knots[2])
+        }
+        
+        knot.coords <- as.matrix(expand.grid(x.knots, y.knots))
+        is.pp <- TRUE
+      }else{   
+        if(knots[1] > 1){
+          x.int <- knots[3]
+          x.knots <- seq(min(x.knots)-x.int, max(x.knots)+x.int, length.out=knots[1])
+        }
+        
+        if(knots[2] > 1){
+          y.int <- knots[3]
+          y.knots <- seq(min(y.knots)-y.int, max(y.knots)+y.int, length.out=knots[2])
+        }
+        
+        knot.coords <- as.matrix(expand.grid(x.knots, y.knots))
+        is.pp <- TRUE
+      }
+      
+    }else if(is.matrix(knots) && ncol(knots) == 2){
+      knot.coords <- knots
+      is.pp <- TRUE
+    }else{
+      stop("error: knots is misspecified")
+    }
+  }
+ 
+  m <- 0
+  knots.D <- 0
+  coords.knots.D <- 0
+  
+  if(is.pp){
+    knots.D <- iDist(knot.coords)
+    m <- nrow(knots.D)
+    coords.knots.D <- iDist(coords, knot.coords)
+
+    if(min(coords.knots.D) == 0){
+
+      stop("error: knots and observation coordinates cannot coincide. At least one knot location coincides with an observed coordinate.")
+    }
+    
+  }
+
+  storage.mode(m) <- "integer"
+  storage.mode(knots.D) <- "double"
+  storage.mode(coords.knots.D) <- "double"
+  
   ####################################################
   ##Covariance model
   ####################################################
@@ -190,6 +269,7 @@ spDynLM <- function(formula, data = parent.frame(), coords,
   if(missing(n.samples)){stop("error: n.samples needs to be specified")}
   storage.mode(n.samples) <- "integer"
 
+  storage.mode(get.fitted) <- "integer"
   storage.mode(n.report) <- "integer"
   storage.mode(verbose) <- "integer"
 
@@ -197,12 +277,20 @@ spDynLM <- function(formula, data = parent.frame(), coords,
   ##Pack it up and off it goes
   ####################################################
   ptm <- proc.time()
-  
-  out <- .Call("spDynLM", Y, t(X), p, n, N.t, coords.D,
-               beta.0.Norm, sigma.sq.IG, tau.sq.IG, nu.Unif, phi.Unif, sigma.eta.IW,
-               beta.starting, phi.starting, sigma.sq.starting, tau.sq.starting, nu.starting, sigma.eta.starting,
-               phi.tuning, nu.tuning,
-               cov.model, n.samples, miss, verbose, n.report)   
+
+  if(is.pp){
+    out <- .Call("spPPDynLM", Y, t(X), p, n, m, N.t, coords.D, knots.D, coords.knots.D,
+                 beta.0.Norm, sigma.sq.IG, tau.sq.IG, nu.Unif, phi.Unif, sigma.eta.IW,
+                 beta.starting, phi.starting, sigma.sq.starting, tau.sq.starting, nu.starting, sigma.eta.starting,
+                 phi.tuning, nu.tuning,
+                 cov.model, n.samples, miss, get.fitted, verbose, n.report)   
+  }else{
+    out <- .Call("spDynLM", Y, t(X), p, n, N.t, coords.D,
+                 beta.0.Norm, sigma.sq.IG, tau.sq.IG, nu.Unif, phi.Unif, sigma.eta.IW,
+                 beta.starting, phi.starting, sigma.sq.starting, tau.sq.starting, nu.starting, sigma.eta.starting,
+                 phi.tuning, nu.tuning,
+                 cov.model, n.samples, miss, get.fitted, verbose, n.report)   
+  }
   
   run.time <- proc.time() - ptm
 
@@ -230,6 +318,10 @@ spDynLM <- function(formula, data = parent.frame(), coords,
   out$x.names <- x.names
   out$run.time <- run.time
   out$missing.indx <- miss
+
+  if(is.pp){
+    out$knot.coords <- knot.coords
+  }
  
   class(out) <- "spDynLM"
   out  
