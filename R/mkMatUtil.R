@@ -25,19 +25,19 @@ mkX <- function(x){
   X
 }
 
-parseFormulaSimple <- function(formula, data, na.action = na.fail){
+## parseFormulaSimple <- function(formula, data, na.action = na.fail){
 
-  m <- model.frame(formula, data, na.action = na.action)##kinda fragile
-  Y <- as.matrix(model.response(m))
-  X <- as.matrix(model.matrix(formula, m))
+##   m <- model.frame(formula, data, na.action = na.action)##kinda fragile
+##   Y <- as.matrix(model.response(m))
+##   X <- as.matrix(model.matrix(formula, m))
 
-  if(any(is.na(X))){stop("error: parseFormulaSimple, NA found in model.matrix")}
+##   if(any(is.na(X))){stop("error: parseFormulaSimple, NA found in model.matrix")}
   
-  xvars <- dimnames(X)[[2]]
-  xobs  <- dimnames(X)[[1]]
-  list(Y, X, xvars, xobs)
+##   xvars <- dimnames(X)[[2]]
+##   xobs  <- dimnames(X)[[1]]
+##   list(Y, X, xvars, xobs)
   
-}
+## }
 
 
 parseFormula <-  function(formula, data, intercept=TRUE, justX=FALSE){
@@ -110,6 +110,44 @@ mkMvFormulaYX <- function(mods, data){
   mkMats(mods, data)
 }
 
+
+mkMisalignYX <- function(mods, data){
+
+  Y <- numeric(0)
+  X <- vector("list", length(mods))
+  X.names <- numeric(0)
+  n <- numeric(0)
+  p <- numeric(0)
+  res <- vector("list", 5)
+  names(res) <- c("Y", "X", "n", "p", "X.names")
+  
+  for(i in 1:length(mods)){
+    tmp <- parseFormula2(mods[[i]], data)
+    
+    ##get Y
+    Y <- c(Y,tmp[[1]])
+
+    ##get X
+    X[[i]] <- tmp[[2]]
+
+    ##get dim X
+    p <- c(p, ncol(tmp[[2]]))
+    n <- c(n, nrow(tmp[[2]]))
+    
+    ##get names
+    X.names <- c(X.names,paste(tmp[[3]], ".mod", i, sep=""))
+  }
+
+  res[[1]] <- Y
+  res[[2]] <- do.call(adiag, X)
+  res[[3]] <- n
+  res[[4]] <- p
+  res[[5]] <- X.names
+  
+  res
+  
+}
+
 parseFormula2 <- function(formula, data, subset, na.action, ...){
   
   mf <- match.call(expand.dots = FALSE)
@@ -123,8 +161,9 @@ parseFormula2 <- function(formula, data, subset, na.action, ...){
   
   y <- model.response(mf)
   x <- model.matrix(f, data = mf, rhs = 1)
+  xvars <- dimnames(x)[[2]] # X variable names
   
-  list(y, x)
+  list(y, x, xvars)
 }
 
 mkspDynMats <- function(mods, data){

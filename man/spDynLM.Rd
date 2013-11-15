@@ -190,7 +190,7 @@ starting <- list("beta"=rep(0,N.t*p), "phi"=rep(3/(0.5*max.d), N.t),
                  "sigma.sq"=rep(2,N.t), "tau.sq"=rep(1, N.t),
                  "sigma.eta"=diag(rep(0.01, p)))
 
-tuning <- list("phi"=rep(0.75, N.t)) 
+tuning <- list("phi"=rep(5, N.t)) 
 
 priors <- list("beta.0.Norm"=list(rep(0,p), diag(1000,p)),
                "phi.Unif"=list(rep(3/(0.9*max.d), N.t), rep(3/(0.05*max.d), N.t)),
@@ -204,7 +204,7 @@ mods <- lapply(paste(colnames(y.t),'elev',sep='~'), as.formula)
 n.samples <- 2000
 
 m.1 <- spDynLM(mods, data=cbind(y.t,ne.temp[,"elev",drop=FALSE]), coords=coords,
-               starting=starting, tuning=tuning, priors=priors,
+               starting=starting, tuning=tuning, priors=priors, get.fitted =TRUE,
                cov.model="exponential", n.samples=n.samples, n.report=25) 
 
 burn.in <- floor(0.75*n.samples)

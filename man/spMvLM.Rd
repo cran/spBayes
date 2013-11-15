@@ -32,7 +32,7 @@ The value portion of each tag is a vector
   that holds the parameter's starting values and are of length
   \eqn{p}{p} for \code{beta} (where \eqn{p}{p} is the total number of regression coefficients in the multivariate model), \eqn{\frac{q(q+1)}{2}}{q(q+1)/2} for
   \code{A} and \code{L}, and \eqn{q}{q} for \code{Psi}, \code{phi}, and \code{nu}.  Here,
-    \code{A} and \code{L} hold the the lower-triangle elements in column major ordering of the Cholesky square root
+    \code{A} and \code{L} hold the lower-triangle elements in column major ordering of the Cholesky square root
     of the spatial and non-spatial cross-covariance matrices,
     respectively. }
   
@@ -40,8 +40,7 @@ The value portion of each tag is a vector
   the non-spatial residual, tags are \code{L} or \code{Psi}
   for a block diagonal or diagonal covariance matrix, respectively. The value portion of each tag defines the
     variance of the Metropolis sampler Normal proposal distribution.  For \code{A} and \code{L}
-    the vectors are of length \eqn{\frac{q(q+1)}{2}}{q(q+1)/2} and \eqn{q}{q} for \code{Psi}, \code{phi}, and \code{nu}. The value portion of each
-    of each tag defines the variance of the Metropolis normal proposal distribution.}
+    the vectors are of length \eqn{\frac{q(q+1)}{2}}{q(q+1)/2} and \eqn{q}{q} for \code{Psi}, \code{phi}, and \code{nu}.}
   
   \item{priors}{a list with tags \code{beta.flat},
     \code{beta.norm}, \code{K.iw}, \code{Psi.iw}, \code{Psi.ig}, \code{phi.unif},
@@ -52,8 +51,8 @@ The value portion of each tag is a vector
     definite covariance matrix, respectively. If \code{beta} is assumed flat then no arguments are passed. The default is a flat prior.
     Use \code{Psi.iw} if the non-spatial residual covariance matrix is assumed block diagonal.  Otherwise if the non-spatial residual covariance matrix is assumed diagonal then each of the \eqn{q}{q} diagonal element are assumed to
     follow an inverse-Gamma in which case use \code{Psi.ig}. The hyperparameters of the inverse-Wishart, i.e., for
-    cross-covariance matrices \code{K.iw}
-    and \code{Psi.iw},  are
+    cross-covariance matrices \eqn{AA'}{AA'} \code{K.iw}
+    and \eqn{LL'}{LL'} \code{Psi.iw},  are
     passed as a list of length two, with the first and second elements corresponding
     to the \eqn{df}{df} and \eqn{q\times q}{qxq} \emph{scale} matrix,
     respectively. If \code{Psi.ig} is specified, the inverse-Gamma

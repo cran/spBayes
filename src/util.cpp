@@ -283,6 +283,15 @@ void printVec(double *m, int n){
     Rprintf("\n");
 }
 
+void printVec(int *m, int n){
+
+  Rprintf(" ");
+    for(int j = 0; j < n; j++){
+      Rprintf("%i ", m[j]);
+    }
+    Rprintf("\n");
+}
+
 double logit_logpost(int &n, double *Y, double *eta, double *w){
   double loglike = 0.0;
   int i;  

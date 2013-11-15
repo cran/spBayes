@@ -1,10 +1,14 @@
 \name{spRecover}
 \alias{spRecover}
-\title{Function for recovering regression coefficients and spatial random effects for \code{\link{spLM}} and \code{\link{spMvLM}} using composition sampling
+\title{Function for recovering regression coefficients and spatial
+  random effects for \code{\link{spLM}}, \code{\link{spMvLM}}, and
+  \code{\link{spMisalignLM}} using composition sampling
 }
 
 \description{
- Function for recovering regression coefficients and spatial random effects for \code{\link{spLM}} and \code{\link{spMvLM}} using composition sampling.
+ Function for recovering regression coefficients and spatial random
+ effects for \code{\link{spLM}}, \code{\link{spMvLM}}, and
+  \code{\link{spMisalignLM}} using composition sampling.
 }
 
 \usage{
@@ -13,7 +17,8 @@ spRecover(sp.obj, get.beta=TRUE, get.w=TRUE, start=1, end, thin=1,
 }
 
 \arguments{
-  \item{sp.obj}{an object returned by \code{\link{spLM}} or \code{\link{spMvLM}}.}
+  \item{sp.obj}{an object returned by \code{\link{spLM}},
+  \code{\link{spMvLM}}, or \code{\link{spMisalignLM}}.}
   \item{get.beta}{if \code{TRUE}, regression coefficients will be recovered.}
   \item{get.w}{if \code{TRUE}, spatial random effects will be recovered.}
   \item{start}{specifies the first sample included in the composition sampling.}

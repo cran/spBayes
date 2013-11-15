@@ -1,3 +1,10 @@
+2013-11-14  andy  <andy@twig>
+
+	* 0.3-8
+	* Added spMisalignLM and spMisalignGLM along with associated spRecover and spPredict utility functions.
+	* Fixed error in calculating GRS in spDiag.
+	* Tidied up man pages.
+
 2013-06-01  andy  <andy@darkstar>
 
 	* 0.3-7

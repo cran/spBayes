@@ -48,8 +48,8 @@ spDiag <- function(sp.obj, start=1, end, thin=1, verbose=TRUE, n.report=100, ...
   
   GR <- function(Y.rep, y){
     mu.rep <- apply(Y.rep, 1, mean)
-    var.rep <- apply(Y.rep, 1, var)   
-    GRS <- -sum(((y-mu.rep)/var.rep)^2) - sum(log(var.rep)^2)
+    var.rep <- apply(Y.rep, 1, var)
+    GRS <- -sum(((y-mu.rep)/sqrt(var.rep))^2) - sum(log(var.rep))
     GRS
   }
     

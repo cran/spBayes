@@ -11,8 +11,8 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, ve
   }
   
   if(missing(sp.obj)){stop("error: spPredict expects sp.obj\n")}
-  if(!class(sp.obj) %in% c("spLM", "spMvLM", "spGLM", "spMvGLM","bayesLMRef","bayesGeostatExact","nonSpGLM","nonSpMvGLM")){
-    stop("error: requires an output object of class spLM, spMvLM, spGLM, spMvGLM, bayesGeostatExact, bayesLMRef, nonSpGLM, or nonSpMvGLM\n")
+  if(!class(sp.obj) %in% c("spLM", "spMvLM", "spGLM", "spMvGLM","bayesLMRef","bayesGeostatExact","nonSpGLM","nonSpMvGLM","spMisalignLM","spMisalignGLM")){
+    stop("error: requires an output object of class spLM, spMvLM, spGLM, spMvGLM, bayesGeostatExact, bayesLMRef, nonSpGLM, nonSpMvGLM, spMisalignLM, or spMisalignGLM\n")
   }
 
   obj.class <- class(sp.obj)
@@ -20,7 +20,6 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, ve
   ##
   ##non spatial model prediction
   ##
-
   if(obj.class %in% c("nonSpGLM", "nonSpMvGLM")){
 
     X <- sp.obj$X
@@ -93,7 +92,6 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, ve
   ##
   ##bayesGeostatExact
   ##
-  
   if(obj.class == "bayesGeostatExact"){
     
     X <- sp.obj$X
@@ -154,7 +152,6 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, ve
     }else{
       stop("error: in spPredict, specified cov.model '",cov.model,"' is not a valid option; choose, from gaussian, exponential, matern, spherical.")
     }
-    
     
     n.pred <- nrow(pred.coords)
     
@@ -223,12 +220,12 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, ve
   ##
   ##spatial model prediction
   ##
-  if(missing(pred.coords)){stop("error: pred.coords must be specified\n")}
-  if(!any(is.data.frame(pred.coords), is.matrix(pred.coords))){stop("error: pred.coords must be a data.frame or matrix\n")}
-  if(!ncol(pred.coords) == 2){stop("error: pred.coords must have two columns (assumed to be X, Y)\n")}
-  
   if(obj.class %in% c("spGLM", "spMvGLM")){
 
+    if(missing(pred.coords)){stop("error: pred.coords must be specified\n")}
+    if(!any(is.data.frame(pred.coords), is.matrix(pred.coords))){stop("error: pred.coords must be a data.frame or matrix\n")}
+    if(!ncol(pred.coords) == 2){stop("error: pred.coords must have two columns (assumed to be X, Y)\n")}
+    
     family <- sp.obj$family
     X <- sp.obj$X
     Y <- sp.obj$Y
@@ -319,6 +316,10 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, ve
         
   }else if(obj.class == "spLM"){
 
+    if(missing(pred.coords)){stop("error: pred.coords must be specified\n")}
+    if(!any(is.data.frame(pred.coords), is.matrix(pred.coords))){stop("error: pred.coords must be a data.frame or matrix\n")}
+    if(!ncol(pred.coords) == 2){stop("error: pred.coords must have two columns (assumed to be X, Y)\n")}
+        
     X <- sp.obj$X
     Y <- sp.obj$Y
     p <- ncol(X)
@@ -445,6 +446,10 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, ve
   
   }else if(obj.class == "spMvLM"){
 
+    if(missing(pred.coords)){stop("error: pred.coords must be specified\n")}
+    if(!any(is.data.frame(pred.coords), is.matrix(pred.coords))){stop("error: pred.coords must be a data.frame or matrix\n")}
+    if(!ncol(pred.coords) == 2){stop("error: pred.coords must have two columns (assumed to be X, Y)\n")}
+        
     X <- sp.obj$X
     Y <- sp.obj$Y
     p <- ncol(X)
@@ -481,7 +486,7 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, ve
     
     s.indx <- seq(start, end, by=as.integer(thin))
     
-    beta <- NULL;
+    beta <- NULL
     
     if(is.pp){
       beta <- sp.obj$p.beta.samples[s.indx,,drop=FALSE]
@@ -562,7 +567,176 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, ve
    }
     
     out
+    
+  }else if(obj.class == "spMisalignLM"){
+    
+    X <- sp.obj$X
+    Y <- sp.obj$Y
+    m <- sp.obj$m
+    obs.coords <- sp.obj$coords
+    misalign.p <- sp.obj$misalign.p
+    misalign.n <- sp.obj$misalign.n
+    cov.model <- sp.obj$cov.model
+    p.theta.samples <- sp.obj$p.theta.samples
+    n.samples <- nrow(p.theta.samples)
+    nugget <- sp.obj$nugget
+    beta.prior <- sp.obj$beta.prior
+    beta.Norm <- sp.obj$beta.Norm
+     
+    ##get prediction covariates and coordinates
+    if(missing(pred.covars)){stop("error: pred.covars must be specified\n")}
+    if(any(!is.list(pred.covars), length(pred.covars) != m)){stop(paste("error: pred.covars must be a list of length have ",m,"\n"))}
+    if(!all(unlist(lapply(pred.covars, is.matrix)))){stop("error: pred.covars must be a list of matrices\n")}
 
+    misalign.n.pred <- unlist(lapply(pred.covars, nrow))
+    misalign.p.pred <- unlist(lapply(pred.covars, ncol))
+    X.pred <- do.call(adiag, pred.covars)
+
+    if(!identical(misalign.p, misalign.p.pred)){stop("error: the number of columns in the model matrices do not match those listed in pred.covars\n")}
+
+    if(missing(pred.coords)){stop("error: pred.coords must be specified\n")}
+    if(any(!is.list(pred.coords), length(pred.coords) != m)){stop(paste("error: pred.coords must be a list of length have ",m,"\n"))}
+    if(!all(unlist(lapply(pred.coords, is.matrix)))){stop("error: pred.coords must be a list of matrices\n")}
+
+    if(!identical(unlist(lapply(pred.coords, nrow)), misalign.n.pred)){stop("error: number of rows in the pred.coords matrices do not match those listed in pred.covars\n")}
+    if(any(unlist(lapply(pred.coords, ncol)) != 2)){stop("error: all matrices in pred.coords must have two columns\n")}
+    
+    pred.coords <- as.matrix(do.call(rbind, pred.coords))
+ 
+    ##subsamples
+    if(missing(end)){end <- n.samples}
+    
+    if(!is.numeric(start) || start >= n.samples)
+      stop("error: invalid start")
+    if(!is.numeric(end) || end > n.samples) 
+      stop("error: invalid end")
+    if(!is.numeric(thin) || thin >= n.samples) 
+      stop("error: invalid thin")
+    
+    s.indx <- seq(start, end, by=as.integer(thin))
+           
+    p.theta.samples <- t(p.theta.samples[s.indx,,drop=FALSE])##note, for flat we could use the p.theta.recover.samples
+    n.samples <- ncol(p.theta.samples)
+    
+    ##recover beta if needed (note, beta samples not needed for beta normal)
+    beta <- NULL
+    if(beta.prior == "flat"){
+      beta <- t(spRecover(sp.obj, get.beta=TRUE, get.w=FALSE, start=start, end=end, thin=thin)$p.beta.recover.samples)
+    }
+        
+    pred.obs.D <- iDist(pred.coords, obs.coords)
+    obs.D <- iDist(obs.coords)
+        
+    storage.mode(X) <- "double"
+    storage.mode(Y) <- "double"
+    storage.mode(m) <- "integer"
+    storage.mode(misalign.n) <- "integer"
+    storage.mode(misalign.p) <- "integer"
+    storage.mode(p.theta.samples) <- "double"
+    storage.mode(n.samples) <- "integer"
+    storage.mode(beta) <- "double"
+    storage.mode(nugget) <- "integer"
+    storage.mode(verbose) <- "integer"
+    storage.mode(n.report) <- "integer"
+    storage.mode(misalign.n.pred) <- "integer"
+    storage.mode(misalign.p.pred) <- "integer"
+    storage.mode(pred.obs.D) <- "double"
+    storage.mode(obs.D) <- "double"
+    
+    Z <- X.pred
+    storage.mode(Z) <- "double"
+    
+     out <- .Call("spMisalignPredict", Y, X, m, misalign.n, misalign.p,
+                  Z, misalign.n.pred, misalign.p.pred,
+                  obs.D, pred.obs.D, 
+                  p.theta.samples, beta, n.samples,
+                  beta.prior, beta.Norm,
+                  nugget, cov.model,
+                  verbose, n.report)
+
+
+    out$p.beta.samples.recover <- mcmc(t(beta))
+    out
+    
+  }else if(obj.class == "spMisalignGLM"){
+
+    family <- sp.obj$family
+    X <- sp.obj$X
+    Y <- sp.obj$Y
+    m <- sp.obj$m
+    obs.coords <- sp.obj$coords
+    misalign.p <- sp.obj$misalign.p
+    misalign.n <- sp.obj$misalign.n
+    cov.model <- sp.obj$cov.model
+    p.w.samples <- sp.obj$p.w.samples
+    p.beta.theta.samples <- sp.obj$p.beta.theta.samples
+    n.samples <- nrow(p.beta.theta.samples)
+     
+    ##get prediction covariates and coordinates
+    if(missing(pred.covars)){stop("error: pred.covars must be specified\n")}
+    if(any(!is.list(pred.covars), length(pred.covars) != m)){stop(paste("error: pred.covars must be a list of length have ",m,"\n"))}
+    if(!all(unlist(lapply(pred.covars, is.matrix)))){stop("error: pred.covars must be a list of matrices\n")}
+
+    misalign.n.pred <- unlist(lapply(pred.covars, nrow))
+    misalign.p.pred <- unlist(lapply(pred.covars, ncol))
+    X.pred <- do.call(adiag, pred.covars)
+
+    if(!identical(misalign.p, misalign.p.pred)){stop("error: the number of columns in the model matrices do not match those listed in pred.covars\n")}
+
+    if(missing(pred.coords)){stop("error: pred.coords must be specified\n")}
+    if(any(!is.list(pred.coords), length(pred.coords) != m)){stop(paste("error: pred.coords must be a list of length have ",m,"\n"))}
+    if(!all(unlist(lapply(pred.coords, is.matrix)))){stop("error: pred.coords must be a list of matrices\n")}
+
+    if(!identical(unlist(lapply(pred.coords, nrow)), misalign.n.pred)){stop("error: number of rows in the pred.coords matrices do not match those listed in pred.covars\n")}
+    if(any(unlist(lapply(pred.coords, ncol)) != 2)){stop("error: all matrices in pred.coords must have two columns\n")}
+    
+    pred.coords <- as.matrix(do.call(rbind, pred.coords))
+ 
+    ##subsamples
+    if(missing(end)){end <- n.samples}
+    
+    if(!is.numeric(start) || start >= n.samples)
+      stop("error: invalid start")
+    if(!is.numeric(end) || end > n.samples) 
+      stop("error: invalid end")
+    if(!is.numeric(thin) || thin >= n.samples) 
+      stop("error: invalid thin")
+    
+    s.indx <- seq(start, end, by=as.integer(thin))
+
+    p.w.samples <- p.w.samples[,s.indx,drop=FALSE]
+ 
+    p.samples <- t(p.beta.theta.samples[s.indx,,drop=FALSE])
+    n.samples <- ncol(p.samples)
+
+    pred.obs.D <- iDist(pred.coords, obs.coords)
+    obs.D <- iDist(obs.coords)
+        
+    storage.mode(X) <- "double"
+    storage.mode(Y) <- "double"
+    storage.mode(m) <- "integer"
+    storage.mode(misalign.n) <- "integer"
+    storage.mode(misalign.p) <- "integer"
+    storage.mode(p.samples) <- "double"
+    storage.mode(p.w.samples) <- "double"
+    storage.mode(n.samples) <- "integer"
+    storage.mode(verbose) <- "integer"
+    storage.mode(n.report) <- "integer"
+    storage.mode(misalign.n.pred) <- "integer"
+    storage.mode(misalign.p.pred) <- "integer"
+    storage.mode(pred.obs.D) <- "double"
+    storage.mode(obs.D) <- "double"
+    
+    Z <- X.pred
+    storage.mode(Z) <- "double"
+
+    out <- .Call("spMisalignGLMPredict", family, Y, X, m, misalign.n, misalign.p,
+                 Z, misalign.n.pred, misalign.p.pred,
+                 obs.D, pred.obs.D, 
+                 p.samples, p.w.samples, n.samples,
+                 cov.model,
+                 verbose, n.report)
+    out
     
   }else{
     stop("error: wrong class\n")

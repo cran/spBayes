@@ -11,8 +11,8 @@ spRecover <- function(sp.obj, get.beta=TRUE, get.w=TRUE, start=1, end, thin=1, v
   }
   
   if(missing(sp.obj)){stop("error: spRecover expects sp.obj\n")}
-  if(!class(sp.obj) %in% c("spLM", "spMvLM")){
-    stop("error: requires an output object of class spLM or spMvLM\n")
+  if(!class(sp.obj) %in% c("spLM", "spMvLM", "spMisalignLM")){
+    stop("error: requires an output object of class spLM, spMvLM, or spMisalignLM\n")
   }
 
   obj.class <- class(sp.obj)
@@ -239,6 +239,70 @@ spRecover <- function(sp.obj, get.beta=TRUE, get.w=TRUE, start=1, end, thin=1, v
     
     class(sp.obj) <- "spMvLM"
 
+    sp.obj
+    
+  }else if(obj.class == "spMisalignLM"){
+    
+    Y <-sp.obj$Y
+    X <- sp.obj$X
+    m <- sp.obj$m
+    coords <- sp.obj$coords
+    misalign.p <- sp.obj$misalign.p
+    misalign.n <- sp.obj$misalign.n
+    p.theta.samples <- sp.obj$p.theta.samples
+    n.samples <- nrow(p.theta.samples)
+    cov.model <- sp.obj$cov.model
+    nugget <- sp.obj$nugget
+    beta.prior <- sp.obj$beta.prior
+    beta.Norm <- sp.obj$beta.Norm
+    x.names <- sp.obj$x.names
+    
+    coords.D <- iDist(coords)
+    
+    if(missing(end))
+      end <- n.samples
+    
+    if(!is.numeric(start) || start >= n.samples)
+      stop("error: invalid start")
+    if(!is.numeric(end) || end > n.samples) 
+      stop("error: invalid end")
+    if(!is.numeric(thin) || thin >= n.samples) 
+      stop("error: invalid thin")
+    
+    p.theta.samples <- t(p.theta.samples[seq(start, end, by=as.integer(thin)),,drop=FALSE])
+    n.samples <- ncol(p.theta.samples)
+
+    storage.mode(Y) <- "double"
+    storage.mode(X) <- "double"
+    storage.mode(misalign.p) <- "integer"
+    storage.mode(misalign.n) <- "integer"
+    storage.mode(m) <- "integer"
+    storage.mode(coords.D) <- "double"
+    storage.mode(p.theta.samples) <- "double"
+    storage.mode(n.samples) <- "integer"
+    storage.mode(nugget) <- "integer"
+    storage.mode(get.beta) <- "integer"
+    storage.mode(get.w) <- "integer"
+    storage.mode(verbose) <- "integer"
+    storage.mode(n.report) <- "integer"
+    
+    out <- .Call("spMisalignRecover", Y, X, misalign.p, misalign.n, m, coords.D,
+                 p.theta.samples, n.samples,
+                 beta.prior, beta.Norm, 	   
+                 nugget, cov.model,
+                 get.beta, get.w,
+                 verbose, n.report)
+    
+    rownames(out$p.beta.samples) <- x.names
+    sp.obj$p.beta.recover.samples <- mcmc(t(out$p.beta.samples))
+    sp.obj$p.theta.recover.samples <- mcmc(t(p.theta.samples))
+    
+    if(get.w){
+      sp.obj$p.w.recover.samples <- out$p.w.samples
+    }
+    
+    class(sp.obj) <- "spMisalignLM"
+    
     sp.obj
     
   }else{

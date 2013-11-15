@@ -6,7 +6,7 @@
 \description{
   The function \code{spPredict} collects posterior predictive samples
   for a set of new locations given a \code{\link{spLM}}, \code{\link{spMvLM}},
-  \code{\link{spGLM}}, or \code{\link{spMvGLM}} object.
+  \code{\link{spGLM}}, \code{\link{spMvGLM}}, \code{\link{spMisalignLM}}, or \code{\link{spMisalignGLM}} object.
 }
 
 \usage{
@@ -16,16 +16,25 @@ spPredict(sp.obj, pred.coords, pred.covars, start=1, end, thin=1,
 
 \arguments{
   \item{sp.obj}{an object returned by \code{\link{spLM}}, \code{\link{spMvLM}},
-  \code{\link{spGLM}}, or \code{\link{spMvGLM}}. }
-  \item{pred.coords}{an \eqn{n \times 2}{n x 2} matrix of \eqn{n} prediction
+  \code{\link{spGLM}}, \code{\link{spMvGLM}},
+  \code{\link{spMisalignLM}}, or \code{\link{spMisalignGLM}}. }
+
+  \item{pred.coords}{for \code{\link{spLM}}, \code{\link{spMvLM}},
+  \code{\link{spGLM}}, and \code{\link{spMvGLM}} \code{pred.coords} is a \eqn{n \times 2}{n x 2} matrix of \eqn{n} prediction
     location coordinates in \eqn{R^2}{R^2} (e.g., easting and northing).
-    The first column is assumed to be easting coordinates and the second column
-    northing coordinates.  }
-  \item{pred.covars}{an \eqn{n \times p}{n x p} design matrix associated
+   For \code{\link{spMisalignLM}} and
+  \code{\link{spMisalignGLM}} \code{pred.coords} is a list of \eqn{q}{q} \eqn{n_i \times 2}{n_i x 2}
+  matrices of prediction location coordinates where
+  \eqn{i=(1,2,\ldots,q)}{i=(1,2,\ldots,q)}.}
+  
+  \item{pred.covars}{for \code{\link{spLM}}, \code{\link{spMvLM}},
+  \code{\link{spGLM}}, and \code{\link{spMvGLM}} \code{pred.covars} is a \eqn{n \times p}{n x p} design matrix associated
     with the new locations.  If this is a multivariate prediction defined
-    by \eqn{q}{q} models, i.e., from \code{\link{spMvLM}} or \code{\link{spMvGLM}}, the multivariate design matrix can be created
+    by \eqn{q}{q} models, i.e., for \code{\link{spMvLM}} or \code{\link{spMvGLM}}, the multivariate design matrix can be created
     by passing a list of the \eqn{q}{q} univariate design matrices to
-    the \code{\link{mkMvX}} function. }
+    the \code{\link{mkMvX}} function.  For \code{\link{spMisalignLM}} and
+  \code{\link{spMisalignGLM}} \code{pred.covars} is a list of \eqn{q}{q} \eqn{n_i \times p_i}{n_i x p_i}
+  design matrices where \eqn{i=(1,2,\ldots,q)}{i=(1,2,\ldots,q)}}
   \item{start}{specifies the first sample included in the composition sampling.}
   \item{end}{specifies the last sample included in the composition.
              The default is to use all posterior samples in \code{sp.obj}. }
@@ -41,25 +50,34 @@ spPredict(sp.obj, pred.coords, pred.covars, start=1, end, thin=1,
 
 \value{
   \item{p.y.predictive.samples}{a matrix that holds the response variable(s) posterior
-    predictive samples. For multivariate models the rows of this matrix
+    predictive samples. For multivariate models \code{\link{spMvLM}} or
+  \code{\link{spMvGLM}} the rows of this matrix
     correspond to the predicted locations and the columns are the posterior
     predictive samples.  If prediction is for \eqn{q}{q} response
-  variables the \code{p.predictive.samples} matrix has
+  variables the \code{p.y.predictive.samples} matrix has
     \eqn{qn}{qn} rows.  The predictions for locations are held in rows
-    1:q, (q+1):2q, ..., ((n-1)q+1):nq (i.e., the samples for the first location's \eqn{q}{q} response variables are in rows 1:q, second location in rows (q+1):2q, etc.). For \code{spGLM} the \code{p.predictive.samples} matrix holds
-  posterior predictive samples for
-  \eqn{\frac{1}{1+\exp(-x(s)'\beta-w(s))}}{1/1+(exp(-x(s)'B-w(s)))} and
+    \eqn{1:q, (q+1):2q, \ldots, ((n-1)q+1):nq}{1:q, (q+1):2q, \ldots,
+  ((n-1)q+1):nq} (i.e., the samples for the first location's \eqn{q}{q}
+  response variables are in rows 1:q, second location in rows (q+1):2q,
+  etc.). For \code{\link{spMisalignLM}} and \code{\link{spMisalignGLM}}
+  the posterior predictive samples are organized differently in
+  \code{p.y.predictive.samples} with the first response variable
+  \eqn{n_1}{n_1} locations held in rows \eqn{1\ldots,n_1}{1,\ldots,n_1} rows, then the
+  next response variable samples held in the
+  \eqn{(n_1+1),\ldots,(n_1+n_2)}{(n_1+1),\ldots,(n_1+n_2)}, etc.
+
+  For \code{spGLM} and \code{spMisalignGLM} the \code{p.y.predictive.samples} matrix holds
+  posterior predictive samples \eqn{\frac{1}{1+\exp(-x(s)'\beta-w(s))}}{1/1+(exp(-x(s)'B-w(s)))} and
   \eqn{\exp(x(s)'\beta+w(s))}{exp(x(s)'B+w(s))} for
   \code{family} binomial and poisson, respectively. Here \eqn{s}{s} indexes
-  the prediction location, \eqn{\beta}{B} are the regression
+  the prediction location, \eqn{\beta}{B} is the vector of regression
   coefficients, and \eqn{w}{w} is the associated spatial random
   spatial effect. These values can be fed directly into \code{rbinom}
   or \code{rpois} to generate the realization from the respective
   distribution. }
 \item{p.w.predictive.samples}{a matrix, organized the same as
   \code{p.y.predictive.samples}, that holds the spatial random effects posterior
-    predictive samples. This is only returned for \code{\link{spGLM}}
-  and \code{\link{spMvGLM}} objects.}
+    predictive samples. }
 }
 
 \references{
