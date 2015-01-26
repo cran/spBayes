@@ -48,6 +48,10 @@ spRecover(sp.obj, get.beta=TRUE, get.w=TRUE, start=1, end, thin=1,
   Banerjee, S., Carlin, B.P., and Gelfand, A.E. (2004). Hierarchical
   modeling and analysis for spatial data. Chapman and Hall/CRC Press,
   Boca Raton, FL.
+
+    Finley, A.O., S. Banerjee, and A.E. Gelfand. (2015) spBayes for large
+  univariate and multivariate point-referenced spatio-temporal data
+  models. \emph{Journal of Statistical Software}, 63:1--28. \url{http://www.jstatsoft.org/v63/i13}.
 }
 
 \author{

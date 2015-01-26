@@ -96,6 +96,8 @@ Model parameters can be fixed at their \code{starting} values by setting their
   Banerjee, S., A.E. Gelfand, A.O. Finley, and H. Sang. (2008) Gaussian Predictive Process Models for Large Spatial Datasets. \emph{Journal of the Royal Statistical Society Series B}, 70:825--848.
   
   Banerjee, S., Carlin, B.P., and Gelfand, A.E. (2004). Hierarchical modeling and analysis for spatial data. Chapman and Hall/CRC Press, Boca Raton, Fla.
+
+Finley, A.O., S. Banerjee, and B.D. Cook. (2014) Bayesian hierarchical models for spatially misaligned data. \emph{Methods in Ecology and Evolution}, 5:514--523.
   
   Finley, A.O., H. Sang, S. Banerjee, and A.E. Gelfand. (2009) Improving the performance of predictive process modeling for large datasets. \emph{Computational Statistics and Data Analysis}, 53:2873--2884.
   

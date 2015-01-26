@@ -146,11 +146,17 @@ spGLM(formula, family="binomial", weights, data = parent.frame(),
 }
 
 \references{
-  Finley, A.O., S. Banerjee, and R.E. McRoberts. (2008) A Bayesian approach to quantifying uncertainty in multi-source forest area estimates. \emph{Environmental and Ecological Statistics}, 15:241--258.
+
   
   Banerjee, S., A.E. Gelfand, A.O. Finley, and H. Sang. (2008) Gaussian Predictive Process Models for Large Spatial Datasets. \emph{Journal of the Royal Statistical Society Series B}, 70:825--848.
 
   Banerjee, S., Carlin, B.P., and Gelfand, A.E. (2004) Hierarchical modeling and analysis for spatial data. Chapman and Hall/CRC Press, Boca Raton, Fla.
+
+    Finley, A.O., S. Banerjee, and A.E. Gelfand. (2015) spBayes for large
+  univariate and multivariate point-referenced spatio-temporal data
+  models. \emph{Journal of Statistical Software}, 63:1--28. \url{http://www.jstatsoft.org/v63/i13}.
+
+    Finley, A.O., S. Banerjee, and R.E. McRoberts. (2008) A Bayesian approach to quantifying uncertainty in multi-source forest area estimates. \emph{Environmental and Ecological Statistics}, 15:241--258.
   
   Roberts G.O. and Rosenthal J.S. (2006) Examples of Adaptive MCMC. \url{http://probability.ca/jeff/ftpdir/adaptex.pdf} Preprint.
 

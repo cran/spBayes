@@ -17,3 +17,5 @@ export(bayesGeostatExact)
 export(bayesLMConjugate)
 export(spMisalignLM)
 export(spMisalignGLM)
+import(Formula, abind, coda, magic)
+

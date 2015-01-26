@@ -1,3 +1,9 @@
+2015-01-26  andy  <andy@twig>
+
+	* 0.3-0
+	* Added CITATION file.
+	* Fixed import() issue in NAMESPACE.
+
 2013-11-14  andy  <andy@twig>
 
 	* 0.3-8
