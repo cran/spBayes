@@ -142,11 +142,11 @@ priors=priors, cov.model=cov.model, n.samples=n.samples)
 m.1.pred <- spPredict(m.1, pred.covars=X, pred.coords=coords,
 start=0.5*n.samples)
 
-y.hat <- apply(m.1.pred$p.predictive.samples, 1, mean)
+y.hat <- apply(m.1.pred$p.y.predictive.samples, 1, mean)
 
 quant <- function(x){quantile(x, prob=c(0.025, 0.5, 0.975))}
 
-y.hat <- apply(m.1.pred$p.predictive.samples, 1, quant)
+y.hat <- apply(m.1.pred$p.y.predictive.samples, 1, quant)
 
 plot(y, y.hat[2,], pch=19, cex=0.5, xlab="observed y", ylab="predicted y")
 arrows(y[-mod], y.hat[2,-mod], y[-mod], y.hat[1,-mod], angle=90, length=0.05)

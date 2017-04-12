@@ -1,5 +1,5 @@
-d2ac4e0951765c91a731d934659e5b3e *DESCRIPTION
-865f3887a061426ee92653007f797cf6 *NAMESPACE
+0badfa1bab16ac6e6657332d64271057 *DESCRIPTION
+29d34e23dac83ff7ce7ab2f1fe32f1c8 *NAMESPACE
 92e68259d6dd3e539816b7e847cd3b64 *R/adaptMetropGibbs.R
 d905170ecda7dff20b2d97cab92dcaa1 *R/bayesLMRef.R
 33526cf2bf671b25bb8a82347b19f92e *R/bayesRegression.R
@@ -27,7 +27,7 @@ c5b7c6afc0ed18d9aa0c3a1ce1035c37 *data/NYOzone.dat.tab.gz
 d3d1506d71992fc0039934124f597f49 *data/WEF.dat.csv.gz
 fc1e01474aece5b483230d0ca4f7b988 *data/Zurich.dat.tab.gz
 bb031bfc5d7d2210b2765b1a3f927e4f *inst/CITATION
-bde228ebd20e502bc726543b1d54a7fb *inst/ChangeLog
+aa26ef53ddaee86c1f5f658707b21e2c *inst/ChangeLog
 c31f15e48d4789bf5954504137c6a05b *inst/NOTES
 d16bcc410f632fb500366b0a36b70c5c *man/BEF.dat.Rd
 65a258a4b475ac4da520fe3f9b9fffde *man/FBC07.dat.Rd
@@ -52,14 +52,16 @@ c2830fe49ec2688509233d9c46c80882 *man/spGLM.Rd
 5e453eba7efbd329485dd61bf9d21456 *man/spMisalignLM.Rd
 481f42495d3a49347234ace756af9ba2 *man/spMvGLM.Rd
 48f25ec651eb0f222bd8c2043fde38fe *man/spMvLM.Rd
-9248a9add403c9a6462d1ca10a2458bb *man/spPredict.Rd
+6080cc3041a40ae0645a43ad1e1f28a8 *man/spPredict.Rd
 d6805c12f5c63d44aee485e4d8906642 *man/spRecover.Rd
 2a6f9e9e044a78154d3cfda5936d6f48 *src/Makevars
 96a15c2b776e59d737c6a58b90643d79 *src/adaptMetropGibbs.cpp
 bbece153faa3eb8ad96be6a6a4971c5c *src/idist.cpp
+7866fb5214990874b29c0aebb4baee1d *src/init.cpp
 b249efaccbef0c45507a72c00e00455d *src/mkSpCov.cpp
 19c0371225fbf3cf09d964193c7ba494 *src/nonSpGLM_AMCMC.cpp
 926eb0a1ab66cff3f7ec544a6d39ccc6 *src/ptsInPoly.cpp
+57f488fbe166007a0ee843acf1c203f2 *src/spBayes.h
 ff576d2e05e2c4ff4045f0c98dd168c5 *src/spDynLM.cpp
 2eef8118c2402c11bcfd29491450c5dc *src/spGLM.cpp
 ef68ef45cb932085952f3bfb8f4cbb7b *src/spGLM_AMCMC.cpp

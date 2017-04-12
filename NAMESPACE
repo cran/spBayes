@@ -1,4 +1,7 @@
+# Load the shared object
 useDynLib(spBayes)
+
+# Exports
 export(iDist)
 export(spLM)
 export(mkSpCov)
@@ -17,5 +20,10 @@ export(bayesGeostatExact)
 export(bayesLMConjugate)
 export(spMisalignLM)
 export(spMisalignGLM)
-import(Formula, abind, coda, magic)
 
+# Imports
+import(Formula, abind, coda, magic)
+importFrom("stats", "coefficients", "contrasts", "dist", "glm",
+             "is.empty.model", "lm", "model.extract", "model.frame",
+             "model.matrix", "model.response", "rgamma", "rnorm",
+             "terms", "var", "vcov")
