@@ -6,7 +6,9 @@
 \description{
   The function \code{spPredict} collects posterior predictive samples
   for a set of new locations given a \code{\link{spLM}}, \code{\link{spMvLM}},
-  \code{\link{spGLM}}, \code{\link{spMvGLM}}, \code{\link{spMisalignLM}}, or \code{\link{spMisalignGLM}} object.
+  \code{\link{spGLM}}, \code{\link{spMvGLM}},
+  \code{\link{spMisalignLM}}, \code{\link{spMisalignGLM}},
+  \code{\link{bayesGeostatExact}}, \code{\link{bayesLMConjugate}} or \code{\link{bayesLMRef}} object.
 }
 
 \usage{
@@ -17,10 +19,11 @@ spPredict(sp.obj, pred.coords, pred.covars, start=1, end, thin=1,
 \arguments{
   \item{sp.obj}{an object returned by \code{\link{spLM}}, \code{\link{spMvLM}},
   \code{\link{spGLM}}, \code{\link{spMvGLM}},
-  \code{\link{spMisalignLM}}, or \code{\link{spMisalignGLM}}. }
+  \code{\link{spMisalignLM}}, \code{\link{spMisalignGLM}},
+  \code{\link{bayesGeostatExact}}, \code{\link{bayesLMConjugate}} or \code{\link{bayesLMRef}}. }
 
   \item{pred.coords}{for \code{\link{spLM}}, \code{\link{spMvLM}},
-  \code{\link{spGLM}}, and \code{\link{spMvGLM}} \code{pred.coords} is a \eqn{n \times 2}{n x 2} matrix of \eqn{n} prediction
+  \code{\link{spGLM}}, \code{\link{spMvGLM}}, and \code{\link{bayesGeostatExact}} \code{pred.coords} is a \eqn{n \times 2}{n x 2} matrix of \eqn{n} prediction
     location coordinates in \eqn{R^2}{R^2} (e.g., easting and northing).
    For \code{\link{spMisalignLM}} and
   \code{\link{spMisalignGLM}} \code{pred.coords} is a list of \eqn{q}{q} \eqn{n_i \times 2}{n_i x 2}
@@ -28,7 +31,9 @@ spPredict(sp.obj, pred.coords, pred.covars, start=1, end, thin=1,
   \eqn{i=(1,2,\ldots,q)}{i=(1,2,\ldots,q)}.}
   
   \item{pred.covars}{for \code{\link{spLM}}, \code{\link{spMvLM}},
-  \code{\link{spGLM}}, and \code{\link{spMvGLM}} \code{pred.covars} is a \eqn{n \times p}{n x p} design matrix associated
+  \code{\link{spGLM}}, \code{\link{spMvGLM}},
+  \code{\link{bayesGeostatExact}}, \code{\link{bayesLMConjugate}} and
+  \code{\link{bayesLMRef}} \code{pred.covars} is a \eqn{n \times p}{n x p} design matrix associated
     with the new locations.  If this is a multivariate prediction defined
     by \eqn{q}{q} models, i.e., for \code{\link{spMvLM}} or \code{\link{spMvGLM}}, the multivariate design matrix can be created
     by passing a list of the \eqn{q}{q} univariate design matrices to

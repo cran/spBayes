@@ -11,8 +11,8 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, ve
   }
   
   if(missing(sp.obj)){stop("error: spPredict expects sp.obj\n")}
-  if(!class(sp.obj) %in% c("spLM", "spMvLM", "spGLM", "spMvGLM","bayesLMRef","bayesGeostatExact","nonSpGLM","nonSpMvGLM","spMisalignLM","spMisalignGLM")){
-    stop("error: requires an output object of class spLM, spMvLM, spGLM, spMvGLM, bayesGeostatExact, bayesLMRef, nonSpGLM, nonSpMvGLM, spMisalignLM, or spMisalignGLM\n")
+  if(!class(sp.obj) %in% c("spLM", "spMvLM", "spGLM", "spMvGLM","bayesLMRef","bayesLMConjugate","bayesGeostatExact","nonSpGLM","nonSpMvGLM","spMisalignLM","spMisalignGLM")){
+    stop("error: requires an output object of class spLM, spMvLM, spGLM, spMvGLM, bayesGeostatExact, bayesLMRef, bayesLMConjugate, nonSpGLM, nonSpMvGLM, spMisalignLM, or spMisalignGLM\n")
   }
 
   obj.class <- class(sp.obj)
@@ -46,20 +46,22 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, ve
     out <- list()
     
     if(family == "binomial"){
-      out$p.predictive.samples <- apply(p.beta.samples, 1,  function(s){1/(1+exp(-pred.covars%*%s))})          
+      out$p.y.predictive.samples <- apply(p.beta.samples, 1,  function(s){1/(1+exp(-pred.covars%*%s))})          
     }else{##poisson
-       out$p.predictive.samples <- apply(p.beta.samples, 1,  function(s){exp(pred.covars%*%s)}) 
+       out$p.y.predictive.samples <- apply(p.beta.samples, 1,  function(s){exp(pred.covars%*%s)}) 
      }
 
     return(out)
   }
 
-  if(obj.class == "bayesLMRef"){
+  ##
+  ##bayesLMRef
+  ##
+  if(obj.class %in% c("bayesLMRef","bayesLMConjugate")){
 
     X <- sp.obj$X
     Y <- sp.obj$Y
     p <- ncol(X)
-    n <- nrow(X)
     p.beta.tauSq.samples <- sp.obj$p.beta.tauSq.samples
     n.samples <- nrow(p.beta.tauSq.samples)
 
@@ -84,11 +86,11 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, ve
     if(ncol(pred.covars) != ncol(X)){ stop(paste("error: pred.covars must have ",p," columns\n"))}
 
     out <- list()
-    out$p.predictive.samples <- apply(p.beta.tauSq.samples, 1, function(s){rnorm(n, pred.covars%*%s[1:p], sqrt(s[p+1]))})
+    out$p.y.predictive.samples <- apply(p.beta.tauSq.samples, 1, function(s){rnorm(nrow(pred.covars), pred.covars%*%s[1:p], sqrt(s[p+1]))})
     
     return(out)
   }
-
+   
   ##
   ##bayesGeostatExact
   ##
@@ -161,57 +163,54 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, start=1, end, thin=1, ve
     R.vals <- R.eigen$values
     R.vecs <- R.eigen$vectors
     R.vects.t <- t(R.vecs)
-    
-    if(verbose)
-      cat("Predicting ...\n")
-    
-    report <- 1
-    
-    ##for each pred point by each sample
-    for(i in 1:n.pred){
-      
-      D.pred <- sqrt((pred.coords[i,1]-coords[,1])^2 + (pred.coords[i,2]-coords[,2])^2)
-      
-      if(cov.model == "exponential"){
-        gamma <- exp(-phi*D.pred)
-      }else if(cov.model == "matern"){
-        gamma <- (D.pred*phi)^nu/(2^(nu-1)*gamma(nu))*besselK(x=D.pred*phi, nu=nu)
-      }else if(cov.model == "gaussian"){
-        gamma <- exp(-1*((phi*D.pred)^2))
-      }else if(cov.model == "spherical"){
-        gamma <- D.pred
-        gamma[TRUE] <- 1
-        gamma[D.pred > 0 & D.pred < 1/phi] <- 1-1.5*phi*D.pred[D.pred > 0 & D.pred <= 1/phi]+0.5*((phi*D.pred[D.pred > 0 & D.pred <= 1/phi])^3)
-        gamma[D.pred >= 1/phi] <- 0   
-      }else{
-        stop("error: in spPredict, specified cov.model '",cov.model,"' is not a valid option; choose, from gaussian, exponential, matern, spherical.")
-      }
-      
-      gamma <- as.matrix(gamma)
-      
-      for(s in 1:n.samples){
-        
-        R.inv <- R.vecs%*%diag(1/(R.vals+tau.sq[s]/sigma.sq[s]))%*%t(R.vecs)
-        
-        mu <- pred.covars[i,]%*%beta[s,]+t(gamma)%*%R.inv%*%(Y-X%*%beta[s,])
-        S <- sigma.sq[s]*(1-t(gamma)%*%R.inv%*%gamma)+tau.sq[s]
-        
-        y.pred[i,s] <- rnorm(1, mu, sqrt(S))
-        
-      }
 
-      
       if(verbose){
-        if(report == 10){
-          cat(paste("Percent complete: ",100*i/n.pred,"\n",sep=""))
-          report <- 0
-        }
-        report <- report+1
+          cat("-------------------------------------------------\n")
+          cat("\t\tPredicting\n")
+          cat("-------------------------------------------------\n")
+          bar <- txtProgressBar(min=1, max=n.samples, initial=0, style=3, char="*", width=40)
       }
-    }
+      
+      ##for each pred point by each sample
+      for(s in 1:n.samples){
+          
+          R.inv <- R.vecs%*%diag(1/(R.vals+tau.sq[s]/sigma.sq[s]))%*%t(R.vecs)
+          
+          for(i in 1:n.pred){
+              
+              D.pred <- sqrt((pred.coords[i,1]-coords[,1])^2 + (pred.coords[i,2]-coords[,2])^2)
+              
+              if(cov.model == "exponential"){
+                  gamma <- exp(-phi*D.pred)
+              }else if(cov.model == "matern"){
+                  gamma <- (D.pred*phi)^nu/(2^(nu-1)*gamma(nu))*besselK(x=D.pred*phi, nu=nu)
+              }else if(cov.model == "gaussian"){
+                  gamma <- exp(-1*((phi*D.pred)^2))
+              }else if(cov.model == "spherical"){
+                  gamma <- D.pred
+                  gamma[TRUE] <- 1
+                  gamma[D.pred > 0 & D.pred < 1/phi] <- 1-1.5*phi*D.pred[D.pred > 0 & D.pred <= 1/phi]+0.5*((phi*D.pred[D.pred > 0 & D.pred <= 1/phi])^3)
+                  gamma[D.pred >= 1/phi] <- 0   
+              }else{
+                  stop("error: in spPredict, specified cov.model '",cov.model,"' is not a valid option; choose, from gaussian, exponential, matern, spherical.")
+              }
+              
+              gamma <- as.matrix(gamma)
+              
+              mu <- pred.covars[i,]%*%beta[s,]+t(gamma)%*%R.inv%*%(Y-X%*%beta[s,])
+              S <- sigma.sq[s]*(1-t(gamma)%*%R.inv%*%gamma)+tau.sq[s]
+              
+              y.pred[i,s] <- rnorm(1, mu, sqrt(S))
+              
+          }
+          
+          if(verbose){
+              setTxtProgressBar(bar, s)
+          }
+      }
     
     out <- list()
-    out$p.predictive.samples <- y.pred
+    out$p.y.predictive.samples <- y.pred
     
     return(out)
   }

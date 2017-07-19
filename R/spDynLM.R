@@ -54,9 +54,6 @@ spDynLM <- function(formula, data = parent.frame(), coords, knots,
           data used in the model formula")
   }
   
-  coords.D <- iDist(coords)
-  storage.mode(coords.D) <- "double"
-
   ####################
   ##Knots
   ####################
@@ -117,6 +114,7 @@ spDynLM <- function(formula, data = parent.frame(), coords, knots,
   }
  
   m <- 0
+  coords.D <- 0
   knots.D <- 0
   coords.knots.D <- 0
   
@@ -130,9 +128,12 @@ spDynLM <- function(formula, data = parent.frame(), coords, knots,
       stop("error: knots and observation coordinates cannot coincide. At least one knot location coincides with an observed coordinate.")
     }
     
+  }else{
+      coords.D <- iDist(coords)
   }
 
   storage.mode(m) <- "integer"
+  storage.mode(coords.D) <- "double"
   storage.mode(knots.D) <- "double"
   storage.mode(coords.knots.D) <- "double"
   
@@ -279,7 +280,7 @@ spDynLM <- function(formula, data = parent.frame(), coords, knots,
   ptm <- proc.time()
 
   if(is.pp){
-    out <- .Call("spPPDynLM", Y, t(X), p, n, m, N.t, coords.D, knots.D, coords.knots.D,
+    out <- .Call("spPPDynLM", Y, t(X), p, n, m, N.t, knots.D, coords.knots.D,
                  beta.0.Norm, sigma.sq.IG, tau.sq.IG, nu.Unif, phi.Unif, sigma.eta.IW,
                  beta.starting, phi.starting, sigma.sq.starting, tau.sq.starting, nu.starting, sigma.eta.starting,
                  phi.tuning, nu.tuning,

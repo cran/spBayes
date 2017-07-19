@@ -23,9 +23,9 @@
   \item{beta.prior.mean}{\eqn{\beta}{beta} multivariate normal mean vector hyperprior. }
   \item{beta.prior.precision}{\eqn{\beta}{beta} multivariate normal precision
     matrix hyperprior. }
-  \item{prior.shape}{\eqn{\sigma^2}{sigma.sq} inverse-Gamma shape
+  \item{prior.shape}{\eqn{\tau^2}{tau.sq} inverse-Gamma shape
     hyperprior. }
-  \item{prior.rate}{\eqn{\sigma^2}{sigma.sq} inverse-Gamma 1/scale
+  \item{prior.rate}{\eqn{\tau^2}{tau.sq} inverse-Gamma 1/scale
     hyperprior. }
   \item{...}{currently no additional arguments.  }
 }
@@ -33,8 +33,7 @@
 \value{
   An object of class \code{bayesLMConjugate}, which is a list with at
   least the following tag:
-  \item{p.samples}{a \code{coda} object of posterior samples for the defined
-    parameters. }
+  \item{p.beta.tauSq.samples}{a \code{coda} object of posterior samples for the defined parameters. }
 }
 
 %\references{
@@ -51,8 +50,8 @@
 
 data(FORMGMT.dat)
 
-n = nrow(FORMGMT.dat)
-p = 7 ##an intercept and six covariates
+n <- nrow(FORMGMT.dat)
+p <- 7 ##an intercept and six covariates
 
 n.samples <- 500
 
@@ -71,7 +70,7 @@ m.1 <-
                      beta.prior.precision,
                      prior.shape, prior.rate)
 
-summary(m.1$p.samples)
+summary(m.1$p.beta.tauSq.samples)
 }
 }
 

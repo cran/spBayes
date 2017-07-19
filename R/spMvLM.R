@@ -103,9 +103,6 @@ spMvLM <- function(formula, data = parent.frame(), coords, knots,
           data used in the model formula")
   }
   
-  coords.D <- iDist(coords)
-  storage.mode(coords.D) <- "double"
-  
   ####################
   ##Knots
   ####################
@@ -166,6 +163,7 @@ spMvLM <- function(formula, data = parent.frame(), coords, knots,
   }
   
   g <- 0
+  coords.D <- 0
   knots.D <- 0
   knots.coords.D <- 0
   
@@ -173,10 +171,13 @@ spMvLM <- function(formula, data = parent.frame(), coords, knots,
     knots.D <- iDist(knot.coords)
     g <- nrow(knots.D)
     knots.coords.D <- iDist(knot.coords, coords)
+  }else{
+    coords.D <- iDist(coords)
   }
 
   storage.mode(modified.pp) <- "integer"
   storage.mode(g) <- "integer"
+  storage.mode(coords.D) <- "double"
   storage.mode(knots.D) <- "double"
   storage.mode(knots.coords.D) <- "double"
   
@@ -423,7 +424,7 @@ spMvLM <- function(formula, data = parent.frame(), coords, knots,
     XX <- t(X)
     storage.mode(XX) <- "double"
     
-    out <- .Call("spPPMvLM", Y, XX, p, n, m, g, coords.D, knots.D, knots.coords.D, modified.pp, 
+    out <- .Call("spPPMvLM", Y, XX, p, n, m, g, knots.D, knots.coords.D, modified.pp, 
                  beta.prior, beta.Norm,
                  K.prior, K.prior.name,
                  Psi.prior, Psi.prior.name, Psi.diag,

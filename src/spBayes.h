@@ -22,14 +22,14 @@ extern "C" {
 		      SEXP betaPrior_r, SEXP betaNorm_r, SEXP betaStarting_r, SEXP betaTuning_r, 
 		      SEXP nBatch_r, SEXP batchLength_r, SEXP acceptRate_r, SEXP verbose_r, SEXP nReport_r, SEXP amcmc_r);
   
-  SEXP spPPGLM(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP coordsD_r, SEXP family_r, SEXP weights_r,
+  SEXP spPPGLM(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r,  SEXP family_r, SEXP weights_r,
 	       SEXP m_r, SEXP knotsD_r, SEXP knotsCoordsD_r, 
 	       SEXP betaPrior_r, SEXP betaNorm_r, SEXP sigmaSqIG_r, SEXP nuUnif_r, SEXP phiUnif_r,
 	       SEXP phiStarting_r, SEXP sigmaSqStarting_r, SEXP nuStarting_r, SEXP betaStarting_r, SEXP w_strStarting_r,
 	       SEXP phiTuning_r, SEXP sigmaSqTuning_r, SEXP nuTuning_r, SEXP betaTuning_r, SEXP w_strTuning_r,
 	       SEXP covModel_r, SEXP nSamples_r, SEXP verbose_r, SEXP nReport_r);
   
-  SEXP spPPGLM_AMCMC(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP coordsD_r, SEXP family_r, SEXP weights_r,
+  SEXP spPPGLM_AMCMC(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP family_r, SEXP weights_r,
 		     SEXP m_r, SEXP knotsD_r, SEXP knotsCoordsD_r, 
 		     SEXP betaPrior_r, SEXP betaNorm_r, SEXP sigmaSqIG_r, SEXP nuUnif_r, SEXP phiUnif_r,
 		     SEXP phiStarting_r, SEXP sigmaSqStarting_r, SEXP nuStarting_r, SEXP betaStarting_r, SEXP w_strStarting_r,
@@ -48,7 +48,7 @@ extern "C" {
 		   SEXP phiTuning_r, SEXP sigmaSqTuning_r, SEXP nuTuning_r, SEXP betaTuning_r, SEXP wTuning_r,
 		   SEXP covModel_r, SEXP nBatch_r, SEXP batchLength_r, SEXP acceptRate_r, SEXP verbose_r, SEXP nReport_r);
   
-  SEXP spPPLM(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP m_r, SEXP coordsD_r, SEXP knotsD_r, SEXP knotsCoordsD_r, 
+  SEXP spPPLM(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP m_r, SEXP knotsD_r, SEXP knotsCoordsD_r, 
 	      SEXP modPP_r, SEXP betaPrior_r, SEXP betaNorm_r, SEXP sigmaSqIG_r, SEXP tauSqIG_r, SEXP nuUnif_r, SEXP phiUnif_r,
 	      SEXP betaStarting_r, SEXP phiStarting_r, SEXP sigmaSqStarting_r, SEXP tauSqStarting_r, SEXP nuStarting_r,
 	      SEXP phiTuning_r, SEXP sigmaSqTuning_r, SEXP tauSqTuning_r, SEXP nuTuning_r, 
@@ -77,14 +77,14 @@ extern "C" {
 		  SEXP phiTuning_r, SEXP ATuning_r, SEXP PsiTuning_r, SEXP nuTuning_r, 
 		  SEXP nugget_r, SEXP covModel_r, SEXP amcmc_r, SEXP nBatch_r, SEXP batchLength_r, SEXP acceptRate_r, SEXP verbose_r, SEXP nReport_r);
   
-  SEXP spPPMvGLM(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP m_r, SEXP coordsD_r,SEXP family_r, SEXP weights_r,
+  SEXP spPPMvGLM(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP m_r, SEXP family_r, SEXP weights_r,
 		 SEXP q_r, SEXP knotsD_r, SEXP knotsCoordsD_r,
 		 SEXP betaPrior_r, SEXP betaNorm_r, SEXP KIW_r, SEXP nuUnif_r, SEXP phiUnif_r,
 		 SEXP phiStarting_r, SEXP AStarting_r, SEXP nuStarting_r, SEXP betaStarting_r, SEXP w_strStarting_r,
 		 SEXP phiTuning_r, SEXP ATuning_r, SEXP nuTuning_r , SEXP betaTuning_r, SEXP w_strTuning_r,
 		 SEXP covModel_r, SEXP nSamples_r, SEXP verbose_r, SEXP nReport_r);
   
-  SEXP spPPMvGLM_AMCMC(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP m_r, SEXP coordsD_r,SEXP family_r,  SEXP weights_r,
+  SEXP spPPMvGLM_AMCMC(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP m_r, SEXP family_r,  SEXP weights_r,
 		       SEXP q_r, SEXP knotsD_r, SEXP knotsCoordsD_r,
 		       SEXP betaPrior_r, SEXP betaNorm_r, SEXP KIW_r, SEXP nuUnif_r, SEXP phiUnif_r,
 		       SEXP phiStarting_r, SEXP AStarting_r, SEXP nuStarting_r, SEXP betaStarting_r, SEXP w_strStarting_r,
@@ -103,7 +103,7 @@ extern "C" {
 		     SEXP phiTuning_r, SEXP ATuning_r, SEXP nuTuning_r , SEXP betaTuning_r, SEXP wTuning_r,
 		     SEXP covModel_r, SEXP nBatch_r, SEXP batchLength_r, SEXP acceptRate_r, SEXP verbose_r, SEXP nReport_r);
   
-  SEXP spPPMvLM(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP m_r, SEXP g_r, SEXP coordsD_r, SEXP knotsD_r, SEXP knotsCoordsD_r, SEXP modPP_r, 
+  SEXP spPPMvLM(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP m_r, SEXP g_r, SEXP knotsD_r, SEXP knotsCoordsD_r, SEXP modPP_r, 
 		SEXP betaPrior_r, SEXP betaNorm_r, 
 		SEXP KPrior_r, SEXP KPriorName_r, 
 		SEXP PsiPrior_r, SEXP PsiPriorName_r, SEXP PsiDiag_r, 
@@ -196,5 +196,15 @@ extern "C" {
 			 SEXP nugget_r, SEXP covModel_r, 
 			 SEXP beta_r, SEXP w_r,
 			 SEXP verbose_r, SEXP nReport_r);
+
+    SEXP spDynLM(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP Nt_r, SEXP coordsD_r,
+	       SEXP beta0Norm_r, SEXP sigmaSqIG_r, SEXP tauSqIG_r, SEXP nuUnif_r, SEXP phiUnif_r, SEXP sigmaEtaIW_r, 
+	       SEXP betaStarting_r, SEXP phiStarting_r, SEXP sigmaSqStarting_r, SEXP tauSqStarting_r, SEXP nuStarting_r, SEXP sigmaEtaStarting_r, 
+		 SEXP phiTuning_r, SEXP nuTuning_r, SEXP covModel_r, SEXP nSamples_r, SEXP missing_r, SEXP getFitted_r, SEXP verbose_r, SEXP nReport_r);
+
+    SEXP spPPDynLM(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP m_r, SEXP Nt_r, SEXP knotsD_r, SEXP coordsKnotsD_r,
+		 SEXP beta0Norm_r, SEXP sigmaSqIG_r, SEXP tauSqIG_r, SEXP nuUnif_r, SEXP phiUnif_r, SEXP sigmaEtaIW_r, 
+		 SEXP betaStarting_r, SEXP phiStarting_r, SEXP sigmaSqStarting_r, SEXP tauSqStarting_r, SEXP nuStarting_r, SEXP sigmaEtaStarting_r, 
+		   SEXP phiTuning_r, SEXP nuTuning_r, SEXP covModel_r, SEXP nSamples_r, SEXP missing_r, SEXP getFitted_r, SEXP verbose_r, SEXP nReport_r);
 
 }

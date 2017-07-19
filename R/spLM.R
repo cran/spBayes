@@ -98,9 +98,6 @@ spLM <- function(formula, data = parent.frame(), coords, knots,
           data used in the model formula")
   }
   
-  coords.D <- iDist(coords)
-  storage.mode(coords.D) <- "double"
-
   ####################
   ##Knots
   ####################
@@ -161,6 +158,7 @@ spLM <- function(formula, data = parent.frame(), coords, knots,
   }
  
   m <- 0
+  coords.D <- 0
   knots.D <- 0
   knots.coords.D <- 0
   
@@ -168,13 +166,16 @@ spLM <- function(formula, data = parent.frame(), coords, knots,
     knots.D <- iDist(knot.coords)
     m <- nrow(knots.D)
     knots.coords.D <- iDist(knot.coords, coords)
+  }else{
+    coords.D <- iDist(coords)
   }
 
   storage.mode(modified.pp) <- "integer"
   storage.mode(m) <- "integer"
+  storage.mode(coords.D) <- "double"
   storage.mode(knots.D) <- "double"
   storage.mode(knots.coords.D) <- "double"
-  
+
   ####################################################
   ##Covariance model
   ####################################################
@@ -353,7 +354,7 @@ spLM <- function(formula, data = parent.frame(), coords, knots,
   ptm <- proc.time()
   
   if(is.pp){
-    out <- .Call("spPPLM", Y, X, p, n, m, coords.D, knots.D, knots.coords.D,
+    out <- .Call("spPPLM", Y, X, p, n, m, knots.D, knots.coords.D,
                  modified.pp, beta.prior, beta.Norm, sigma.sq.IG, tau.sq.IG, nu.Unif, phi.Unif,
                  beta.starting, phi.starting, sigma.sq.starting, tau.sq.starting, nu.starting,
                  phi.tuning, sigma.sq.tuning, tau.sq.tuning, nu.tuning,

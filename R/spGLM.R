@@ -212,9 +212,6 @@ spGLM <- function(formula, family="binomial", weights, data = parent.frame(), co
           data used in the model formula")
   }
   
-  coords.D <- iDist(coords)
-  storage.mode(coords.D) <- "double"
-  
   ####################
   ##Knots
   ####################
@@ -275,6 +272,7 @@ spGLM <- function(formula, family="binomial", weights, data = parent.frame(), co
   }
  
   m <- 0
+  coords.D <- 0
   knots.D <- 0
   knots.coords.D <- 0
   
@@ -282,9 +280,12 @@ spGLM <- function(formula, family="binomial", weights, data = parent.frame(), co
     knots.D <- iDist(knot.coords)
     m <- nrow(knots.D)
     knots.coords.D <- iDist(knot.coords, coords)
+  }else{
+    coords.D <- iDist(coords)
   }
 
   storage.mode(m) <- "integer"
+  storage.mode(coords.D) <- "double"
   storage.mode(knots.D) <- "double"
   storage.mode(knots.coords.D) <- "double"
   
@@ -499,14 +500,14 @@ spGLM <- function(formula, family="binomial", weights, data = parent.frame(), co
   if(is.pp){
     
     if(!is.amcmc){
-      out <- .Call("spPPGLM", Y, X, p, n, coords.D, family, weights,
+      out <- .Call("spPPGLM", Y, X, p, n, family, weights,
                    m, knots.D, knots.coords.D,               
                    beta.prior, beta.Norm, sigma.sq.IG, nu.Unif, phi.Unif,
                    phi.starting, sigma.sq.starting, nu.starting, beta.starting, w.starting,
                    phi.tuning, sigma.sq.tuning, nu.tuning, beta.tuning, w.tuning,
                    cov.model, n.samples, verbose, n.report)  
     }else{
-      out <- .Call("spPPGLM_AMCMC", Y, X, p, n, coords.D, family, weights,
+      out <- .Call("spPPGLM_AMCMC", Y, X, p, n, family, weights,
                    m, knots.D, knots.coords.D,               
                    beta.prior, beta.Norm, sigma.sq.IG, nu.Unif, phi.Unif,
                    phi.starting, sigma.sq.starting, nu.starting, beta.starting, w.starting,

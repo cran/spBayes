@@ -9,7 +9,7 @@
 
 extern "C" {
 
-  SEXP spPPDynLM(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP m_r, SEXP Nt_r, SEXP coordsD_r, SEXP knotsD_r, SEXP coordsKnotsD_r,
+  SEXP spPPDynLM(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP m_r, SEXP Nt_r, SEXP knotsD_r, SEXP coordsKnotsD_r,
 		 SEXP beta0Norm_r, SEXP sigmaSqIG_r, SEXP tauSqIG_r, SEXP nuUnif_r, SEXP phiUnif_r, SEXP sigmaEtaIW_r, 
 		 SEXP betaStarting_r, SEXP phiStarting_r, SEXP sigmaSqStarting_r, SEXP tauSqStarting_r, SEXP nuStarting_r, SEXP sigmaEtaStarting_r, 
 		 SEXP phiTuning_r, SEXP nuTuning_r, SEXP covModel_r, SEXP nSamples_r, SEXP missing_r, SEXP getFitted_r, SEXP verbose_r, SEXP nReport_r){
@@ -49,7 +49,6 @@ extern "C" {
     int mm = m*m;
     int Ntm = Nt*m;
          
-    double *coordsD = REAL(coordsD_r);
     double *knotsD = REAL(knotsD_r);
     double *coordsKnotsD = REAL(coordsKnotsD_r);
 

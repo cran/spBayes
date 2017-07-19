@@ -12,7 +12,7 @@
 
 extern "C" {
 
-  SEXP spPPMvLM(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP m_r, SEXP g_r, SEXP coordsD_r, SEXP knotsD_r, SEXP knotsCoordsD_r, SEXP modPP_r, 
+  SEXP spPPMvLM(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP m_r, SEXP g_r, SEXP knotsD_r, SEXP knotsCoordsD_r, SEXP modPP_r, 
 	      SEXP betaPrior_r, SEXP betaNorm_r, 
 	      SEXP KPrior_r, SEXP KPriorName_r, 
 	      SEXP PsiPrior_r, SEXP PsiPriorName_r, SEXP PsiDiag_r, 
@@ -62,7 +62,6 @@ extern "C" {
     int nmgm = nm*gm;
     int gmp = gm*p;
     
-    double *coordsD = REAL(coordsD_r);
     double *knotsD = REAL(knotsD_r);
     double *knotsCoordsD = REAL(knotsCoordsD_r);
 

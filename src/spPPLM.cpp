@@ -10,7 +10,7 @@
 
 extern "C" {
 
-  SEXP spPPLM(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP m_r, SEXP coordsD_r, SEXP knotsD_r, SEXP knotsCoordsD_r, 
+  SEXP spPPLM(SEXP Y_r, SEXP X_r, SEXP p_r, SEXP n_r, SEXP m_r, SEXP knotsD_r, SEXP knotsCoordsD_r, 
 	      SEXP modPP_r, SEXP betaPrior_r, SEXP betaNorm_r, SEXP sigmaSqIG_r, SEXP tauSqIG_r, SEXP nuUnif_r, SEXP phiUnif_r,
 	      SEXP betaStarting_r, SEXP phiStarting_r, SEXP sigmaSqStarting_r, SEXP tauSqStarting_r, SEXP nuStarting_r,
 	      SEXP phiTuning_r, SEXP sigmaSqTuning_r, SEXP tauSqTuning_r, SEXP nuTuning_r, 
@@ -48,7 +48,6 @@ extern "C" {
     int mm = m*m;
     int mp = m*p;
 
-    double *coordsD = REAL(coordsD_r);
     double *knotsD = REAL(knotsD_r);
     double *knotsCoordsD = REAL(knotsCoordsD_r);
 

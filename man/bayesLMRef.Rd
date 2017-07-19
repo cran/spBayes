@@ -20,8 +20,7 @@
 \value{
   An object of class \code{bayesLMRef}, which is a list with at
   least the following tag:
-  \item{p.samples}{a \code{coda} object of posterior samples for the defined
-    parameters. }
+  \item{p.beta.tauSq.samples}{a \code{coda} object of posterior samples for the defined parameters. }
 }
 
 \details{

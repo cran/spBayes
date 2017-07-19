@@ -240,7 +240,7 @@ bayesLMConjugate <- function(formula, data = parent.frame(), n.samples, beta.pri
   posterior.rate <- prior.rate + 0.5*(t(mu)%*%V.beta.inv%*%mu + sum(Y*Y) - t(posterior.mean)%*%posterior.precision%*%posterior.mean)
 
   posterior.samples <- as.matrix(normalIGammaSampler(n.samples, posterior.mean, posterior.variance, posterior.shape, posterior.rate))
-  colnames(posterior.samples) <- c(x.names,"sigma.sq")
+  colnames(posterior.samples) <- c(x.names,"tau.sq")
   ##mcmc(posterior.samples)
   
   
@@ -252,7 +252,7 @@ bayesLMConjugate <- function(formula, data = parent.frame(), n.samples, beta.pri
   ##return
   ##
   out <- list()
-  out$p.samples <- mcmc(posterior.samples)
+  out$p.beta.tauSq.samples <- mcmc(posterior.samples)
   out$X <- as.matrix(X)
   out$Y <- as.matrix(Y)
   out$n.samples <- n.samples
