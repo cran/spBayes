@@ -1,8 +1,8 @@
 \name{spRecover}
 \alias{spRecover}
 \title{Function for recovering regression coefficients and spatial
-  random effects for \code{\link{spLM}}, \code{\link{spMvLM}}, and
-  \code{\link{spMisalignLM}} using composition sampling
+  random effects for \code{\link{spLM}}, \code{\link{spMvLM}},
+  \code{\link{spMisalignLM}}, \code{\link{spSVC}} using composition sampling
 }
 
 \description{
@@ -13,12 +13,12 @@
 
 \usage{
 spRecover(sp.obj, get.beta=TRUE, get.w=TRUE, start=1, end, thin=1,
-          verbose=TRUE, n.report=100, ...)
+          verbose=TRUE, n.report=100, n.omp.threads=1, ...)
 }
 
 \arguments{
   \item{sp.obj}{an object returned by \code{\link{spLM}},
-  \code{\link{spMvLM}}, or \code{\link{spMisalignLM}}.}
+  \code{\link{spMvLM}}, \code{\link{spMisalignLM}}, or \code{\link{spSVC}}.}
   \item{get.beta}{if \code{TRUE}, regression coefficients will be recovered.}
   \item{get.w}{if \code{TRUE}, spatial random effects will be recovered.}
   \item{start}{specifies the first sample included in the composition sampling.}
@@ -30,7 +30,13 @@ spRecover(sp.obj, get.beta=TRUE, get.w=TRUE, start=1, end, thin=1,
       \item{verbose}{if \code{TRUE}, model specification and progress of the
     sampler is printed to the screen. Otherwise, nothing is printed to
     the screen.  }
-  \item{n.report}{the interval to report sampling progress. }  
+  \item{n.report}{the interval to report sampling progress. }
+  \item{n.omp.threads}{a positive integer indicating
+    the number of threads to use for SMP parallel processing. The package must
+    be compiled for OpenMP support. For most Intel-based machines, we
+    recommend setting \code{n.omp.threads} up to the number of
+    hyperthreaded cores. This argument is only
+    implemented for \code{\link{spSVC}}.}
   \item{...}{currently no additional arguments.  }
 }
 
@@ -41,7 +47,43 @@ spRecover(sp.obj, get.beta=TRUE, get.w=TRUE, start=1, end, thin=1,
     \item{p.beta.recover.samples}{a \code{coda} object of regression coefficients posterior samples. }
     \item{p.w.recover.samples}{a \code{coda} object of spatial random
       effects posterior samples. Rows correspond to locations' random
-      effects and columns are posterior samples.}  
+      effects and columns are posterior samples. Given \eqn{q}{q} responses, the \code{p.w.recover.samples} matrix
+    for \code{\link{spMvLM}} has \eqn{qn}{qn} rows. The recovered
+    random effects for locations are held in rows
+    \eqn{1:q, (q+1):2q, \ldots, ((n-1)q+1):qn}{1:q, (q+1):2q, \ldots,
+      ((n*-1)q+1):qn} (i.e., the samples for the first location's \eqn{q}{q}
+    response variables are in rows 1:q, second location in rows \eqn{(q+1):2q}{(q+1):2q},
+    etc.).
+
+    For \code{\link{spSVC}} given the \eqn{r}{r} space-varying
+    coefficients, \code{p.w.recover.samples} has
+    \eqn{rn}{rn} rows. The recovered
+    random effects for locations are held in rows
+    \eqn{1:r, (r+1):2r, \ldots, ((n-1)r+1):rn}{1:r, (r+1):2r, \ldots,
+      ((n-1)r+1):rn} (i.e., the samples for the first location's
+    \eqn{r}{r} regression coefficients are in rows 1:r, second location in rows \eqn{(r+1):2r}{(r+1):2r},
+    etc.).}
+
+  \item{p.w.recover.samples.list}{only returned for
+    \code{\link{spSVC}}. This provides \code{p.w.recover.samples} in a
+    different (more convenient form). Elements in this list hold
+    samples for each of the \eqn{r}{r} coefficients. List element names
+    indicate either the coefficient index or name specified in
+    \code{\link{spSVC}}'s \code{svc.cols} argument. The sample matrices
+    are \eqn{n}{n} rows and predictive samples along the columns. }
+    
+  \item{p.tilde.beta.recover.samples.list}{only returned for
+    \code{\link{spSVC}}. Like \code{p.w.recover.samples.list} but with
+    the addition of the corresponding \eqn{\beta}{beta} posterior
+    samples (i.e., \eqn{\beta+w(s)}{beta+w(s)}). }
+
+    \item{p.y.samples}{only returned for
+    \code{\link{spSVC}}. These posterior are the fitted values with locations on
+    the rows and samples on the columns. For a given sample the fitted
+    value for the \eqn{i^{th}}{i-th} location is \eqn{N(x(s_i)\beta +
+    z(s_i)w(s_i), \tau^2)}{N(x(s_i)beta +
+    z(s_i)w(s_i), tau^2)}. }
+  
 }
 
 \references{
@@ -51,12 +93,17 @@ spRecover(sp.obj, get.beta=TRUE, get.w=TRUE, start=1, end, thin=1,
 
     Finley, A.O., S. Banerjee, and A.E. Gelfand. (2015) spBayes for large
   univariate and multivariate point-referenced spatio-temporal data
-  models. \emph{Journal of Statistical Software}, 63:1--28. \url{http://www.jstatsoft.org/v63/i13}.
+  models. \emph{Journal of Statistical Software},
+  63:1--28. \url{http://www.jstatsoft.org/v63/i13}.
+
+  Finley, A.O. and S. Banerjee (2019) Bayesian spatially varying
+  coefficient models in the spBayes R package. \url{http://arxiv.org}.
+
 }
 
 \author{
   Andrew O. Finley \email{finleya@msu.edu}, \cr
-  Sudipto Banerjee \email{baner009@umn.edu}
+  Sudipto Banerjee \email{sudipto@ucla.edu}
 }
 
 \examples{

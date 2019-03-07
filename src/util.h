@@ -64,6 +64,8 @@ double poisson_logpost(int &n, double *Y, double *eta, int *r);
 
 void report(int &s, int &nSamples, int &status, int &nReport, bool &verbose);
 
+double spCorTS(double &D, double &phi, double &nu, std::string &covModel, double *bk);
+
 void spCor(double *D, int n, double *theta, std::string &covModel, double *C);
 
 double spCor(double D, double *theta, std::string &covModel);
@@ -79,3 +81,7 @@ void transpose(double *m, int w, int h);
 void clearUT(double *m, int n);
 
 void rwish(double *S, int v, int p, double *Z, double *tmp_pp, int iwish);
+
+void dvdmm(int lside, int n, int m, double *A, double *B, double *C);
+
+void distN(double *coords1, int n1, double *coords2, int n2, int p, double *D);

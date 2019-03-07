@@ -317,7 +317,7 @@ extern "C" {
 		for(jj = 0; jj < n[l]; jj++){
 		  C[(sl+jj)*N+(sk+kk)] = 0.0;
 		  for(ii = 0; ii < m; ii++){
-		    C[(sl+jj)*N+(sk+kk)] += A[k+m*ii]*A[l+m*ii]*exp(-phi[ii]*coordsD[(sl+jj)*N+(sk+kk)]);
+		    C[(sl+jj)*N+(sk+kk)] += A[k+m*ii]*A[l+m*ii]*spCor(coordsD[(sl+jj)*N+(sk+kk)], phi[ii], nu[ii], covModel);
 		  }
 		}
 	      }
@@ -424,7 +424,7 @@ extern "C" {
 		
 		C[(sl+jj)*N+(sk+kk)] = 0.0;
 		for(ii = 0; ii < m; ii++){
-		  C[(sl+jj)*N+(sk+kk)] += A[k+m*ii]*A[l+m*ii]*exp(-phi[ii]*coordsD[(sl+jj)*N+(sk+kk)]);
+		  C[(sl+jj)*N+(sk+kk)] += A[k+m*ii]*A[l+m*ii]*spCor(coordsD[(sl+jj)*N+(sk+kk)], phi[ii], nu[ii], covModel);
 		}
 	      }
 	    }

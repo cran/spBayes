@@ -11,8 +11,8 @@ spDiag <- function(sp.obj, start=1, end, thin=1, verbose=TRUE, n.report=100, ...
   }
 
   if(missing(sp.obj)){stop("error: spDiag expects sp.obj\n")}
-  if(!class(sp.obj) %in% c("spLM","spMvLM", "spGLM", "spMvGLM","bayesLMRef","nonSpGLM","nonSpMvGLM")){
-    stop("error: spDiag requires an output object of class spLM, spMvLM, spGLM, spMvGLM, bayesLMRef, nonSpGLM, or nonSpMvGLM\n")}
+  if(!class(sp.obj) %in% c("spLM","spMvLM", "spGLM", "spMvGLM","bayesLMRef","nonSpGLM","nonSpMvGLM","spSVC")){
+    stop("error: spDiag requires an output object of class spLM, spMvLM, spGLM, spMvGLM, bayesLMRef, nonSpGLM, nonSpMvGLM, or spSVC\n")}
   if(!is.logical(verbose)){stop("error: verbose must be of type logical\n")}
   
   rmvn <- function(n, mu=0, V = matrix(1)){
@@ -52,6 +52,116 @@ spDiag <- function(sp.obj, start=1, end, thin=1, verbose=TRUE, n.report=100, ...
     GRS <- -sum(((y-mu.rep)/sqrt(var.rep))^2) - sum(log(var.rep))
     GRS
   }
+
+    if(class(sp.obj) == "spSVC"){
+        
+        if(!sp.obj$nugget){
+            stop("spDiag is not aviable for the no nugget model.")
+        }
+        
+        ##check that spRecover was previously run
+        if(all(c("p.beta.recover.samples", "p.w.recover.samples", "p.theta.recover.samples") %in% names(sp.obj))){
+            
+            n.samples <- nrow(sp.obj$p.theta.recover.samples)
+            
+            if(missing(end)){end <- n.samples}
+            if(!is.numeric(start) || start >= n.samples){stop("error: invalid start")}
+            if(!is.numeric(end) || end > n.samples){stop("error: invalid end")}
+            if(!is.numeric(thin) || thin >= n.samples){stop("error: invalid thin")}
+            
+            s.indx <- seq(as.integer(start), as.integer(end), by=as.integer(thin))
+                   
+            beta <- sp.obj$p.beta.recover.samples[s.indx,,drop=FALSE]       
+            tau.sq <- sp.obj$p.theta.recover.samples[s.indx,"tau.sq"]
+            w <- sp.obj$p.w.recover.samples[,s.indx,drop=FALSE]
+            
+            n.samples <- nrow(beta)
+
+            if(verbose){
+                message(paste0("Using ", n.samples, " posterior samples from previous spRecover call."))
+            }
+            
+        }else{
+            stop("error: run sp.obj <- spRecover(sp.obj, get.beta=T, get.w=T, ...) before calling spDiag")
+        }
+        
+        Y <-sp.obj$Y
+        X <- sp.obj$X
+        Z <- sp.obj$Z
+        p <- ncol(X)
+        n <- nrow(X)
+        m <- ncol(Z)
+        svc.cols <- sp.obj$svc.cols
+              
+        X.tilde <- t(bdiag(as.list(as.data.frame(t(X[,svc.cols])))))
+        ## sp.obj$p.y.samples <- matrix(0, n, n.samples)
+        ## for(i in 1:n.samples){
+        ##     sp.obj$p.y.samples[,i] <- rnorm(n, (X%*%sp.obj$p.beta.recover.samples[i,] + X.tilde%*%sp.obj$p.w.recover.samples[,i])[,1], sqrt(sp.obj$p.theta.recover.samples[i,"tau.sq"]))
+        ## }
+
+
+        beta.mu <- apply(beta, 2, mean)
+        w.mu <- apply(w, 1, mean)
+        tau.sq.mu <- mean(tau.sq)
+        
+        status <- 0
+        
+        d <- rep(0, n.samples)
+        DIC <- matrix(0,4,1)
+        
+        Y.rep <- matrix(0, n, n.samples)
+        
+        if(verbose){
+            cat("-------------------------------------------------\n\t\tCalculating scores\n-------------------------------------------------\n")
+        }
+       
+        for(s in 1:n.samples){
+            
+            Q <- Y-X%*%beta[s,]-(X.tilde%*%w[,s])[,1]
+            
+            d[s] <- n*log(tau.sq[s])+(t(Q)%*%Q)/tau.sq[s]
+            
+            status <- 0
+            
+            ##GP
+            mu <- X%*%beta[s,] + (X.tilde%*%w[,s])[,1]
+            Y.rep[,s] <- rnorm(n, mu, sqrt(tau.sq[s]))
+            
+            if(verbose){
+                if(status == n.report){
+                    cat(paste("Sampled: ",s," of ",n.samples,", ",round(100*s/n.samples,2),"%\n", sep=""))
+                    status <- 0
+                }
+                status <- status+1
+            }
+            
+        }
+        
+        d.bar <- mean(d)
+        
+        ##Get d.bar.omega
+        Q <- Y-X%*%beta.mu-(X.tilde%*%w.mu)[,1]
+        
+        d.bar.omega <- n*log(tau.sq.mu)+(t(Q)%*%Q)/tau.sq.mu
+        
+        pd <- d.bar - d.bar.omega
+        dic <- d.bar + pd
+        
+        rownames(DIC) <- c("bar.D", "D.bar.Omega", "pD", "DIC")
+        colnames(DIC) <- c("value")
+        DIC[1,1] <- d.bar
+        DIC[2,1] <- d.bar.omega
+        DIC[3,1] <- pd
+        DIC[4,1] <- dic
+        
+        out <- list()
+        out$DIC <- DIC
+        out$GP <- GP(Y.rep,Y)
+        out$GRS <- GR(Y.rep,Y)
+        
+        return(out)
+        
+    }
     
   if(class(sp.obj) == "bayesLMRef"){
 
@@ -228,9 +338,9 @@ spDiag <- function(sp.obj, start=1, end, thin=1, verbose=TRUE, n.report=100, ...
     
     if(!all(c("p.beta.recover.samples", "p.theta.recover.samples", "p.w.recover.samples") %in% names(sp.obj))){
       if(!is.pp){
-        stop("error: run spRecover(sp.obj, get.beta=T, get.w=T, ...) before calling spDiag")
+        stop("error: run sp.obj <- spRecover(sp.obj, get.beta=T, get.w=T, ...) before calling spDiag")
       }else{
-        stop("error: run spRecover(sp.obj, get.w=T, ...) before calling spDiag")
+        stop("error: run sp.obj <- spRecover(sp.obj, get.w=T, ...) before calling spDiag")
       }
     }
 

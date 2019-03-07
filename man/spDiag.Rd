@@ -5,7 +5,8 @@
 \description{
   The function \code{spDiag} calculates DIC, GP, GRS, and associated
   statistics given a \code{\link{spLM}}, \code{\link{spMvLM}},
-  \code{\link{spGLM}}, or \code{\link{spMvGLM}} object.
+  \code{\link{spGLM}}, \code{\link{spMvGLM}}, \code{\link{spMvGLM}}, or
+  \code{\link{spSVC}} object.
 }
 
 \usage{
@@ -14,7 +15,7 @@
 
 \arguments{
   \item{sp.obj}{an object returned by  \code{\link{spLM}},
-  \code{\link{spMvLM}}, \code{\link{spGLM}}, or \code{\link{spMvGLM}}.}
+  \code{\link{spMvLM}}, \code{\link{spGLM}}, \code{\link{spMvGLM}}. For \code{\link{spSVC}}, \code{sp.obj} is an object from \code{\link{spRecover}}.}
   \item{start}{specifies the first sample included in the computation. The \code{start}, \code{end}, and \code{thin} arguments only apply to \code{\link{spGLM}} or
   \code{\link{spMvGLM}} objects. Sub-sampling for \code{\link{spLM}} and \code{\link{spMvLM}} is controlled using \code{\link{spRecover}} which
   must be called prior to \code{spDiag}.}
@@ -45,17 +46,21 @@
   Banerjee, S., Carlin, B.P., and Gelfand, A.E. (2004). Hierarchical
   modeling and analysis for spatial data. Chapman and Hall/CRC Press,
   Boca Raton,Fla.
-  
+
+  Finley, A.O. and S. Banerjee (2019) Efficient implementation of spatially-varying coefficients
+  models.
+        
   Gelfand A.E. and Ghosh, S.K. (1998). Model choice: a minimum posterior
   predictive loss approach. \emph{Biometrika}. 85:1-11.
 
   Gneiting, T. and Raftery, A.E. (2007). Strictly proper scoring rules, prediction, and estimation.
-  \emph{Journal of the American Statistical Association}. 102:359-378. 
+  \emph{Journal of the American Statistical Association}. 102:359-378.
+  
 }
 
 \author{
   Andrew O. Finley \email{finleya@msu.edu}, \cr
-  Sudipto Banerjee \email{sudiptob@biostat.umn.edu}.
+  Sudipto Banerjee \email{sudipto@ucla.edu}
 }
 
 \examples{

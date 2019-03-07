@@ -368,6 +368,43 @@ void report(int &s, int &nSamples, int &status, int &nReport, bool &verbose){
   R_CheckUserInterrupt();  
 }
 
+
+double spCorTS(double &D, double &phi, double &nu, std::string &covModel, double *bk){
+
+  //thread safe spCor
+  
+  if(covModel == "exponential"){//exponential
+    
+    return exp(-phi*D);
+    
+  }else if(covModel == "spherical"){//spherical
+    
+    if(D > 0 && D <= 1.0/phi){
+      return 1.0 - 1.5*phi*D + 0.5*pow(phi*D,3);
+    }else if(D >= 1.0/phi){
+      return 0.0;
+    }else{
+      return 1.0;
+    }
+  }else if(covModel == "matern"){//matern
+    
+    //(d*phi)^nu/(2^(nu-1)*gamma(nu))*pi/2*(besselI(d*phi,-nu)-besselI(d*phi, nu))/sin(nu*pi), or
+    //(d*phi)^nu/(2^(nu-1)*gamma(nu))*besselK(x=d*phi, nu=nu)
+    
+    if(D*phi > 0.0){
+      return pow(D*phi, nu)/(pow(2, nu-1)*gammafn(nu))*bessel_k_ex(D*phi, nu, 1.0, bk);//thread safe bessel
+    }else{
+      return 1.0;
+    } 
+  }else if(covModel == "gaussian"){//gaussian
+    
+    return exp(-1.0*(pow(phi*D,2)));
+      
+  }else{
+    error("c++ error: cov.model is not correctly specified");
+  }
+}
+
 void spCor(double *D, int n, double *theta, std::string &covModel, double *C){
   int i;
   
@@ -697,3 +734,58 @@ void rwish(double *S, int v, int p, double *Z, double *tmp_pp, int iwish){
 // }
 
 
+void dvdmm(int lside, int n, int m, double *A, double *B, double *C){
+
+  //Computs A*B or B*t(A) where B is nxn and A is viewed as a nmxn for lside and nxnm t(A) otherwise.
+  //However, A is always passed in as a nxm matrix.
+  //A is sparse vector diagonal matrix.
+  //                         |x x . . . .|
+  //E.g., B*t(A) with t(A) = |. . x x . .|
+  //                         |. . . . x x|
+  //C is output and must have n*n*m allocated
+    
+  int i,j,k;
+  int nm = n*m;
+
+  Rprintf("n %i, m %i, nm %i.\n", n, m, nm);
+       
+  if(lside==1){
+    
+    for(i = 0; i < n; i++){
+      for(k = 0; k < n; k++){
+	for(j = 0; j < m; j++){
+	  C[i*nm+k*m+j] = A[j*n+k]*B[i*n+k];
+	}
+      }
+    }
+        
+  }else{
+  
+    for(i = 0; i < n; i++){
+      for(k = 0; k < n; k++){
+	for(j = 0; j < m; j++){
+	  C[n*(i*m+j)+k] = B[i*n+k]*A[j*n+i];
+	}
+      }
+    }
+  
+ }
+
+}
+
+void distN(double *coords1, int n1, double *coords2, int n2, int p, double *D){
+
+  double dist;
+  int i,j,k;
+
+  for(i = 0; i < n1; i++){
+    for(j = 0; j < n2; j++){
+      dist = 0.0;
+      for(k = 0; k < p; k++){
+	dist += pow(coords1[k*n1+i] - coords2[k*n2+j], 2);
+      }
+      D[j*n1+i] = sqrt(dist);
+    }
+  }
+  
+}

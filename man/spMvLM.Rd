@@ -19,7 +19,7 @@ spMvLM(formula, data = parent.frame(), coords, knots,
   \item{formula}{a list of \eqn{q}{q} symbolic regression model descriptions to be fit. See example below. }
   
   \item{data}{an optional data frame containing the variables in the
-    model. If not found in data, the variables are taken from \code{environment(formula)}, typically the environment from which \code{spMvLM} is called.  }
+    model. If not found in \code{data}, the variables are taken from \code{environment(formula)}, typically the environment from which \code{spMvLM} is called.  }
   
   \item{coords}{an \eqn{n \times 2}{n x 2} matrix of the observation coordinates in \eqn{R^2}{R^2} (e.g., easting and northing). }
   
