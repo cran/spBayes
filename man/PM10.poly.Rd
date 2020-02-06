@@ -27,9 +27,10 @@ Coefficient Model for Mapping PM10 Air Quality at the European scale. \emph{Atmo
 }
 
 \examples{
+
 \dontrun{
 
-library(rgdal)
+library(sp)
 
 prj <- "+proj=laea +lat_0=52 +lon_0=10 +x_0=4321000 +y_0=3210000 +ellps=GRS80 +units=km +no_defs"
 

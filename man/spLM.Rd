@@ -101,7 +101,7 @@ The \emph{no nugget} model is specified by removing \code{tau.sq} from the \code
 }
   
 \seealso{
-  \code{\link{spMvLM}}
+  \code{\link{spMvLM}}  \code{\link{spSVC}}
 }
 
 \references{
@@ -127,6 +127,8 @@ The \emph{no nugget} model is specified by removing \code{tau.sq} from the \code
 }
 
 \examples{
+library(coda)
+
 \dontrun{
 rmvn <- function(n, mu=0, V = matrix(1)){
   p <- length(mu)

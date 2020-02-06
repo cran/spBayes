@@ -170,6 +170,7 @@ spGLM(formula, family="binomial", weights, data = parent.frame(),
 \examples{
 \dontrun{
 library(MBA)
+library(coda)
 
 set.seed(1)
 
@@ -230,7 +231,7 @@ w.hat <- m.1$p.w.samples[,sub.samps]
 
 p.hat <- 1/(1+exp(-(x\%*\%beta.hat+w.hat)))
 
-y.hat <- apply(p.hat, 2, function(x){rbinom(n, size=weights, prob=p)})
+y.hat <- apply(p.hat, 2, function(x){rbinom(n, size=weights, prob=p.hat)})
 
 y.hat.mu <- apply(y.hat, 1, mean)
 y.hat.var <- apply(y.hat, 1, var)

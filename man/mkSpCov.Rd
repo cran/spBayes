@@ -36,7 +36,6 @@ matrix. For a univariate model this corresponds to the nugget,
     \code{"exponential"}, \code{"matern"}, \code{"spherical"}, and
     \code{"gaussian"}.  See below for details.  }
 
-  \item{...}{currently no additional arguments.  }
 }
 
 \value{

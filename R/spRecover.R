@@ -24,7 +24,7 @@ spRecover <- function(sp.obj, get.beta=TRUE, get.w=TRUE, start=1, end, thin=1, v
     
     if(obj.class == "spSVC"){
         
-        Y <-sp.obj$Y
+        Y <- sp.obj$Y
         X <- sp.obj$X
         Z <- sp.obj$Z
         p <- ncol(X)
@@ -136,7 +136,8 @@ spRecover <- function(sp.obj, get.beta=TRUE, get.w=TRUE, start=1, end, thin=1, v
         }
         
         ##y fitted
-        X.tilde <- t(bdiag(as.list(as.data.frame(t(X[,svc.cols])))))
+        X.tilde <- t(bdiag(as.list(as.data.frame(t(X[,svc.cols,drop=FALSE])))))    
+        
         sp.obj$p.y.samples <- matrix(0, n, n.samples)
         for(i in 1:n.samples){
             sp.obj$p.y.samples[,i] <- rnorm(n, (X%*%sp.obj$p.beta.recover.samples[i,] + X.tilde%*%sp.obj$p.w.recover.samples[,i])[,1], sqrt(sp.obj$p.theta.recover.samples[i,"tau.sq"]))

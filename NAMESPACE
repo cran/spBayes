@@ -23,9 +23,15 @@ export(spMisalignGLM)
 export(spSVC)
 
 # Imports
-import(Formula, abind, coda, magic, Matrix)
 importFrom("stats", "coefficients", "contrasts", "dist", "glm",
              "is.empty.model", "lm", "model.extract", "model.frame",
              "model.matrix", "model.response", "rgamma", "rnorm",
            "terms", "var", "vcov", "sd")
 importFrom("utils", "setTxtProgressBar", "txtProgressBar")
+importFrom("coda", "mcmc")
+importFrom("sp", "SpatialPolygons")
+importFrom("magic", "adiag")
+importFrom("Formula", "Formula")
+importFrom("Matrix", "bdiag", "t")
+
+
