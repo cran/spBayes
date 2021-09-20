@@ -155,12 +155,12 @@ The \emph{no nugget} model is specified by removing \code{tau.sq} from the \code
 \references{
   Finley, A.O., S. Banerjee, and A.E. Gelfand. (2015) spBayes for large
   univariate and multivariate point-referenced spatio-temporal data
-  models. \emph{Journal of Statistical Software}, 63:1--28. \url{http://www.jstatsoft.org/v63/i13}.
+  models. \emph{Journal of Statistical Software}, 63:1--28. \url{https://www.jstatsoft.org/article/view/v063i13}.
   
   Roberts G.O. and Rosenthal J.S. (2006). Examples of Adaptive MCMC. \url{http://probability.ca/jeff/ftpdir/adaptex.pdf}.
 
   Finley, A.O. and S. Banerjee (2019) Bayesian spatially varying
-  coefficient models in the spBayes R package. \url{http://arxiv.org}.
+  coefficient models in the spBayes R package. \url{https://arxiv.org/abs/1903.03028}.
   
 }
 

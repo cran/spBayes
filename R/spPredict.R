@@ -150,6 +150,7 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, joint=FALSE, start=1, en
                          verbose, n.report, n.omp.threads)
         }
 
+     
         run.time <- proc.time() - ptm
         out$run.time <- run.time
 
@@ -168,17 +169,18 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, joint=FALSE, start=1, en
         for(i in 1:m){
             out$p.w.predictive.samples.list[[i]] <- out$p.w.predictive.samples[indx == i,]
         }
-        
+       
         ##B.tilde = B + w for each svc.cols
         out$p.tilde.beta.predictive.samples.list  <- vector("list", length = m)
         names(out$p.tilde.beta.predictive.samples.list) <- paste0("tilde.beta.",x.names[svc.cols])
         for(i in 1:m){
             out$p.tilde.beta.predictive.samples.list[[i]] <- out$p.w.predictive.samples.list[[i]] + matrix(rep(as.matrix(out$p.beta.recover.samples)[,svc.cols[i]], each=q), nrow=q)
         }
-        
+       
         ##y predicted
-        X.tilde <- t(bdiag(as.list(as.data.frame(t(pred.covars[,svc.cols])))))
+        X.tilde <- t(bdiag(as.list(as.data.frame(t(pred.covars[,svc.cols,drop=FALSE])))))        
         out$p.y.predictive.samples <- matrix(0, q, n.samples)
+         
         for(i in 1:n.samples){
             out$p.y.predictive.samples[,i] <- rnorm(q, (pred.covars%*%out$p.beta.recover.samples[i,] + X.tilde%*%out$p.w.predictive.samples[,i])[,1], sqrt(out$p.theta.recover.samples[i,"tau.sq"]))
         }

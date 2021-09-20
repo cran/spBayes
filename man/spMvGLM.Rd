@@ -160,7 +160,7 @@ Finley, A.O., H. Sang, S. Banerjee, and A.E. Gelfand. (2009) Improving the perfo
 
     Finley, A.O., S. Banerjee, and A.E. Gelfand. (2015) spBayes for large
   univariate and multivariate point-referenced spatio-temporal data
-  models. \emph{Journal of Statistical Software}, 63:1--28. \url{http://www.jstatsoft.org/v63/i13}.
+  models. \emph{Journal of Statistical Software}, 63:1--28. \url{https://www.jstatsoft.org/article/view/v063i13}.
 
   Banerjee, S., Carlin, B.P., and Gelfand, A.E. (2004). Hierarchical modeling and analysis for spatial data. Chapman and Hall/CRC Press, Boca Raton, Fla.
   

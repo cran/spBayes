@@ -119,7 +119,7 @@ The \emph{no nugget} model is specified by removing \code{Psi} and \code{L} from
 
   Finley, A.O., S. Banerjee, and A.E. Gelfand. (2015) spBayes for large
   univariate and multivariate point-referenced spatio-temporal data
-  models. \emph{Journal of Statistical Software}, 63:1--28. \url{http://www.jstatsoft.org/v63/i13}.
+  models. \emph{Journal of Statistical Software}, 63:1--28. \url{https://www.jstatsoft.org/article/view/v063i13}.
   
   Finley, A.O., H. Sang, S. Banerjee, and A.E. Gelfand. (2009) Improving the performance of predictive process modeling for large datasets. \emph{Computational Statistics and Data Analysis}, 53:2873--2884.
   

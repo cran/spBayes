@@ -1,3 +1,8 @@
+2021-09-20  andy  <andy@acer>
+
+	* 0.4-4
+	* Fixed omp system and R header order issue. Also fixed error thrown when spSVC prediction for one location.
+
 2017-04-12  andy  <andy@twig>
 
 	* 0.4-0

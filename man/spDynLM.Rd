@@ -150,7 +150,7 @@ spatial variance component. The spatial smoothness parameter,
 
     Finley, A.O., S. Banerjee, and A.E. Gelfand. (2015) spBayes for large
   univariate and multivariate point-referenced spatio-temporal data
-  models. \emph{Journal of Statistical Software}, 63:1--28. \url{http://www.jstatsoft.org/v63/i13}.
+  models. \emph{Journal of Statistical Software}, 63:1--28. \url{https://www.jstatsoft.org/article/view/v063i13}.
   
   Gelfand, A.E., S. Banerjee, and D. Gamerman (2005) Spatial Process
   Modelling for Univariate and Multivariate Dynamic Spatial Data,
