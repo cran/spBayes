@@ -1,9 +1,9 @@
-#include <string>
-#include "util.h"
-
 #ifdef _OPENMP
 #include <omp.h>
 #endif
+
+#include <string>
+#include "util.h"
 
 #include <R.h>
 #include <Rinternals.h>
@@ -22,17 +22,12 @@ extern "C" {
     /*****************************************
                 Common variables
     *****************************************/
-    int i, j, k, l, b, s, h, info, nProtect=0;
+    int i, j, k, l, s, h, info, nProtect=0;
     char const *lower = "L";
-    char const *upper = "U";
-    char const *nUnit = "N";
-    char const *yUnit = "U";
     char const *ntran = "N";
     char const *ytran = "T";
-    char const *rside = "R";
     char const *lside = "L";
     const double one = 1.0;
-    const double negOne = -1.0;
     const double zero = 0.0;
     const int incOne = 1;
     
@@ -44,7 +39,6 @@ extern "C" {
     int m = INTEGER(m_r)[0];
     int mm = m*m;
     int n = INTEGER(n_r)[0];
-    int nn = n*n;
     int nm = n*m;
     int nmnm = nm*nm;
     int q = INTEGER(q_r)[0];//number of prediction locations

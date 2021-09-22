@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <string>
 #include <R.h>
+#include <Rmath.h>
 #include <Rinternals.h>
 #include <R_ext/Linpack.h>
 #include <R_ext/Lapack.h>
@@ -19,15 +20,12 @@ extern "C" {
     /*****************************************
                 Common variables
     *****************************************/
-    int i,j,k,l,b,info,nProtect= 0;
+    int i, j, k, b, info, nProtect= 0;
     char const *lower = "L";
-    char const *upper = "U";
     char const *ntran = "N";
     char const *ytran = "T";
-    char const *rside = "R";
     char const *lside = "L";
     const double one = 1.0;
-    const double negOne = -1.0;
     const double zero = 0.0;
     const int incOne = 1;
 
@@ -38,7 +36,6 @@ extern "C" {
     double *Y = REAL(Y_r);
     double *X = REAL(X_r);
     int p = INTEGER(p_r)[0];
-    int pp = p*p;
     int n = INTEGER(n_r)[0];
 
     std::string family = CHAR(STRING_ELT(family_r,0));
@@ -133,10 +130,10 @@ extern "C" {
     /*****************************************
          Set-up MCMC sample matrices etc.
     *****************************************/
-    int nn = n*n, nm = n*m, mm = m*m;
+    int nm = n*m, mm = m*m;
 
     //spatial parameters
-    int nParams, betaIndx, sigmaSqIndx, phiIndx, nuIndx;
+    int nParams, betaIndx, sigmaSqIndx, phiIndx, nuIndx = 0;
 
     if(covModel != "matern"){
       nParams = p+2;//sigma^2, phi
@@ -196,7 +193,7 @@ extern "C" {
     /*****************************************
        Set-up MCMC alg. vars. matrices etc.
     *****************************************/
-    int s=0, status=0, rtnStatus=0;
+    int s=0, status=0;
     double logPostCurrent = 0, logPostCand = 0, detCand = 0, spParamsjCurrent, w_strjCurrent;
 
     double *accept = (double *) R_alloc(nParams, sizeof(double)); zeros(accept, nParams);
@@ -208,7 +205,7 @@ extern "C" {
     double *tmp_m = (double *) R_alloc(m, sizeof(double));
     double *tmp_nm = (double *) R_alloc(nm, sizeof(double));
      
-    double sigmaSq, phi, nu;
+    double sigmaSq, phi, nu = 0;
     double *beta = (double *) R_alloc(p, sizeof(double));
     double *w = (double *) R_alloc(n, sizeof(double)); zeros(w, n);
     double *theta = (double *) R_alloc(3, sizeof(double)); //phi, nu, and perhaps more in the future

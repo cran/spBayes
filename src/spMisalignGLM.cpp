@@ -4,7 +4,9 @@
 // #include <omp.h>
 // #endif
 #include <R.h>
+#include <Rmath.h>
 #include <Rinternals.h>
+#include <Rmath.h>
 #include <R_ext/Linpack.h>
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
@@ -22,17 +24,11 @@ extern "C" {
     /*****************************************
                 Common variables
     *****************************************/
-    int h, i, j, k, l, b, s, ii, jj, kk, info, nProtect= 0;
+    int i, j, k, l, b, s, ii, jj, kk, info, nProtect= 0;
     char const *lower = "L";
-    char const *upper = "U";
-    char const *nUnit = "N";
-    char const *yUnit = "U";
     char const *ntran = "N";
-    char const *ytran = "T";
     char const *rside = "R";
-    char const *lside = "L";
     const double one = 1.0;
-    const double negOne = -1.0;
     const double zero = 0.0;
     const int incOne = 1;
     
@@ -55,8 +51,6 @@ extern "C" {
     
     int mm = m*m;
     int NN = N*N;
-    int NP = N*P;
-    int PP = P*P;
     
     double *coordsD = REAL(coordsD_r);
     
@@ -189,7 +183,7 @@ extern "C" {
          Set-up MCMC sample matrices etc.
     *****************************************/
     //spatial parameters
-    int nParams, betaIndx, AIndx, phiIndx, nuIndx;
+    int nParams, betaIndx, AIndx, phiIndx, nuIndx = 0;
     
     if(covModel != "matern"){
       nParams = P+nLTr+m;//A, phi
@@ -258,7 +252,7 @@ extern "C" {
     int status=0;
     double logMHRatio = 0, logPostCurrent = R_NegInf, logPostCand = 0, detCand = 0;
     double spParamsjCurrent, wjCurrent;
-    double logDetK, SKtrace, Q;
+    double logDetK, SKtrace;
     
     double *accept = (double *) R_alloc(nParams, sizeof(double)); zeros(accept, nParams);
     double *accept_w = (double *) R_alloc(N, sizeof(double)); zeros(accept_w, N);

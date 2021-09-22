@@ -3,6 +3,7 @@
 // #include <omp.h>
 // #endif
 #include <R.h>
+#include <Rmath.h>
 #include <Rinternals.h>
 #include <R_ext/Linpack.h>
 #include <R_ext/Lapack.h>
@@ -21,15 +22,11 @@ extern "C" {
     /*****************************************
                 Common variables
     *****************************************/
-    int h, i, j, k, l, b, s, ii, jj, info, nProtect= 0;
+    int h, i, k, l, s, ii, jj, info, nProtect= 0;
     char const *lower = "L";
-    char const *upper = "U";
     char const *ntran = "N";
-    char const *ytran = "T";
     char const *rside = "R";
-    char const *lside = "L";
     const double one = 1.0;
-    const double negOne = -1.0;
     const double zero = 0.0;
     const int incOne = 1;
 
@@ -182,12 +179,11 @@ extern "C" {
     /*****************************************
          Set-up MCMC sample matrices etc.
     *****************************************/
-    int nn = n*n;
     int mm = m*m;
     int nm = n*m;
 
     //spatial parameters
-    int nParams, betaIndx, AIndx, LIndx, phiIndx, nuIndx;
+    int nParams, betaIndx, AIndx, phiIndx, nuIndx = 0;
 
     if(covModel != "matern"){
       nParams = p+nLTr+m;//A, phi
@@ -232,17 +228,14 @@ extern "C" {
     /*****************************************
        Set-up MCMC alg. vars. matrices etc.
     *****************************************/
-    int status=0, rtnStatus=0, accept=0, batchAccept = 0;
+    int status=0, accept=0, batchAccept = 0;
     double logPostCurrent = 0, logPostCand = 0, detCand = 0, logDetK, SKtrace;
 
     double *C = (double *) R_alloc(nm*nm, sizeof(double)); 
         
     double *tmp_mm = (double *) R_alloc(mm, sizeof(double));
-    double *tmp_mm1 = (double *) R_alloc(mm, sizeof(double));
-    double *tmp_mm2 = (double *) R_alloc(mm, sizeof(double));
     double *tmp_nm = (double *) R_alloc(nm, sizeof(double));
-    double *tmp_nm1 = (double *) R_alloc(nm, sizeof(double));
-
+ 
     double *candSpParams = (double *) R_alloc(nParams, sizeof(double));
     double *beta = (double *) R_alloc(p, sizeof(double));
     double *A = (double *) R_alloc(mm, sizeof(double));

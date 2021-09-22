@@ -1,6 +1,6 @@
 Package: spBayes
-Version: 0.4-4
-Date: 2021-09-20
+Version: 0.4-5
+Date: 2021-09-21
 Title: Univariate and Multivariate Spatial-Temporal Modeling
 Authors@R: c(person("Andrew", "Finley", role=c("aut", "cre"), email="finleya@msu.edu"), person("Sudipto", "Banerjee", role="aut", email="sudipto@ucla.edu"))
 Maintainer: Andrew Finley <finleya@msu.edu>
@@ -15,5 +15,5 @@ License: GPL (>= 2)
 URL: https://www.finley-lab.com
 Repository: CRAN
 NeedsCompilation: yes
-Packaged: 2021-09-20 14:21:19 UTC; andy
-Date/Publication: 2021-09-20 14:50:05 UTC
+Packaged: 2021-09-21 17:12:04 UTC; andy
+Date/Publication: 2021-09-22 08:50:01 UTC

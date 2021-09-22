@@ -18,14 +18,11 @@ extern "C" {
     /*****************************************
                 Common variables
     *****************************************/
-    int h, i, j, k, l, s, ii, jj, kk, info, nProtect=0;
+    int i, k, l, s, ii, jj, kk, info, nProtect=0;
     char const *lower = "L";
-    char const *upper = "U";
     char const *nUnit = "N";
-    char const *yUnit = "U";
     char const *ntran = "N";
     char const *ytran = "T";
-    char const *rside = "R";
     char const *lside = "L";
     const double one = 1.0;
     const double negOne = -1.0;
@@ -79,7 +76,7 @@ extern "C" {
     int verbose = INTEGER(verbose_r)[0];
     int nReport = INTEGER(nReport_r)[0];
 
-    int nParams, AIndx, PsiIndx, phiIndx, nuIndx;
+    int nParams, AIndx, PsiIndx = 0, phiIndx, nuIndx = 0;
     
     if(!nugget && covModel != "matern"){
       nParams = nLTr+m;//A, phi
@@ -118,7 +115,6 @@ extern "C" {
     double *B = (double *) R_alloc(PP, sizeof(double));
     double *bb = (double *) R_alloc(P, sizeof(double));
     double *tmp_P = (double *) R_alloc(P, sizeof(double));
-    double *tmp_PP = (double *) R_alloc(PP, sizeof(double));
     
     int P1 = P+1;
     double *vU = (double *) R_alloc(N*P1, sizeof(double));

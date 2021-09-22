@@ -1,5 +1,6 @@
 #include <string>
 #include <R.h>
+#include <Rmath.h>
 #include <Rinternals.h>
 #include <R_ext/Linpack.h>
 #include <R_ext/Lapack.h>
@@ -18,15 +19,11 @@ extern "C" {
     /*****************************************
                 Common variables
     *****************************************/
-    int i,j,k,l,info,nProtect= 0;
+    int i, info, nProtect= 0;
     char const *lower = "L";
-    char const *upper = "U";
     char const *ntran = "N";
     char const *ytran = "T";
-    char const *rside = "R";
-    char const *lside = "L";
     const double one = 1.0;
-    const double negOne = -1.0;
     const double zero = 0.0;
     const int incOne = 1;
 
@@ -169,10 +166,10 @@ extern "C" {
     /*****************************************
          Set-up MCMC sample matrices etc.
     *****************************************/
-    int nn = n*n, nm = n*m, mm = m*m;
+    int nm = n*m, mm = m*m;
 
     //spatial parameters
-    int nParams, betaIndx, sigmaSqIndx, phiIndx, nuIndx;
+    int nParams, betaIndx, sigmaSqIndx, phiIndx, nuIndx = 0;
 
     if(covModel != "matern"){
       nParams = p+2;//sigma^2, phi
@@ -216,20 +213,19 @@ extern "C" {
     /*****************************************
        Set-up MCMC alg. vars. matrices etc.
     *****************************************/
-    int s=0, status=0, rtnStatus=0, accept=0, batchAccept = 0;
+    int s=0, status=0, accept=0, batchAccept = 0;
     double logPostCurrent = 0, logPostCand = 0, detCand = 0;
   
     double *P = (double *) R_alloc(nm, sizeof(double));
     double *K = (double *) R_alloc(mm, sizeof(double));
     double *tmp_n = (double *) R_alloc(n, sizeof(double));
     double *tmp_m = (double *) R_alloc(m, sizeof(double));
-    double *tmp_nm = (double *) R_alloc(nm, sizeof(double));
     double *theta = (double *) R_alloc(3, sizeof(double)); //phi, nu, and perhaps more in the future
 
     double *candSpParams = (double *) R_alloc(nParams, sizeof(double));
     double *w_strCand = (double *) R_alloc(m, sizeof(double));
     double *wCand = (double *) R_alloc(n, sizeof(double));
-    double sigmaSq, phi, nu;
+    double sigmaSq, phi, nu = 0;
     double *beta = (double *) R_alloc(p, sizeof(double));
 
     double logMHRatio;

@@ -13,18 +13,8 @@ extern"C" {
     /*****************************************
                 Common variables
     *****************************************/
-    int h, i, j, k, l, b, s, ii, jj, info, nProtect= 0;
+    int h, i, j, k, l, ii, jj, info;
     char const *lower = "L";
-    char const *upper = "U";
-    char const *nUnit = "N";
-    char const *yUnit = "U";
-    char const *ntran = "N";
-    char const *ytran = "T";
-    char const *rside = "R";
-    char const *lside = "L";
-    const double one = 1.0;
-    const double negOne = -1.0;
-    const double zero = 0.0;
     const int incOne = 1;
     
     double *coords = REAL(coords_r);

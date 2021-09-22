@@ -1,5 +1,6 @@
 #include <string>
 #include <R.h>
+#include <Rmath.h>
 #include <Rinternals.h>
 #include <R_ext/Linpack.h>
 #include <R_ext/Lapack.h>
@@ -19,14 +20,11 @@ extern "C" {
     /*****************************************
                 Common variables
     *****************************************/
-    int i, j, k, l, s, info, nProtect=0;
+    int k, l, s, info, nProtect=0;
     char const *lower = "L";
-    char const *upper = "U";
     char const *nUnit = "N";
-    char const *yUnit = "U";
     char const *ntran = "N";
     char const *ytran = "T";
-    char const *rside = "R";
     char const *lside = "L";
     const double one = 1.0;
     const double negOne = -1.0;
@@ -101,7 +99,6 @@ extern "C" {
     
     double *betaCInv = NULL;
     double *betaCInvMu = NULL;
-    double *Sbeta = NULL;
   
     if(betaPrior == "normal"){
       betaCInv = (double *) R_alloc(pp, sizeof(double));

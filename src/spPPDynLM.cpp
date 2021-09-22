@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <string>
 #include <R.h>
+#include <Rmath.h>
 #include <Rinternals.h>
 #include <R_ext/Linpack.h>
 #include <R_ext/Lapack.h>
@@ -17,18 +18,13 @@ extern "C" {
     /*****************************************
                 Common variables
     *****************************************/
-    int i, j, k, l, b, s, t, info, nProtect=0;
+    int i, j, s, t, info, nProtect=0;
     char const *lower = "L";
-    char const *upper = "U";
-    char const *nUnit = "N";
-    char const *yUnit = "U";
     char const *ntran = "N";
     char const *ytran = "T";
     char const *rside = "R";
-    char const *lside = "L";
     const double one = 1.0;
     const double two = 2.0;
-    const double negOne = -1.0;
     const double zero = 0.0;
     const int incOne = 1;
 
@@ -42,7 +38,6 @@ extern "C" {
     int n = INTEGER(n_r)[0];
     int Nt = INTEGER(Nt_r)[0];
     int Ntp = Nt*p;
-    int nn = n*n;
     int Ntn = Nt*n;
     int m = INTEGER(m_r)[0];
     int nm = n*m;

@@ -18,9 +18,7 @@ extern "C" {
     *****************************************/
     int h, i, j, k, l, s, ii, jj, info, nProtect=0;
     char const *lower = "L";
-    char const *upper = "U";
     char const *nUnit = "N";
-    char const *yUnit = "U";
     char const *ntran = "N";
     char const *ytran = "T";
     char const *rside = "R";
@@ -47,7 +45,6 @@ extern "C" {
     double *Z = REAL(Z_r);
     int q = INTEGER(q_r)[0];
     int qm = q*m;
-    int qmqm = qm*qm;
     int qmp = qm*p;
     int nmqm = nm*qm;
     int mm = m*m;
@@ -80,7 +77,7 @@ extern "C" {
     int verbose = INTEGER(verbose_r)[0];
     int nReport = INTEGER(nReport_r)[0];
 
-    int nParams, AIndx, LIndx, phiIndx, nuIndx;
+    int nParams, AIndx, LIndx = 0, phiIndx, nuIndx = 0;
     
     if(!nugget && covModel != "matern"){
       nParams = nLTr+m;//A, phi
@@ -136,13 +133,11 @@ extern "C" {
    
     double *A = (double *) R_alloc(mm, sizeof(double)); 
     double *K = (double *) R_alloc(mm, sizeof(double)); 
-    double *L = (double *) R_alloc(mm, sizeof(double));
     double *Psi = (double *) R_alloc(mm, sizeof(double));
     double *phi = (double *) R_alloc(m, sizeof(double));
     double *nu = (double *) R_alloc(m, sizeof(double));
     double *theta = (double *) R_alloc(2, sizeof(double)); //phi, nu, and perhaps more in the future
 
-    double *tmp_p = (double *) R_alloc(p, sizeof(double)); 
     double *tmp_mm = (double *) R_alloc(mm, sizeof(double)); 
     double *tmp_qm = (double *) R_alloc(qm, sizeof(double)); 
     double *tmp_qmm = NULL;

@@ -1,18 +1,18 @@
 #include <string>
+#include "util.h"
+
 #include <R.h>
 #include <Rmath.h>
 #include <Rinternals.h>
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include <R_ext/Utils.h>
-#include "util.h"
 
 void mvrnorm(double *des, double *mu, double *cholCov, int dim){
   
   int i;
   int inc = 1;
   double one = 1.0;
-  double zero = 0.0;
   
   //make some std norm draws
   for(i = 0; i < dim; i++)
@@ -31,7 +31,6 @@ void mvrnorm(double *des, double *mu, double *cholCov, int dim, bool upper){
   int i;
   int inc = 1;
   double one = 1.0;
-  double zero = 0.0;
   
   //make some std norm draws
   for(i = 0; i < dim; i++)

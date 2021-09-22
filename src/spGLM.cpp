@@ -1,5 +1,6 @@
 #include <string>
 #include <R.h>
+#include <Rmath.h>
 #include <Rinternals.h>
 #include <R_ext/Linpack.h>
 #include <R_ext/Lapack.h>
@@ -17,15 +18,10 @@ extern "C" {
     /*****************************************
                 Common variables
     *****************************************/
-    int i,j,k,l,info,nProtect= 0;
+    int i,info,nProtect= 0;
     char const *lower = "L";
-    char const *upper = "U";
     char const *ntran = "N";
-    char const *ytran = "T";
-    char const *rside = "R";
-    char const *lside = "L";
     const double one = 1.0;
-    const double negOne = -1.0;
     const double zero = 0.0;
     const int incOne = 1;
 
@@ -168,7 +164,7 @@ extern "C" {
     int nn = n*n;
 
     //spatial parameters
-    int nParams, betaIndx, sigmaSqIndx, phiIndx, nuIndx;
+    int nParams, betaIndx, sigmaSqIndx, phiIndx, nuIndx = 0;
 
     if(covModel != "matern"){
       nParams = p+2;//sigma^2, phi
@@ -218,7 +214,7 @@ extern "C" {
 
     double *candSpParams = (double *) R_alloc(nParams, sizeof(double));
     double *wCand = (double *) R_alloc(n, sizeof(double));
-    double sigmaSq, phi, nu;
+    double sigmaSq, phi, nu = 0;
     double *beta = (double *) R_alloc(p, sizeof(double));
     double *theta = (double *) R_alloc(3, sizeof(double)); //phi, nu, and perhaps more in the future
 

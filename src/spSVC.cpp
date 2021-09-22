@@ -1,12 +1,13 @@
-#include <algorithm>
-#include <string>
-#include "util.h"
-
 #ifdef _OPENMP
 #include <omp.h>
 #endif
 
+#include <algorithm>
+#include <string>
+#include "util.h"
+
 #include <R.h>
+#include <Rmath.h>
 #include <Rinternals.h>
 #include <R_ext/Linpack.h>
 #include <R_ext/Lapack.h>
@@ -26,9 +27,7 @@ extern "C" {
     *****************************************/
     int i, j, k, l, b, s, ii, jj, h, info, nProtect=0;
     char const *lower = "L";
-    char const *upper = "U";
     char const *nUnit = "N";
-    char const *yUnit = "U";
     char const *ntran = "N";
     char const *ytran = "T";
     char const *rside = "R";
@@ -215,7 +214,7 @@ extern "C" {
          Set-up MCMC sample matrices etc.
     *****************************************/ 
     //parameters
-    int nParams, AIndx, tauSqIndx, phiIndx, nuIndx;
+    int nParams, AIndx, tauSqIndx = 0, phiIndx, nuIndx = 0;
 
     if(KDiag){
       j = m;
@@ -325,7 +324,7 @@ extern "C" {
     double *C = (double *) R_alloc(nn, sizeof(double)); zeros(C, nn);
     double *phi = (double *) R_alloc(m, sizeof(double));
     double *nu = (double *) R_alloc(m, sizeof(double)); zeros(nu, m); //this just remains empty of not matern
-    double tauSq;
+    double tauSq = 0;
     
     double *D = (double *) R_alloc(nn, sizeof(double));
     distN(coords, n, coords, n, q, D);

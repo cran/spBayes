@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <R.h>
+#include <Rmath.h>
 #include <Rinternals.h>
 #include <R_ext/Linpack.h>
 #include <R_ext/Lapack.h>
@@ -49,7 +50,7 @@ extern "C" {
     int nBatch = INTEGER(nBatch_r)[0];
     int batchLength = INTEGER(batchLength_r)[0];
 
-    int b, i, j, s, k, nProtect = 0, inc = 1, info;
+    int b, i, j, s, nProtect = 0, inc = 1;
     int nSamples = nBatch*batchLength;
 
     double *accept = (double *) R_alloc(nTheta, sizeof(double));
@@ -60,7 +61,7 @@ extern "C" {
       tuning[i] = log(tuning[i]);
     }
 
-    SEXP acceptance_r, samples_r, theta_r, thetaCand_r;
+    SEXP acceptance_r, samples_r, theta_r;
     PROTECT(samples_r = allocMatrix(REALSXP, nTheta, nSamples)); nProtect++; 
     PROTECT(theta_r = allocVector(REALSXP, nTheta)); nProtect++; 
     PROTECT(acceptance_r = allocMatrix(REALSXP, nTheta, nBatch)); nProtect++; 

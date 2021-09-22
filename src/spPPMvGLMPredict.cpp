@@ -3,6 +3,7 @@
 // #include <omp.h>
 // #endif
 #include <R.h>
+#include <Rmath.h>
 #include <Rinternals.h>
 #include <R_ext/Linpack.h>
 #include <R_ext/Lapack.h>
@@ -18,15 +19,10 @@ extern "C" {
     /*****************************************
                 Common variables
     *****************************************/
-    int h, i, j, k, l, b, s, ii, jj, info, nProtect= 0;
+    int h, i, k, l, s, ii, jj, info, nProtect= 0;
     const char *lower = "L";
-    const char *upper = "U";
     const char *ntran = "N";
-    const char *ytran = "T";
-    const char *rside = "R";
-    const char *lside = "L";
     const double one = 1.0;
-    const double negOne = -1.0;
     const double zero = 0.0;
     const int incOne = 1;
 
@@ -35,9 +31,6 @@ extern "C" {
     *****************************************/
 
     std::string family = CHAR(STRING_ELT(family_r,0));
-    double *Y = REAL(Y_r);
-    double *X = REAL(X_r);
-    int n = INTEGER(n_r)[0];
     int m = INTEGER(m_r)[0];
     int g = INTEGER(g_r)[0];
     int p = INTEGER(p_r)[0];
@@ -59,7 +52,7 @@ extern "C" {
          Set-up sample matrices etc.
     *****************************************/
     //spatial parameters
-    int nParams, betaIndx, AIndx, phiIndx, nuIndx;
+    int nParams, betaIndx, AIndx, phiIndx, nuIndx = 0;
 
     if(covModel != "matern"){
       nParams = p+nLTr+m;//A, phi
@@ -74,8 +67,7 @@ extern "C" {
     int gmgm = gm*gm;
     int qm = q*m;
     int qmgm = qm*gm;
-    int qmqm = qm*qm;
-  
+   
     SEXP wPred_r, yPred_r;
 
     PROTECT(wPred_r = allocMatrix(REALSXP, qm, nSamples)); nProtect++; 

@@ -1,5 +1,6 @@
 #include <string>
 #include <R.h>
+#include <Rmath.h>
 #include <Rinternals.h>
 #include <R_ext/Linpack.h>
 #include <R_ext/Lapack.h>
@@ -19,15 +20,9 @@ extern "C" {
     /*****************************************
                 Common variables
     *****************************************/
-    int h, i, j, k, l, s, ii, jj, kk, info, nProtect=0;
+    int i, j, k, l, s, ii, info, nProtect=0;
     char const *lower = "L";
-    char const *upper = "U";
-    char const *nUnit = "N";
-    char const *yUnit = "U";
     char const *ntran = "N";
-    char const *ytran = "T";
-    char const *rside = "R";
-    char const *lside = "L";
     const double one = 1.0;
     const double negOne = -1.0;
     const double zero = 0.0;
@@ -52,18 +47,15 @@ extern "C" {
     
     int mm = m*m;
     int NN = N*N;
-    int NP = N*P;
     int PP = P*P;
 
-    int *pPred = INTEGER(pPred_r);
+    //int *pPred = INTEGER(pPred_r);
     int *nPred = INTEGER(nPred_r);
     double *Z = REAL(Z_r);
 
     int NPred = 0;
-    int PPred = 0;
     for(i = 0; i < m; i++){
       NPred += nPred[i];
-      PPred += pPred[i];
     }
 
     int NPredN = NPred*N;
@@ -93,7 +85,7 @@ extern "C" {
     int verbose = INTEGER(verbose_r)[0];
     int nReport = INTEGER(nReport_r)[0];
 
-    int nParams, AIndx, PsiIndx, phiIndx, nuIndx;
+    int nParams, AIndx, PsiIndx = 0, phiIndx, nuIndx = 0;
     
     if(!nugget && covModel != "matern"){
       nParams = nLTr+m;//A, phi

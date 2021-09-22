@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <string>
 #include <R.h>
+#include <Rmath.h>
 #include <Rinternals.h>
 #include <R_ext/Linpack.h>
 #include <R_ext/Lapack.h>
@@ -20,9 +21,7 @@ extern "C" {
     *****************************************/
     int i, j, k, l, b, s, info, nProtect=0;
     char const *lower = "L";
-    char const *upper = "U";
     char const *nUnit = "N";
-    char const *yUnit = "U";
     char const *ntran = "N";
     char const *ytran = "T";
     char const *rside = "R";
@@ -131,7 +130,7 @@ extern "C" {
          Set-up MCMC sample matrices etc.
     *****************************************/ 
     //parameters
-    int nParams, sigmaSqIndx, tauSqIndx, phiIndx, nuIndx;
+    int nParams, sigmaSqIndx, tauSqIndx = 0, phiIndx, nuIndx = 0;
 
     if(!nugget && covModel != "matern"){
       nParams = 2;//sigma^2, phi
@@ -215,7 +214,7 @@ extern "C" {
     double *accept = (double *) R_alloc(nParams, sizeof(double)); zeros(accept, nParams);
 
     double *C = (double *) R_alloc(nn, sizeof(double)); zeros(C, nn);
-    double sigmaSq, phi, tauSq, nu, Q;
+    double sigmaSq, phi, tauSq = 0, nu = 0, Q;
     double *theta = (double *) R_alloc(3, sizeof(double)); //phi, nu, and perhaps more in the future
 
     int p1 = p+1;

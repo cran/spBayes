@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <string>
 #include <R.h>
+#include <Rmath.h>
 #include <Rinternals.h>
 #include <R_ext/Linpack.h>
 #include <R_ext/Lapack.h>
@@ -21,12 +22,9 @@ extern "C" {
     *****************************************/
     int i, j, k, l, b, s, info, nProtect=0;
     char const *lower = "L";
-    char const *upper = "U";
     char const *nUnit = "N";
-    char const *yUnit = "U";
     char const *ntran = "N";
     char const *ytran = "T";
-    char const *rside = "R";
     char const *lside = "L";
     const double one = 1.0;
     const double negOne = -1.0;
@@ -41,7 +39,6 @@ extern "C" {
     int p = INTEGER(p_r)[0];
     int pp = p*p;
     int n = INTEGER(n_r)[0];
-    int nn = n*n;
     int np = n*p;
     int m = INTEGER(m_r)[0];
     int nm = n*m;
@@ -146,7 +143,7 @@ extern "C" {
          Set-up MCMC sample matrices etc.
     *****************************************/ 
     //parameters
-    int nParams, sigmaSqIndx, tauSqIndx, phiIndx, nuIndx;
+    int nParams, sigmaSqIndx, tauSqIndx = 0, phiIndx, nuIndx = 0;
 
     if(!nugget && covModel != "matern"){
       nParams = 2;//sigma^2, phi
@@ -243,7 +240,7 @@ extern "C" {
     double *DCurrent = (double *) R_alloc(n, sizeof(double)); 
     double *HCurrent = (double *) R_alloc(nm, sizeof(double)); 
    
-    double sigmaSq, phi, tauSq, nu, Q;
+    double sigmaSq, phi, tauSq = 0, nu = 0, Q;
     double *theta = (double *) R_alloc(3, sizeof(double)); //phi, nu, and perhaps more in the future
 
     double *tmp_n = (double *) R_alloc(n, sizeof(double)); 

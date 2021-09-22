@@ -1,10 +1,5 @@
 #include <string>
-#include <R.h>
-#include <Rmath.h>
 #include <Rinternals.h>
-#include <R_ext/Lapack.h>
-#include <R_ext/BLAS.h>
-#include <R_ext/Utils.h>
 
 void mvrnorm(double *des, double *mu, double * cholCov, int dim);
 

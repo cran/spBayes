@@ -17,14 +17,10 @@ extern "C" {
     /*****************************************
                 Common variables
     *****************************************/
-    int i, j, k, l, s, info, nProtect=0;
+    int i, j, s, info, nProtect=0;
     char const *lower = "L";
-    char const *upper = "U";
-    char const *nUnit = "N";
-    char const *yUnit = "U";
     char const *ntran = "N";
     char const *ytran = "T";
-    char const *rside = "R";
     char const *lside = "L";
     const double one = 1.0;
     const double negOne = -1.0;
@@ -37,15 +33,11 @@ extern "C" {
     double *Y = REAL(Y_r);
     double *X = REAL(X_r);
     int p = INTEGER(p_r)[0];
-    int pp = p*p;
     int n = INTEGER(n_r)[0];
-    int nn = n*n;
-    int np = n*p;
     int m = INTEGER(m_r)[0];
     int nm = n*m;
     int mm = m*m;
-    int mp = m*p;
-    
+      
     int nSamples = INTEGER(nSamples_r)[0];
 
     double *beta = REAL(beta_r);

@@ -1,9 +1,9 @@
-#include <string>
-#include "util.h"
-
 #ifdef _OPENMP
 #include <omp.h>
 #endif
+
+#include <string>
+#include "util.h"
 
 #include <R.h>
 #include <Rinternals.h>
@@ -24,14 +24,11 @@ extern "C" {
     /*****************************************
                 Common variables
     *****************************************/
-    int i, j, k, l, b, s, h, info, nProtect=0;
+    int i, j, k, l, s, h, info, nProtect=0;
     char const *lower = "L";
-    char const *upper = "U";
     char const *nUnit = "N";
-    char const *yUnit = "U";
     char const *ntran = "N";
     char const *ytran = "T";
-    char const *rside = "R";
     char const *lside = "L";
     const double one = 1.0;
     const double negOne = -1.0;
@@ -114,7 +111,7 @@ extern "C" {
     double *tmp_nltr = (double *) R_alloc(nLTr, sizeof(double));
     double *phi = (double *) R_alloc(m, sizeof(double));
     double *nu = (double *) R_alloc(m, sizeof(double)); zeros(nu, m); //this just remains empty of not matern
-    double tauSq;
+    double tauSq = 0;
   
     double *D = (double *) R_alloc(nn, sizeof(double));
     distN(coords, n, coords, n, q, D);
@@ -126,7 +123,6 @@ extern "C" {
     
     double *betaCInv = NULL;
     double *betaCInvMu = NULL;
-    double *Sbeta = NULL;
     
     if(betaPrior == "normal"){
       betaCInv = (double *) R_alloc(pp, sizeof(double));

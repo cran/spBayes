@@ -4,6 +4,7 @@
 // #include <omp.h>
 // #endif
 #include <R.h>
+#include <Rmath.h>
 #include <Rinternals.h>
 #include <R_ext/Linpack.h>
 #include <R_ext/Lapack.h>
@@ -24,13 +25,9 @@ extern "C" {
     *****************************************/
     int h, i, j, k, l, b, s, ii, jj, info, nProtect= 0;
     char const *lower = "L";
-    char const *upper = "U";
     char const *ntran = "N";
-    char const *ytran = "T";
     char const *rside = "R";
-    char const *lside = "L";
     const double one = 1.0;
-    const double negOne = -1.0;
     const double zero = 0.0;
     const int incOne = 1;
 
@@ -41,11 +38,9 @@ extern "C" {
     double *Y = REAL(Y_r);
     double *X = REAL(X_r);
     int p = INTEGER(p_r)[0];
-    int pp = p*p;
     int n = INTEGER(n_r)[0];
     int m = INTEGER(m_r)[0];
     int mm = m*m;
-    int nn = n*n;
     int nm = n*m;
     int nLTr = m*(m-1)/2+m;
 
@@ -167,7 +162,7 @@ extern "C" {
          Set-up MCMC sample matrices etc.
     *****************************************/
     //spatial parameters
-    int nParams, betaIndx, AIndx, phiIndx, nuIndx;
+    int nParams, betaIndx, AIndx, phiIndx, nuIndx = 0;
 
     if(covModel != "matern"){
       nParams = p+nLTr+m;//A, phi
@@ -240,11 +235,9 @@ extern "C" {
     double *accept = (double *) R_alloc(nParams, sizeof(double)); zeros(accept, nParams);
     double *accept_w = (double *) R_alloc(nm, sizeof(double)); zeros(accept_w, nm);
 
-    double *C = (double *) R_alloc(nm*nm, sizeof(double)); 
-        
+    double *C = (double *) R_alloc(nm*nm, sizeof(double));
+    
     double *tmp_mm = (double *) R_alloc(mm, sizeof(double));
-    double *tmp_mm1 = (double *) R_alloc(mm, sizeof(double));
-    double *tmp_mm2 = (double *) R_alloc(mm, sizeof(double));
     double *tmp_nm = (double *) R_alloc(nm, sizeof(double));
     double *tmp_nm1 = (double *) R_alloc(nm, sizeof(double));
 

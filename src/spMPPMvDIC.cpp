@@ -17,22 +17,18 @@ extern"C" {
 
   int nm = n*m;
   int mm = m*m;
-  int nn = n*n;
   int qm = q*m;
   int nmnm = nm*nm;
   int qmqm = qm*qm;
   int nmqm = nm*qm;
-  int h, i, j, k, l, ii, jj, info;
+  int i, j, k, l, h, ii, jj, info;
  
   //BLAS and LAPACK vars
   char const *lower = "L";
-  char const *upper = "U";
   char const *ntran = "N";
   char const *ytran = "T";
   char const *rside = "R";
-  char const *lside = "L";
   double one = 1.0;
-  double negOne = -1.0;
   double zero = 0.0;
   int incOne = 1;
 
@@ -41,7 +37,6 @@ extern"C" {
   double *C = (double *) R_alloc(nmnm, sizeof(double));
   double *tmp_nmqm = (double *) R_alloc(nmqm, sizeof(double));
   double *tmp_mm = (double *) R_alloc(mm, sizeof(double));
-  double *tmp_mm1 = (double *) R_alloc(mm, sizeof(double));
   double *tmp_nm = (double *) R_alloc(nm, sizeof(double));
   double *A = (double *) R_alloc(mm, sizeof(double));
   double *theta = (double *) R_alloc(2, sizeof(double));
