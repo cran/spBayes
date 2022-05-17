@@ -1,3 +1,4 @@
+#define USE_FC_LEN_T
 #include <algorithm>
 #include <string>
 #include <R.h>
@@ -7,6 +8,9 @@
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
+#ifndef FCONE
+# define FCONE
+#endif
 
 extern "C" {
 
@@ -171,7 +175,7 @@ extern "C" {
 	    }
 	  }
 	  	  
-	  F77_NAME(dgemv)(ntran, &n, &p, &one, X, &n, beta, &incOne, &zero, tmp_n, &incOne);
+	  F77_NAME(dgemv)(ntran, &n, &p, &one, X, &n, beta, &incOne, &zero, tmp_n, &incOne FCONE);
 	  
 	  if(family == "binomial"){
 	    logPostCand += binomial_logpost(n, Y, tmp_n, weights);

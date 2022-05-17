@@ -1,3 +1,4 @@
+#define USE_FC_LEN_T
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -10,6 +11,9 @@
 #include <R_ext/Linpack.h>
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
+#ifndef FCONE
+# define FCONE
+#endif
 
 extern "C" {
 
@@ -123,7 +127,7 @@ extern "C" {
       if(KDiag == false){
 	dcopy_(&nLTr, &samples[AIndx*nSamples+s], &nSamples, tmp_nltr, &incOne);
       	covExpand(tmp_nltr, A, m);//note this is K, so we need chol
-      	F77_NAME(dpotrf)(lower, &m, A, &m, &info); if(info != 0){error("c++ error: dpotrf failed 1\n");} 
+      	F77_NAME(dpotrf)(lower, &m, A, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 1\n");} 
       	clearUT(A, m); //make sure upper tri is clear
       }
 
@@ -141,7 +145,7 @@ extern "C" {
 	
       }
 
-      F77_NAME(dgemm)(ntran, ytran, &m, &m, &m, &one, A, &m, A, &m, &zero, C, &m);
+      F77_NAME(dgemm)(ntran, ytran, &m, &m, &m, &one, A, &m, A, &m, &zero, C, &m FCONE FCONE);
             
       //construct covariance matrix
 #ifdef _OPENMP
@@ -184,23 +188,23 @@ extern "C" {
 
       //printMtrx(B, nm, qm);
            
-      F77_NAME(dpotrf)(lower, &nm, K, &nm, &info); if(info != 0){error("c++ error: dpotrf failed 1\n");}
-      F77_NAME(dpotri)(lower, &nm, K, &nm, &info); if(info != 0){error("c++ error: dpotri failed\n");}     
+      F77_NAME(dpotrf)(lower, &nm, K, &nm, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 1\n");}
+      F77_NAME(dpotri)(lower, &nm, K, &nm, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}     
  
       for(i = 0; i < q; i++){
 
 	//mu
-	F77_NAME(dsymm)(lside, lower, &nm, &m, &one, K, &nm, &B[(i*m)*nm], &nm, &zero, tmp_nmm, &nm);
-	F77_NAME(dgemv)(ytran, &nm, &m, &one, tmp_nmm, &nm, &wSamples[s*nm], &incOne, &zero, tmp_m, &incOne);
+	F77_NAME(dsymm)(lside, lower, &nm, &m, &one, K, &nm, &B[(i*m)*nm], &nm, &zero, tmp_nmm, &nm FCONE FCONE);
+	F77_NAME(dgemv)(ytran, &nm, &m, &one, tmp_nmm, &nm, &wSamples[s*nm], &incOne, &zero, tmp_m, &incOne FCONE);
 	
 	//var
-	F77_NAME(dgemm)(ytran, ntran, &m, &m, &nm, &one, tmp_nmm, &nm, &B[(i*m)*nm], &nm, &zero, tmp_mm, &m);		
+	F77_NAME(dgemm)(ytran, ntran, &m, &m, &nm, &one, tmp_nmm, &nm, &B[(i*m)*nm], &nm, &zero, tmp_mm, &m FCONE FCONE);		
 
 	for(j = 0; j < mm; j++){
 	  tmp_mm[j] = C[j] - tmp_mm[j];
 	}
 	
-      	F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info); if(info != 0){error("c++ error: dpotrf failed 2\n");}
+      	F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 2\n");}
       	mvrnorm(&REAL(wPredSamples_r)[s*qm+i*m], tmp_m, tmp_mm, m, false);
       }
 	  

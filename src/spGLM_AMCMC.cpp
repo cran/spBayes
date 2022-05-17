@@ -1,3 +1,4 @@
+#define USE_FC_LEN_T
 #include <algorithm>
 #include <string>
 #include <R.h>
@@ -7,6 +8,9 @@
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
+#ifndef FCONE
+# define FCONE
+#endif
 
 extern "C" {
 
@@ -237,9 +241,9 @@ extern "C" {
 
 	  //invert C and log det cov
 	  detCand = 0;
-	  F77_NAME(dpotrf)(lower, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
+	  F77_NAME(dpotrf)(lower, &n, C, &n, &info FCONE); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
 	  for(k = 0; k < n; k++) detCand += 2*log(C[k*n+k]);
-	  F77_NAME(dpotri)(lower, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
+	  F77_NAME(dpotri)(lower, &n, C, &n, &info FCONE); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
 	  
 	  //Likelihood with Jacobian  
 	  logPostCand = 0.0;
@@ -258,7 +262,7 @@ extern "C" {
 	    logPostCand += log(nu - nuUnifa) + log(nuUnifb - nu);   
 	  }
 	  
-	  F77_NAME(dgemv)(ntran, &n, &p, &one, X, &n, beta, &incOne, &zero, tmp_n, &incOne);
+	  F77_NAME(dgemv)(ntran, &n, &p, &one, X, &n, beta, &incOne, &zero, tmp_n, &incOne FCONE);
 	  
 	  if(family == "binomial"){
 	    logPostCand += binomial_logpost(n, Y, tmp_n, w, weights);
@@ -269,7 +273,7 @@ extern "C" {
 	  }
 	  
 	  //(-1/2) * tmp_n` *  C^-1 * tmp_n
-	  F77_NAME(dsymv)(lower, &n, &one,  C, &n, w, &incOne, &zero, tmp_n1, &incOne);
+	  F77_NAME(dsymv)(lower, &n, &one,  C, &n, w, &incOne, &zero, tmp_n1, &incOne FCONE);
 	  logPostCand += -0.5*detCand-0.5*F77_NAME(ddot)(&n, w, &incOne, tmp_n1, &incOne);
 
 	  //
@@ -306,11 +310,11 @@ extern "C" {
 
 	//invert C and log det cov
 	detCand = 0;
-	F77_NAME(dpotrf)(lower, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
+	F77_NAME(dpotrf)(lower, &n, C, &n, &info FCONE); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
 	for(k = 0; k < n; k++) detCand += 2*log(C[k*n+k]);
-	F77_NAME(dpotri)(lower, &n, C, &n, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
+	F77_NAME(dpotri)(lower, &n, C, &n, &info FCONE); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
 	
-	F77_NAME(dgemv)(ntran, &n, &p, &one, X, &n, beta, &incOne, &zero, tmp_n, &incOne);
+	F77_NAME(dgemv)(ntran, &n, &p, &one, X, &n, beta, &incOne, &zero, tmp_n, &incOne FCONE);
 	  
 	for(j = 0; j < n; j++){
 	  
@@ -344,7 +348,7 @@ extern "C" {
 	  }
 	  
 	  //(-1/2) * tmp_n` *  C^-1 * tmp_n
-	  F77_NAME(dsymv)(lower, &n, &one,  C, &n, w, &incOne, &zero, tmp_n1, &incOne);
+	  F77_NAME(dsymv)(lower, &n, &one,  C, &n, w, &incOne, &zero, tmp_n1, &incOne FCONE);
 	  logPostCand += -0.5*detCand-0.5*F77_NAME(ddot)(&n, w, &incOne, tmp_n1, &incOne);
 	  
 	  //

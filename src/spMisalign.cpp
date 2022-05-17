@@ -1,3 +1,4 @@
+#define USE_FC_LEN_T
 #include <algorithm>
 #include <string>
 // #ifdef _OPENMP
@@ -10,6 +11,9 @@
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
+#ifndef FCONE
+# define FCONE
+#endif
 
 extern "C" {
 
@@ -316,11 +320,11 @@ extern "C" {
       tmp_NN = (double *) R_alloc(NN, sizeof(double));
       Cbeta = (double *) R_alloc(NN, sizeof(double));
       
-      F77_NAME(dgemv)(ntran, &N, &P, &negOne, X, &N, betaMu, &incOne, &zero, z, &incOne);
+      F77_NAME(dgemv)(ntran, &N, &P, &negOne, X, &N, betaMu, &incOne, &zero, z, &incOne FCONE);
       F77_NAME(daxpy)(&N, &one, Y, &incOne, z, &incOne);
 
-      F77_NAME(dsymm)(rside, lower, &N, &P, &one, betaC, &P, X, &N, &zero, vU, &N);
-      F77_NAME(dgemm)(ntran, ytran, &N, &N, &P, &one, vU, &N, X, &N, &zero, tmp_NN, &N);
+      F77_NAME(dsymm)(rside, lower, &N, &P, &one, betaC, &P, X, &N, &zero, vU, &N FCONE FCONE);
+      F77_NAME(dgemm)(ntran, ytran, &N, &N, &P, &one, vU, &N, X, &N, &zero, tmp_NN, &N FCONE FCONE);
     }
      
     int sl, sk;
@@ -414,29 +418,29 @@ extern "C" {
     	    }
 	    
     	    det = 0;
-    	    F77_NAME(dpotrf)(lower, &N, Cbeta, &N, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+    	    F77_NAME(dpotrf)(lower, &N, Cbeta, &N, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
     	    for(k = 0; k < N; k++) det += 2*log(Cbeta[k*N+k]);
 	    
     	    F77_NAME(dcopy)(&N, z, &incOne, tmp_N, &incOne);
-    	    F77_NAME(dtrsv)(lower, ntran, nUnit, &N, Cbeta, &N, tmp_N, &incOne);//u = L^{-1}(y-X'beta)
+    	    F77_NAME(dtrsv)(lower, ntran, nUnit, &N, Cbeta, &N, tmp_N, &incOne FCONE FCONE FCONE);//u = L^{-1}(y-X'beta)
 	    
     	    Q = pow(F77_NAME(dnrm2)(&N, tmp_N, &incOne),2);
     	  }else{//beta flat
     	    det = 0;
-    	    F77_NAME(dpotrf)(lower, &N, C, &N, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+    	    F77_NAME(dpotrf)(lower, &N, C, &N, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
     	    for(k = 0; k < N; k++) det += 2*log(C[k*N+k]);
 	    
     	    F77_NAME(dcopy)(&N, Y, &incOne, vU, &incOne);
     	    F77_NAME(dcopy)(&NP, X, &incOne, &vU[N], &incOne);
 
-    	    F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &N, &P1, &one, C, &N, vU, &N);//L^{-1}[v:U] = [y:X]
+    	    F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &N, &P1, &one, C, &N, vU, &N FCONE FCONE FCONE FCONE);//L^{-1}[v:U] = [y:X]
 	    
-    	    F77_NAME(dgemm)(ytran, ntran, &P, &P, &N, &one, &vU[N], &N, &vU[N], &N, &zero, tmp_PP, &P); //U'U
-    	    F77_NAME(dpotrf)(lower, &P, tmp_PP, &P, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+    	    F77_NAME(dgemm)(ytran, ntran, &P, &P, &N, &one, &vU[N], &N, &vU[N], &N, &zero, tmp_PP, &P FCONE FCONE); //U'U
+    	    F77_NAME(dpotrf)(lower, &P, tmp_PP, &P, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
     	    for(k = 0; k < P; k++) det += 2*log(tmp_PP[k*P+k]);
 	    
-    	    F77_NAME(dgemv)(ytran, &N, &P, &one, &vU[N], &N, vU, &incOne, &zero, tmp_P, &incOne); //U'v
-    	    F77_NAME(dtrsv)(lower, ntran, nUnit, &P, tmp_PP, &P, tmp_P, &incOne);
+    	    F77_NAME(dgemv)(ytran, &N, &P, &one, &vU[N], &N, vU, &incOne, &zero, tmp_P, &incOne FCONE); //U'v
+    	    F77_NAME(dtrsv)(lower, ntran, nUnit, &P, tmp_PP, &P, tmp_P, &incOne FCONE FCONE FCONE);
 
     	    Q = pow(F77_NAME(dnrm2)(&N, vU, &incOne),2) - pow(F77_NAME(dnrm2)(&P, tmp_P, &incOne),2) ;
     	  }
@@ -456,8 +460,8 @@ extern "C" {
     	    for(k = 0; k < m; k++){logPostCand += (m-k)*log(A[k*m+k])+log(A[k*m+k]);}
 	    
     	    //S*K^-1
-    	    F77_NAME(dpotri)(lower, &m, A, &m, &info); if(info != 0){error("c++ error: dpotri failed\n");}
-    	    F77_NAME(dsymm)(rside, lower, &m, &m, &one, A, &m, KIW_S, &m, &zero, tmp_mm, &m);
+    	    F77_NAME(dpotri)(lower, &m, A, &m, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
+    	    F77_NAME(dsymm)(rside, lower, &m, &m, &one, A, &m, KIW_S, &m, &zero, tmp_mm, &m FCONE FCONE);
     	    for(k = 0; k < m; k++){SKtrace += tmp_mm[k*m+k];}
     	    logPostCand += -0.5*(KIW_df+m+1)*logDetK - 0.5*SKtrace;
     	  }else{	     

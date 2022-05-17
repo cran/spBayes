@@ -1,3 +1,4 @@
+#define USE_FC_LEN_T
 #include <string>
 #include <R.h>
 #include <Rinternals.h>
@@ -5,6 +6,9 @@
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
+#ifndef FCONE
+# define FCONE
+#endif
 
 extern "C" {
   
@@ -129,10 +133,10 @@ extern "C" {
       betaCInvMu = (double *) R_alloc(P, sizeof(double));
       
       F77_NAME(dcopy)(&PP, betaC, &incOne, betaCInv, &incOne);
-      F77_NAME(dpotrf)(lower, &P, betaCInv, &P, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
-      F77_NAME(dpotri)(lower, &P, betaCInv, &P, &info); if(info != 0){error("c++ error: dpotri failed\n");}
+      F77_NAME(dpotrf)(lower, &P, betaCInv, &P, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
+      F77_NAME(dpotri)(lower, &P, betaCInv, &P, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
       
-      F77_NAME(dsymv)(lower, &P, &one, betaCInv, &P, betaMu, &incOne, &zero, betaCInvMu, &incOne);      
+      F77_NAME(dsymv)(lower, &P, &one, betaCInv, &P, betaMu, &incOne, &zero, betaCInvMu, &incOne FCONE);      
     }
     
     if(verbose){
@@ -155,7 +159,7 @@ extern "C" {
     for(s = 0; s < nSamples; s++){
       
       covExpand(&samples[s*nParams+AIndx], A, m);//note this is K, so we need chol
-      F77_NAME(dpotrf)(lower, &m, A, &m, &info); if(info != 0){error("c++ error: dpotrf failed 1\n");} 
+      F77_NAME(dpotrf)(lower, &m, A, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 1\n");} 
       clearUT(A, m); //make sure upper tri is clear
    
       for(k = 0; k < m; k++){
@@ -202,14 +206,14 @@ extern "C" {
 	}
       }
             
-      F77_NAME(dpotrf)(lower, &N, C, &N, &info); if(info != 0){error("c++ error: dpotrf failed 2\n");}
+      F77_NAME(dpotrf)(lower, &N, C, &N, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 2\n");}
       
       F77_NAME(dcopy)(&N, Y, &incOne, vU, &incOne);
       F77_NAME(dcopy)(&NP, X, &incOne, &vU[N], &incOne);
-      F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &N, &P1, &one, C, &N, vU, &N);//L[v:U] = [y:X]
+      F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &N, &P1, &one, C, &N, vU, &N FCONE FCONE FCONE FCONE);//L[v:U] = [y:X]
       
       //B
-      F77_NAME(dgemm)(ytran, ntran, &P, &P, &N, &one, &vU[N], &N, &vU[N], &N, &zero, B, &P); //U'U
+      F77_NAME(dgemm)(ytran, ntran, &P, &P, &N, &one, &vU[N], &N, &vU[N], &N, &zero, B, &P FCONE FCONE); //U'U
       
       if(betaPrior == "normal"){
 	for(k = 0; k < P; k++){
@@ -219,11 +223,11 @@ extern "C" {
 	}
       }
       
-      F77_NAME(dpotrf)(lower, &P, B, &P, &info); if(info != 0){error("c++ error: dpotrf failed 3\n");}
-      F77_NAME(dpotri)(lower, &P, B, &P, &info); if(info != 0){error("c++ error: dpotri failed 4\n");}
+      F77_NAME(dpotrf)(lower, &P, B, &P, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 3\n");}
+      F77_NAME(dpotri)(lower, &P, B, &P, &info FCONE); if(info != 0){error("c++ error: dpotri failed 4\n");}
       
       //bb
-      F77_NAME(dgemv)(ytran, &N, &P, &one, &vU[N], &N, vU, &incOne, &zero, tmp_P, &incOne); //U'v
+      F77_NAME(dgemv)(ytran, &N, &P, &one, &vU[N], &N, vU, &incOne, &zero, tmp_P, &incOne FCONE); //U'v
       
       if(betaPrior == "normal"){
 	for(k = 0; k < P; k++){
@@ -231,8 +235,8 @@ extern "C" {
 	}
       }
       
-      F77_NAME(dsymv)(lower, &P, &one, B, &P, tmp_P, &incOne, &zero, bb, &incOne); 
-      F77_NAME(dpotrf)(lower, &P, B, &P, &info); if(info != 0){error("c++ error: dpotrf failed 5\n");}
+      F77_NAME(dsymv)(lower, &P, &one, B, &P, tmp_P, &incOne, &zero, bb, &incOne FCONE); 
+      F77_NAME(dpotrf)(lower, &P, B, &P, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 5\n");}
       
       mvrnorm(&REAL(betaSamples_r)[s*P], bb, B, P, false);
       
@@ -260,8 +264,8 @@ extern "C" {
 	    sk += n[k];
 	  }
 	  
-	  F77_NAME(dpotrf)(lower, &N, C, &N, &info); if(info != 0){error("c++ error: dpotrf failed 6\n");}
-	  F77_NAME(dpotri)(lower, &N, C, &N, &info); if(info != 0){error("c++ error: dpotri failed 7\n");}
+	  F77_NAME(dpotrf)(lower, &N, C, &N, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 6\n");}
+	  F77_NAME(dpotri)(lower, &N, C, &N, &info FCONE); if(info != 0){error("c++ error: dpotri failed 7\n");}
 	  
 	  
 
@@ -273,10 +277,10 @@ extern "C" {
 	    sl += n[l];
 	  }
 	  
-	  F77_NAME(dpotrf)(lower, &N, C, &N, &info); if(info != 0){error("c++ error: dpotrf failed 10\n");}
-	  F77_NAME(dpotri)(lower, &N, C, &N, &info); if(info != 0){error("c++ error: dpotri failed 11\n");}
+	  F77_NAME(dpotrf)(lower, &N, C, &N, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 10\n");}
+	  F77_NAME(dpotri)(lower, &N, C, &N, &info FCONE); if(info != 0){error("c++ error: dpotri failed 11\n");}
 
-	  F77_NAME(dgemv)(ntran, &N, &P, &negOne, X, &N, &REAL(betaSamples_r)[s*P], &incOne, &zero, vU, &incOne);
+	  F77_NAME(dgemv)(ntran, &N, &P, &negOne, X, &N, &REAL(betaSamples_r)[s*P], &incOne, &zero, vU, &incOne FCONE);
 	  F77_NAME(daxpy)(&N, &one, Y, &incOne, vU, &incOne);
 
 	  sl = 0;
@@ -287,14 +291,14 @@ extern "C" {
 	    sl += n[l];
 	  }
 	  
-	  F77_NAME(dsymv)(lower, &N, &one, C, &N, &vU[N], &incOne, &zero, vU, &incOne);
+	  F77_NAME(dsymv)(lower, &N, &one, C, &N, &vU[N], &incOne, &zero, vU, &incOne FCONE);
 	  
-	  F77_NAME(dpotrf)(lower, &N, C, &N, &info); if(info != 0){error("c++ error: dpotrf failed 12\n");}
+	  F77_NAME(dpotrf)(lower, &N, C, &N, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 12\n");}
 	  
 	  mvrnorm(&REAL(wSamples_r)[s*N], vU, C, N, false);
 	  
 	}else{
-	  F77_NAME(dgemv)(ntran, &N, &P, &negOne, X, &N, &REAL(betaSamples_r)[s*P], &incOne, &zero, &REAL(wSamples_r)[s*N], &incOne);
+	  F77_NAME(dgemv)(ntran, &N, &P, &negOne, X, &N, &REAL(betaSamples_r)[s*P], &incOne, &zero, &REAL(wSamples_r)[s*N], &incOne FCONE);
 	  F77_NAME(daxpy)(&N, &one, Y, &incOne, &REAL(wSamples_r)[s*N], &incOne);
 	}
 	

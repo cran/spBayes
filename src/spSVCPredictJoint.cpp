@@ -1,3 +1,4 @@
+#define USE_FC_LEN_T
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -10,6 +11,9 @@
 #include <R_ext/Linpack.h>
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
+#ifndef FCONE
+# define FCONE
+#endif
 
 extern "C" {
 
@@ -124,7 +128,7 @@ extern "C" {
       if(KDiag == false){
 	dcopy_(&nLTr, &samples[AIndx*nSamples+s], &nSamples, tmp_nltr, &incOne);
       	covExpand(tmp_nltr, A, m);//note this is K, so we need chol
-      	F77_NAME(dpotrf)(lower, &m, A, &m, &info); if(info != 0){error("c++ error: dpotrf failed 1\n");} 
+      	F77_NAME(dpotrf)(lower, &m, A, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 1\n");} 
       	clearUT(A, m); //make sure upper tri is clear
       }
 
@@ -202,21 +206,21 @@ extern "C" {
 	}
       }
          
-      F77_NAME(dpotrf)(lower, &nm, K, &nm, &info); if(info != 0){error("c++ error: dpotrf failed 1\n");}
-      F77_NAME(dpotri)(lower, &nm, K, &nm, &info); if(info != 0){error("c++ error: dpotri failed\n");}     
-      F77_NAME(dsymm)(rside, lower, &qm, &nm, &one, K, &nm, B, &qm, &zero, tmp_qmnm, &qm);
+      F77_NAME(dpotrf)(lower, &nm, K, &nm, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 1\n");}
+      F77_NAME(dpotri)(lower, &nm, K, &nm, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}     
+      F77_NAME(dsymm)(rside, lower, &qm, &nm, &one, K, &nm, B, &qm, &zero, tmp_qmnm, &qm FCONE FCONE);
       
       //mu
-      F77_NAME(dgemv)(ntran, &qm, &nm, &one, tmp_qmnm, &qm, &wSamples[s*nm], &incOne, &zero, tmp_qm, &incOne);
+      F77_NAME(dgemv)(ntran, &qm, &nm, &one, tmp_qmnm, &qm, &wSamples[s*nm], &incOne, &zero, tmp_qm, &incOne FCONE);
 
       //var
-      F77_NAME(dgemm)(ntran, ytran, &qm, &qm, &nm, &one, tmp_qmnm, &qm, B, &qm, &zero, tmp_qmqm, &qm);
+      F77_NAME(dgemm)(ntran, ytran, &qm, &qm, &nm, &one, tmp_qmnm, &qm, B, &qm, &zero, tmp_qmqm, &qm FCONE FCONE);
 
       for(i = 0; i < qmqm; i++){
 	C[i] = C[i] - tmp_qmqm[i];
       }
             
-      F77_NAME(dpotrf)(lower, &qm, C, &qm, &info); if(info != 0){error("c++ error: dpotrf failed 2\n");}
+      F77_NAME(dpotrf)(lower, &qm, C, &qm, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 2\n");}
       
       mvrnorm(&REAL(wPredSamples_r)[s*qm], tmp_qm, C, qm, false);
       

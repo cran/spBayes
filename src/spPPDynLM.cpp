@@ -1,3 +1,4 @@
+#define USE_FC_LEN_T
 #include <algorithm>
 #include <string>
 #include <R.h>
@@ -7,6 +8,9 @@
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
+#ifndef FCONE
+# define FCONE
+#endif
 
 extern "C" {
 
@@ -224,18 +228,18 @@ extern "C" {
     double *gamma = (double *) R_alloc(3, sizeof(double)); //sigma^2, phi, nu
 
     //Sigma_0^{-1}
-    F77_NAME(dpotrf)(lower, &p, sigma0, &p, &info); if(info != 0){error("c++ error: dpotrf failed 0\n");}
-    F77_NAME(dpotri)(lower, &p, sigma0, &p, &info); if(info != 0){error("c++ error: dpotri failed 0.5\n");}
+    F77_NAME(dpotrf)(lower, &p, sigma0, &p, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 0\n");}
+    F77_NAME(dpotri)(lower, &p, sigma0, &p, &info FCONE); if(info != 0){error("c++ error: dpotri failed 0.5\n");}
 
     //X'_tX_t
     double *XX = (double *) R_alloc(Nt*pp, sizeof(double));
     for(t = 0; t < Nt; t++){
-      F77_NAME(dgemm)(ntran, ytran, &p, &p, &n, &one, &X[t*n*p], &p, &X[t*n*p], &p, &zero, &XX[t*pp], &p); 
+      F77_NAME(dgemm)(ntran, ytran, &p, &p, &n, &one, &X[t*n*p], &p, &X[t*n*p], &p, &zero, &XX[t*pp], &p FCONE FCONE); 
     }
     
     //SigmaEtaIW_S is Upsilon^{-1}
-    F77_NAME(dpotrf)(lower, &p, SigmaEtaIW_S, &p, &info); if(info != 0){error("c++ error: dpotrf failed 1.1\n");}
-    F77_NAME(dpotri)(lower, &p, SigmaEtaIW_S, &p, &info); if(info != 0){error("c++ error: dpotri failed 2.01\n");}
+    F77_NAME(dpotrf)(lower, &p, SigmaEtaIW_S, &p, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 1.1\n");}
+    F77_NAME(dpotri)(lower, &p, SigmaEtaIW_S, &p, &info FCONE); if(info != 0){error("c++ error: dpotri failed 2.01\n");}
 
     if(verbose){
       Rprintf("-------------------------------------------------\n");
@@ -251,23 +255,23 @@ extern "C" {
     for(s = 0; s < nSamples; s++){
  
       //Sigma_eta^{-1}
-      F77_NAME(dpotrf)(lower, &p, sigmaEta, &p, &info); if(info != 0){error("c++ error: dpotrfa failed\n");}
-      F77_NAME(dpotri)(lower, &p, sigmaEta, &p, &info); if(info != 0){error("c++ error: dpotri failed\n");}
+      F77_NAME(dpotrf)(lower, &p, sigmaEta, &p, &info FCONE); if(info != 0){error("c++ error: dpotrfa failed\n");}
+      F77_NAME(dpotri)(lower, &p, sigmaEta, &p, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
 
       //update Beta_0
       F77_NAME(dcopy)(&pp, sigmaEta, &incOne, tmp_pp, &incOne);
       F77_NAME(daxpy)(&pp, &one, sigma0, &incOne, tmp_pp, &incOne);
 
       //Sigma_Beta0
-      F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info); if(info != 0){error("c++ error: dpotrfb failed\n");}
-      F77_NAME(dpotri)(lower, &p, tmp_pp, &p, &info); if(info != 0){error("c++ error: dpotri failed\n");}
+      F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info FCONE); if(info != 0){error("c++ error: dpotrfb failed\n");}
+      F77_NAME(dpotri)(lower, &p, tmp_pp, &p, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
 
       //mu_Beta0
-      F77_NAME(dsymv)(lower, &p, &one, sigma0, &p, m0, &incOne, &zero, tmp_p, &incOne);
-      F77_NAME(dsymv)(lower, &p, &one, sigmaEta, &p, beta, &incOne, &one, tmp_p, &incOne);//first column of beta is Beta_1
-      F77_NAME(dsymv)(lower, &p, &one, tmp_pp, &p, tmp_p, &incOne, &zero, tmp_p2, &incOne); 
+      F77_NAME(dsymv)(lower, &p, &one, sigma0, &p, m0, &incOne, &zero, tmp_p, &incOne FCONE);
+      F77_NAME(dsymv)(lower, &p, &one, sigmaEta, &p, beta, &incOne, &one, tmp_p, &incOne FCONE);//first column of beta is Beta_1
+      F77_NAME(dsymv)(lower, &p, &one, tmp_pp, &p, tmp_p, &incOne, &zero, tmp_p2, &incOne FCONE); 
       
-      F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info); if(info != 0){error("c++ error: dpotrfc failed\n");}
+      F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info FCONE); if(info != 0){error("c++ error: dpotrfc failed\n");}
       mvrnorm(beta0, tmp_p2, tmp_pp, p);
       
       F77_NAME(dcopy)(&p, beta0, &incOne, &beta0Samples[s*p], &incOne);
@@ -277,7 +281,7 @@ extern "C" {
       ////////////////////
       if(anyMissing || getFitted){
 	for(t = 0, j = 0; t < Nt; t++){
-	  F77_NAME(dgemv)(ytran, &p, &n, &one, &X[t*n*p], &p, &beta[t*p], &incOne, &zero, tmp_n3, &incOne);
+	  F77_NAME(dgemv)(ytran, &p, &n, &one, &X[t*n*p], &p, &beta[t*p], &incOne, &zero, tmp_n3, &incOne FCONE);
 	  for(i = 0; i < n; i++, j++){
 	    if(missing[j] == 1){
 	      Y[n*t+i] = rnorm(tmp_n3[i] + u[n*t+i], sqrt(theta[t*nTheta+tauSqIndx]));
@@ -307,14 +311,14 @@ extern "C" {
        tmp = 1.0/theta[t*nTheta+tauSqIndx]; 
        F77_NAME(daxpy)(&pp, &tmp, &XX[t*pp], &incOne, tmp_pp, &incOne);
    
-       F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info); if(info != 0){error("c++ error: 1dpotrf failed\n");}
-       F77_NAME(dpotri)(lower, &p, tmp_pp, &p, &info); if(info != 0){error("c++ error: dpotri failed\n");}
+       F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info FCONE); if(info != 0){error("c++ error: 1dpotrf failed\n");}
+       F77_NAME(dpotri)(lower, &p, tmp_pp, &p, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
        
        //mu_Beta_t
        for(i = 0; i < n; i++){
 	 tmp_n[i] = (Y[n*t+i] - u[n*t+i])*tmp;
        }
-       F77_NAME(dgemv)(ntran, &p, &n, &one, &X[t*n*p], &p, tmp_n, &incOne, &zero, tmp_p, &incOne);
+       F77_NAME(dgemv)(ntran, &p, &n, &one, &X[t*n*p], &p, tmp_n, &incOne, &zero, tmp_p, &incOne FCONE);
        
        if(t == 0){
 	 for(i = 0; i < p; i++){
@@ -328,10 +332,10 @@ extern "C" {
 	 }
        }
 
-       F77_NAME(dsymv)(lower, &p, &one, sigmaEta, &p, tmp_p2, &incOne, &one, tmp_p, &incOne); 
-       F77_NAME(dsymv)(lower, &p, &one, tmp_pp, &p, tmp_p, &incOne, &zero, tmp_p2, &incOne); 
+       F77_NAME(dsymv)(lower, &p, &one, sigmaEta, &p, tmp_p2, &incOne, &one, tmp_p, &incOne FCONE); 
+       F77_NAME(dsymv)(lower, &p, &one, tmp_pp, &p, tmp_p, &incOne, &zero, tmp_p2, &incOne FCONE); 
 
-       F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info); if(info != 0){error("c++ error: 2dpotrf failed\n");}
+       F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info FCONE); if(info != 0){error("c++ error: 2dpotrf failed\n");}
        mvrnorm(&beta[t*p], tmp_p2, tmp_pp, p);
 
        ////////////////////
@@ -346,10 +350,10 @@ extern "C" {
        spCovLT(knotsD, m, gamma, covModel, C);
        spCov(coordsKnotsD, nm, gamma, covModel, c);
        
-       F77_NAME(dpotrf)(lower, &m, C, &m, &info); if(info != 0){error("c++ error: 3dpotrf failed\n");}
-       F77_NAME(dpotri)(lower, &m, C, &m, &info); if(info != 0){error("c++ error: dpotri failed\n");}
+       F77_NAME(dpotrf)(lower, &m, C, &m, &info FCONE); if(info != 0){error("c++ error: 3dpotrf failed\n");}
+       F77_NAME(dpotri)(lower, &m, C, &m, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
        
-       F77_NAME(dsymm)(rside, lower, &n, &m, &one, C, &m, c, &n, &zero, F, &n);
+       F77_NAME(dsymm)(rside, lower, &n, &m, &one, C, &m, c, &n, &zero, F, &n FCONE FCONE);
 
        //mk D_t^{-1}
        for(i = 0; i < n; i++){
@@ -358,15 +362,15 @@ extern "C" {
        
        diagmm(n, m, D, F, tmp_nm);
        
-       F77_NAME(dgemm)(ytran, ntran, &m, &m, &n, &one, F, &n, tmp_nm, &n, &zero, tmp_mm, &m);
+       F77_NAME(dgemm)(ytran, ntran, &m, &m, &n, &one, F, &n, tmp_nm, &n, &zero, tmp_mm, &m FCONE FCONE);
 
        for(i = 0; i < mm; i++){
        	 tmp_mm[i] += C[i];
        }
 
        //Sigma_{w*_t}
-       F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info); if(info != 0){error("c++ error: 4dpotrf failed\n");}
-       F77_NAME(dpotri)(lower, &m, tmp_mm, &m, &info); if(info != 0){error("c++ error: dpotri failed\n");}
+       F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){error("c++ error: 4dpotrf failed\n");}
+       F77_NAME(dpotri)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
   
        //mu_{w*_t}
        F77_NAME(dcopy)(&n, &u[n*t], &incOne, tmp_n, &incOne);
@@ -376,17 +380,17 @@ extern "C" {
        	 }
        }
 
-       F77_NAME(dgemv)(ytran, &n, &m, &one, tmp_nm, &n, tmp_n, &incOne, &zero, tmp_m, &incOne);
-       F77_NAME(dsymv)(lower, &m, &one, tmp_mm, &m, tmp_m, &incOne, &zero, tmp_m2, &incOne);
+       F77_NAME(dgemv)(ytran, &n, &m, &one, tmp_nm, &n, tmp_n, &incOne, &zero, tmp_m, &incOne FCONE);
+       F77_NAME(dsymv)(lower, &m, &one, tmp_mm, &m, tmp_m, &incOne, &zero, tmp_m2, &incOne FCONE);
 
-       F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info); if(info != 0){error("c++ error: 5dpotrf failed\n");}
+       F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){error("c++ error: 5dpotrf failed\n");}
        mvrnorm(&uStr[t*m], tmp_m2, tmp_mm, m);
   
        ////////////////////
        //update u_t
        ////////////////////
-       F77_NAME(dgemv)(ytran, &p, &n, &one, &X[t*n*p], &p, &beta[t*p], &incOne, &zero, tmp_n3, &incOne);
-       F77_NAME(dgemv)(ntran, &n, &m, &one, F, &n, &uStr[t*m], &incOne, &zero, tmp_n2, &incOne);
+       F77_NAME(dgemv)(ytran, &p, &n, &one, &X[t*n*p], &p, &beta[t*p], &incOne, &zero, tmp_n3, &incOne FCONE);
+       F77_NAME(dgemv)(ntran, &n, &m, &one, F, &n, &uStr[t*m], &incOne, &zero, tmp_n2, &incOne FCONE);
 
        if(t < (Nt-1)){
 
@@ -400,12 +404,12 @@ extern "C" {
        	 spCovLT(knotsD, m, gamma, covModel, C2);
        	 spCov(coordsKnotsD, nm, gamma, covModel, c2);
 
-       	 F77_NAME(dpotrf)(lower, &m, C2, &m, &info); if(info != 0){error("c++ error: 6dpotrf failed\n");}
-       	 F77_NAME(dpotri)(lower, &m, C2, &m, &info); if(info != 0){error("c++ error: dpotri failed\n");} 
+       	 F77_NAME(dpotrf)(lower, &m, C2, &m, &info FCONE); if(info != 0){error("c++ error: 6dpotrf failed\n");}
+       	 F77_NAME(dpotri)(lower, &m, C2, &m, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");} 
  
-       	 F77_NAME(dsymm)(rside, lower, &n, &m, &one, C2, &m, c2, &n, &zero, F2, &n);
+       	 F77_NAME(dsymm)(rside, lower, &n, &m, &one, C2, &m, c2, &n, &zero, F2, &n FCONE FCONE);
 
-       	 F77_NAME(dgemv)(ntran, &n, &m, &one, F2, &n, &uStr[(t+1)*m], &incOne, &zero, tmp_n, &incOne);
+       	 F77_NAME(dgemv)(ntran, &n, &m, &one, F2, &n, &uStr[(t+1)*m], &incOne, &zero, tmp_n, &incOne FCONE);
 
        	 //mk D_t^{-1}
        	 for(i = 0; i < n; i++){
@@ -440,7 +444,7 @@ extern "C" {
        ////////////////////
        //update sigma^2
        ////////////////////
-       F77_NAME(dsymv)(lower, &m, &one, C, &m, &uStr[t*m], &incOne, &zero, tmp_m, &incOne);
+       F77_NAME(dsymv)(lower, &m, &one, C, &m, &uStr[t*m], &incOne, &zero, tmp_m, &incOne FCONE);
        
        theta[t*nTheta+sigmaSqIndx] = 1.0/rgamma(sigmaSqIG[t*2]+m/2.0, 
        						1.0/(sigmaSqIG[t*2+1]+0.5*F77_NAME(ddot)(&m, tmp_m, &incOne, &uStr[t*m], &incOne)*theta[t*nTheta+sigmaSqIndx]));
@@ -459,13 +463,13 @@ extern "C" {
        spCov(coordsKnotsD, nm, gamma, covModel, c);
        
        logDet = 0;
-       F77_NAME(dpotrf)(lower, &m, C, &m, &info); if(info != 0){error("c++ error: 7dpotrf failed\n");}
+       F77_NAME(dpotrf)(lower, &m, C, &m, &info FCONE); if(info != 0){error("c++ error: 7dpotrf failed\n");}
        for(i = 0; i < m; i++) logDet += 2*log(C[i*m+i]);
-       F77_NAME(dpotri)(lower, &m, C, &m, &info); if(info != 0){error("c++ error: dpotri failed\n");}
+       F77_NAME(dpotri)(lower, &m, C, &m, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
        
-       F77_NAME(dsymm)(rside, lower, &n, &m, &one, C, &m, c, &n, &zero, F, &n);
+       F77_NAME(dsymm)(rside, lower, &n, &m, &one, C, &m, c, &n, &zero, F, &n FCONE FCONE);
 
-       F77_NAME(dgemv)(ntran, &n, &m, &one, F, &n, &uStr[t*m], &incOne, &zero, tmp_n2, &incOne);
+       F77_NAME(dgemv)(ntran, &n, &m, &one, F, &n, &uStr[t*m], &incOne, &zero, tmp_n2, &incOne FCONE);
 
        //mk D_t
        for(i = 0; i < n; i++){
@@ -483,7 +487,7 @@ extern "C" {
        }
 
        //w*
-       F77_NAME(dsymv)(lower, &m, &one, C, &m, &uStr[t*m], &incOne, &zero, tmp_m, &incOne);
+       F77_NAME(dsymv)(lower, &m, &one, C, &m, &uStr[t*m], &incOne, &zero, tmp_m, &incOne FCONE);
        logPost += -0.5*logDet-0.5*F77_NAME(ddot)(&m, tmp_m, &incOne, &uStr[t*m], &incOne);
 
        logPost += log(gamma[1] - phiUnif[t*2]) + log(phiUnif[t*2+1] - gamma[1]);
@@ -502,13 +506,13 @@ extern "C" {
        spCov(coordsKnotsD, nm, gamma, covModel, c);
        
        logDet = 0;
-       F77_NAME(dpotrf)(lower, &m, C, &m, &info); if(info != 0){error("c++ error: 7dpotrf failed\n");}
+       F77_NAME(dpotrf)(lower, &m, C, &m, &info FCONE); if(info != 0){error("c++ error: 7dpotrf failed\n");}
        for(i = 0; i < m; i++) logDet += 2*log(C[i*m+i]);
-       F77_NAME(dpotri)(lower, &m, C, &m, &info); if(info != 0){error("c++ error: dpotri failed\n");}
+       F77_NAME(dpotri)(lower, &m, C, &m, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
        
-       F77_NAME(dsymm)(rside, lower, &n, &m, &one, C, &m, c, &n, &zero, F, &n);
+       F77_NAME(dsymm)(rside, lower, &n, &m, &one, C, &m, c, &n, &zero, F, &n FCONE FCONE);
 
-       F77_NAME(dgemv)(ntran, &n, &m, &one, F, &n, &uStr[t*m], &incOne, &zero, tmp_n2, &incOne);
+       F77_NAME(dgemv)(ntran, &n, &m, &one, F, &n, &uStr[t*m], &incOne, &zero, tmp_n2, &incOne FCONE);
 
        //mk D_t
        for(i = 0; i < n; i++){
@@ -526,7 +530,7 @@ extern "C" {
        }
 
        //w*
-       F77_NAME(dsymv)(lower, &m, &one, C, &m, &uStr[t*m], &incOne, &zero, tmp_m, &incOne);
+       F77_NAME(dsymv)(lower, &m, &one, C, &m, &uStr[t*m], &incOne, &zero, tmp_m, &incOne FCONE);
        logPostCand += -0.5*logDet-0.5*F77_NAME(ddot)(&m, tmp_m, &incOne, &uStr[t*m], &incOne);
 
        logPostCand += log(gamma[1] - phiUnif[t*2]) + log(phiUnif[t*2+1] - gamma[1]);
@@ -557,21 +561,21 @@ extern "C" {
      for(i = 0; i < p; i++){
        tmp_p[i] = beta[i]-beta0[i];
      }
-     F77_NAME(dgemm)(ntran, ytran, &p, &p, &incOne, &one, tmp_p, &p, tmp_p, &p, &zero, tmp_pp, &p); 
+     F77_NAME(dgemm)(ntran, ytran, &p, &p, &incOne, &one, tmp_p, &p, tmp_p, &p, &zero, tmp_pp, &p FCONE FCONE); 
      
      for(t = 1; t < Nt; t++){
        for(i = 0; i < p; i++){
      	 tmp_p[i] = beta[p*t+i]-beta[p*(t-1)+i];
        }
-       F77_NAME(dgemm)(ntran, ytran, &p, &p, &incOne, &one, tmp_p, &p, tmp_p, &p, &one, tmp_pp, &p); 
+       F77_NAME(dgemm)(ntran, ytran, &p, &p, &incOne, &one, tmp_p, &p, tmp_p, &p, &one, tmp_pp, &p FCONE FCONE); 
      }
 
      F77_NAME(daxpy)(&pp, &one, SigmaEtaIW_S, &incOne, tmp_pp, &incOne);
      
      rwish(tmp_pp, SigmaEtaIW_df+Nt, p, sigmaEta, tmp_pp2, 1);
 
-     // F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
-     // F77_NAME(dpotri)(lower, &p, tmp_pp, &p, &info); if(info != 0){error("c++ error: dpotri failed\n");}
+     // F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
+     // F77_NAME(dpotri)(lower, &p, tmp_pp, &p, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
      
      // for(i = 1; i < p; i++){
      //   for(j = 0; j < i; j++){

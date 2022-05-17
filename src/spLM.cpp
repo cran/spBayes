@@ -1,3 +1,4 @@
+#define USE_FC_LEN_T
 #include <algorithm>
 #include <string>
 #include <R.h>
@@ -7,6 +8,9 @@
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
+#ifndef FCONE
+# define FCONE
+#endif
 
 extern "C" {
 
@@ -231,11 +235,11 @@ extern "C" {
       tmp_nn = (double *) R_alloc(nn, sizeof(double));
       Cbeta = (double *) R_alloc(nn, sizeof(double));
 
-      F77_NAME(dgemv)(ntran, &n, &p, &negOne, X, &n, betaMu, &incOne, &zero, z, &incOne);
+      F77_NAME(dgemv)(ntran, &n, &p, &negOne, X, &n, betaMu, &incOne, &zero, z, &incOne FCONE);
       F77_NAME(daxpy)(&n, &one, Y, &incOne, z, &incOne);
 
-      F77_NAME(dsymm)(rside, lower, &n, &p, &one, betaC, &p, X, &n, &zero, vU, &n);
-      F77_NAME(dgemm)(ntran, ytran, &n, &n, &p, &one, vU, &n, X, &n, &zero, tmp_nn, &n);
+      F77_NAME(dsymm)(rside, lower, &n, &p, &one, betaC, &p, X, &n, &zero, vU, &n FCONE FCONE);
+      F77_NAME(dgemm)(ntran, ytran, &n, &n, &p, &one, vU, &n, X, &n, &zero, tmp_nn, &n FCONE FCONE);
     }
     
     if(verbose){
@@ -303,28 +307,28 @@ extern "C" {
 	    }
 
 	    det = 0;
-	    F77_NAME(dpotrf)(lower, &n, Cbeta, &n, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+	    F77_NAME(dpotrf)(lower, &n, Cbeta, &n, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
 	    for(k = 0; k < n; k++) det += 2*log(Cbeta[k*n+k]);
 	    
 	    F77_NAME(dcopy)(&n, z, &incOne, tmp_n, &incOne);
-	    F77_NAME(dtrsv)(lower, ntran, nUnit, &n, Cbeta, &n, tmp_n, &incOne);//L[u] = (y-X'beta)
+	    F77_NAME(dtrsv)(lower, ntran, nUnit, &n, Cbeta, &n, tmp_n, &incOne FCONE FCONE FCONE);//L[u] = (y-X'beta)
 
 	    Q = pow(F77_NAME(dnrm2)(&n, tmp_n, &incOne),2);
 	  }else{//beta flat
 	    det = 0;
-	    F77_NAME(dpotrf)(lower, &n, C, &n, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+	    F77_NAME(dpotrf)(lower, &n, C, &n, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
 	    for(k = 0; k < n; k++) det += 2*log(C[k*n+k]);
 	    
 	    F77_NAME(dcopy)(&n, Y, &incOne, vU, &incOne);
 	    F77_NAME(dcopy)(&np, X, &incOne, &vU[n], &incOne);
-	    F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &n, &p1, &one, C, &n, vU, &n);//L[v:U] = [y:X]
+	    F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &n, &p1, &one, C, &n, vU, &n FCONE FCONE FCONE FCONE);//L[v:U] = [y:X]
 
-	    F77_NAME(dgemm)(ytran, ntran, &p, &p, &n, &one, &vU[n], &n, &vU[n], &n, &zero, tmp_pp, &p); //U'U
-	    F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+	    F77_NAME(dgemm)(ytran, ntran, &p, &p, &n, &one, &vU[n], &n, &vU[n], &n, &zero, tmp_pp, &p FCONE FCONE); //U'U
+	    F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
 	    for(k = 0; k < p; k++) det += 2*log(tmp_pp[k*p+k]);
 	    
-	    F77_NAME(dgemv)(ytran, &n, &p, &one, &vU[n], &n, vU, &incOne, &zero, tmp_p, &incOne); //U'v
-	    F77_NAME(dtrsv)(lower, ntran, nUnit, &p, tmp_pp, &p, tmp_p, &incOne);
+	    F77_NAME(dgemv)(ytran, &n, &p, &one, &vU[n], &n, vU, &incOne, &zero, tmp_p, &incOne FCONE); //U'v
+	    F77_NAME(dtrsv)(lower, ntran, nUnit, &p, tmp_pp, &p, tmp_p, &incOne FCONE FCONE FCONE);
 
 	    Q = pow(F77_NAME(dnrm2)(&n, vU, &incOne),2) - pow(F77_NAME(dnrm2)(&p, tmp_p, &incOne),2) ;
 	  }

@@ -17,8 +17,9 @@ spGLM <- function(formula, family="binomial", weights, data = parent.frame(), co
   ####################################################
   if(missing(formula)){stop("error: formula must be specified")}
   
-  if(class(formula) == "formula"){
-    
+  ##if(class(formula) == "formula"){
+  if(inherits(formula, "formula")){
+          
     holder <- parseFormula(formula, data)
     Y <- holder[[1]]
     X <- as.matrix(holder[[2]])

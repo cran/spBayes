@@ -11,16 +11,18 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, joint=FALSE, start=1, en
     }
     
     if(missing(sp.obj)){stop("error: spPredict expects sp.obj\n")}
-    if(!class(sp.obj) %in% c("spLM", "spMvLM", "spGLM", "spMvGLM","bayesLMRef","bayesLMConjugate","bayesGeostatExact","nonSpGLM","nonSpMvGLM","spMisalignLM","spMisalignGLM", "spSVC")){
+    ##if(!class(sp.obj) %in% c("spLM", "spMvLM", "spGLM", "spMvGLM","bayesLMRef","bayesLMConjugate","bayesGeostatExact","nonSpGLM","nonSpMvGLM","spMisalignLM","spMisalignGLM", "spSVC")){
+    if(!inherits(sp.obj, c("spLM", "spMvLM", "spGLM", "spMvGLM","bayesLMRef","bayesLMConjugate","bayesGeostatExact","nonSpGLM","nonSpMvGLM","spMisalignLM","spMisalignGLM", "spSVC"))){    
         stop("error: requires an output object of class spLM, spMvLM, spGLM, spMvGLM, bayesGeostatExact, bayesLMRef, bayesLMConjugate, nonSpGLM, nonSpMvGLM, spMisalignLM, spMisalignGLM, or spSVC \n")
     }
     
-    obj.class <- class(sp.obj)
+    ##obj.class <- class(sp.obj)
     
     ##
     ##spSVC
     ##
-    if(obj.class == "spSVC"){
+    ##if(obj.class == "spSVC"){
+    if(inherits(sp.obj, "spSVC")){        
 
         if(missing(pred.covars)){stop("error: pred.covars must be specified\n")}
         if(missing(pred.coords)){stop("error: pred.coords must be specified\n")}
@@ -192,8 +194,9 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, joint=FALSE, start=1, en
     ##
     ##non spatial model prediction
     ##
-    if(obj.class %in% c("nonSpGLM", "nonSpMvGLM")){
-        
+    ##if(obj.class %in% c("nonSpGLM", "nonSpMvGLM")){
+    if(inherits(sp.obj, c("nonSpGLM", "nonSpMvGLM"))){
+            
         X <- sp.obj$X
         Y <- sp.obj$Y
         family <- sp.obj$family
@@ -229,7 +232,8 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, joint=FALSE, start=1, en
     ##
     ##bayesLMRef
     ##
-    if(obj.class %in% c("bayesLMRef","bayesLMConjugate")){
+    ##if(obj.class %in% c("bayesLMRef","bayesLMConjugate")){
+    if(inherits(sp.obj, c("bayesLMRef","bayesLMConjugate"))){
         
         X <- sp.obj$X
         Y <- sp.obj$Y
@@ -266,7 +270,8 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, joint=FALSE, start=1, en
     ##
     ##bayesGeostatExact
     ##
-    if(obj.class == "bayesGeostatExact"){
+    ##if(obj.class == "bayesGeostatExact"){
+    if(inherits(sp.obj, "bayesGeostatExact")){
         
         X <- sp.obj$X
         n <- sp.obj$n
@@ -391,7 +396,8 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, joint=FALSE, start=1, en
     ##
     ##spatial model prediction
     ##
-    if(obj.class %in% c("spGLM", "spMvGLM")){
+    ##if(obj.class %in% c("spGLM", "spMvGLM")){
+    if(inherits(sp.obj, c("spGLM", "spMvGLM"))){
         
         if(missing(pred.coords)){stop("error: pred.coords must be specified\n")}
         if(!any(is.data.frame(pred.coords), is.matrix(pred.coords))){stop("error: pred.coords must be a data.frame or matrix\n")}
@@ -402,7 +408,8 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, joint=FALSE, start=1, en
         Y <- sp.obj$Y
         p <- ncol(X)
         m <- 1 ##for spGLM
-        if(obj.class == "spMvGLM"){m <- sp.obj$m}
+        ##if(obj.class == "spMvGLM"){m <- sp.obj$m}
+        if(inherits(sp.obj, "spMvGLM")){m <- sp.obj$m}
         obs.coords <- sp.obj$coords
         n <- nrow(obs.coords)
         cov.model <- sp.obj$cov.model
@@ -485,7 +492,8 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, joint=FALSE, start=1, en
         
         out
         
-    }else if(obj.class == "spLM"){
+    ##}else if(obj.class == "spLM"){
+    }else if(inherits(sp.obj, "spLM")){
         
         if(missing(pred.coords)){stop("error: pred.coords must be specified\n")}
         if(!any(is.data.frame(pred.coords), is.matrix(pred.coords))){stop("error: pred.coords must be a data.frame or matrix\n")}
@@ -615,7 +623,8 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, joint=FALSE, start=1, en
         
         out
         
-    }else if(obj.class == "spMvLM"){
+    ##}else if(obj.class == "spMvLM"){
+    }else if(inherits(sp.obj, "spMvLM")){
         
         if(missing(pred.coords)){stop("error: pred.coords must be specified\n")}
         if(!any(is.data.frame(pred.coords), is.matrix(pred.coords))){stop("error: pred.coords must be a data.frame or matrix\n")}
@@ -739,7 +748,8 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, joint=FALSE, start=1, en
         
         out
         
-    }else if(obj.class == "spMisalignLM"){
+    ##}else if(obj.class == "spMisalignLM"){
+    }else if(inherits(sp.obj, "spMisalignLM")){
         
         X <- sp.obj$X
         Y <- sp.obj$Y
@@ -829,7 +839,8 @@ spPredict <- function(sp.obj, pred.coords, pred.covars, joint=FALSE, start=1, en
         out$p.beta.samples.recover <- mcmc(t(beta))
         out
         
-    }else if(obj.class == "spMisalignGLM"){
+    ##}else if(obj.class == "spMisalignGLM"){
+    }else if(inherits(sp.obj, "spMisalignGLM")){
         
         family <- sp.obj$family
         X <- sp.obj$X

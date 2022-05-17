@@ -18,7 +18,8 @@ spSVC <- function(formula, data = parent.frame(), svc.cols=1, coords,
     ####################################################
     if(missing(formula)){stop("error: formula must be specified")}
     
-    if(class(formula) == "formula"){
+    ##if(class(formula) == "formula"){
+    if(inherits(formula, "formula")){
         
         holder <- parseFormula2(formula, data, na.action=NULL)
         Y <- holder[[1]]

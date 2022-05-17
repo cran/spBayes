@@ -1,3 +1,4 @@
+#define USE_FC_LEN_T
 #include <string>
 // #ifdef _OPENMP
 // #include <omp.h>
@@ -9,6 +10,9 @@
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
+#ifndef FCONE
+# define FCONE
+#endif
 
 extern "C" {
 
@@ -104,7 +108,7 @@ extern "C" {
       
       F77_NAME(dcopy)(&p, &samples[s*nParams+betaIndx], &incOne, beta, &incOne);
       covExpand(&samples[s*nParams+AIndx], A, m);
-      F77_NAME(dpotrf)(lower, &m, A, &m, &info); if(info != 0){error("c++ error: dpotrf failed\n");}   
+      F77_NAME(dpotrf)(lower, &m, A, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}   
       clearUT(A, m);
  
       for(i = 0; i < m; i++){
@@ -150,13 +154,13 @@ extern "C" {
       }
       // } //parallel for
     
-      F77_NAME(dpotrf)(lower, &gm, S_knots, &gm, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
-      F77_NAME(dpotri)(lower, &gm, S_knots, &gm, &info); if(info != 0){error("c++ error: dpotri failed\n");}	 
+      F77_NAME(dpotrf)(lower, &gm, S_knots, &gm, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
+      F77_NAME(dpotri)(lower, &gm, S_knots, &gm, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}	 
 
-      F77_NAME(dgemv)(ntran, &qm, &p, &one, Z, &qm, &samples[s*nParams+betaIndx], &incOne, &zero, tmp_qm, &incOne);
+      F77_NAME(dgemv)(ntran, &qm, &p, &one, Z, &qm, &samples[s*nParams+betaIndx], &incOne, &zero, tmp_qm, &incOne FCONE);
     	
-      F77_NAME(dsymv)(lower, &gm, &one, S_knots, &gm, &wSamples[s*gm], &incOne, &zero, tmp_gm, &incOne);
-      F77_NAME(dgemv)(ntran, &qm, &gm, &one, S_predKnots, &qm, tmp_gm, &incOne, &zero, &wPred[s*qm], &incOne);
+      F77_NAME(dsymv)(lower, &gm, &one, S_knots, &gm, &wSamples[s*gm], &incOne, &zero, tmp_gm, &incOne FCONE);
+      F77_NAME(dgemv)(ntran, &qm, &gm, &one, S_predKnots, &qm, tmp_gm, &incOne, &zero, &wPred[s*qm], &incOne FCONE);
             
       if(family == "binomial"){
 	for(i = 0; i < qm; i++){

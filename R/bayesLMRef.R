@@ -22,7 +22,8 @@ bayesLMRef <- function(lm.obj, n.samples, ...) {
   }
 
   if(missing(lm.obj)){stop("error: lm.obj must be specified")}
-  if(class(lm.obj) != "lm"){stop("error: lm.obj must be of class lm")}
+  #if(class(lm.obj) != "lm"){stop("error: lm.obj must be of class lm")}
+  if(!inherits(lm.obj, "lm")){stop("error: lm.obj must be of class lm")}
   if(missing(n.samples)){stop("error: n.samples must be specified")} 
   
   lm.obj.data <- model.frame(lm.obj)

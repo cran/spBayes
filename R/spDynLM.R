@@ -17,7 +17,8 @@ spDynLM <- function(formula, data = parent.frame(), coords, knots,
   ####################################################
   if(missing(formula)){stop("error: formula must be specified")}
   
-  if(class(formula) == "list"){
+  ##if(class(formula) == "list"){
+  if(inherits(formula, "list")){
     
     holder <- mkspDynMats(formula, data)
     Y <- holder[[1]]

@@ -1,3 +1,4 @@
+#define USE_FC_LEN_T
 #include <string>
 #include <R.h>
 #include <Rmath.h>
@@ -6,6 +7,9 @@
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
+#ifndef FCONE
+# define FCONE
+#endif
 
 extern "C" {
   
@@ -136,7 +140,7 @@ extern "C" {
     for(s = 0; s < nSamples; s++){
       F77_NAME(dcopy)(&P, &samples[s*nParams+betaIndx], &incOne, beta, &incOne);
       covExpand(&samples[s*nParams+AIndx], A, m);//note this is K, so we need chol
-      F77_NAME(dpotrf)(lower, &m, A, &m, &info); if(info != 0){error("c++ error: dpotrf failed 1\n");} 
+      F77_NAME(dpotrf)(lower, &m, A, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 1\n");} 
       clearUT(A, m); //make sure upper tri is clear
    
       for(k = 0; k < m; k++){
@@ -187,8 +191,8 @@ extern "C" {
 	sk += nPred[k];
       }
             
-      F77_NAME(dpotrf)(lower, &N, C, &N, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
-      F77_NAME(dpotri)(lower, &N, C, &N, &info); if(info != 0){error("c++ error: dpotri failed\n");}
+      F77_NAME(dpotrf)(lower, &N, C, &N, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
+      F77_NAME(dpotri)(lower, &N, C, &N, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
           
       sl = 0;
       for(l = 0; l < m; l++){
@@ -201,7 +205,7 @@ extern "C" {
       //prediction location loop
       for(k = 0; k < NPred; k++){
 	
-	F77_NAME(dsymv)(lower, &N, &one, C, &N, &c[k], &NPred, &zero, u, &incOne);
+	F77_NAME(dsymv)(lower, &N, &one, C, &N, &c[k], &NPred, &zero, u, &incOne FCONE);
 	
 	muPred = F77_NAME(ddot)(&N, u, &incOne, &w[N*s], &incOne);
 	varPred = z[k] - F77_NAME(ddot)(&N, u, &incOne, &c[k], &NPred);

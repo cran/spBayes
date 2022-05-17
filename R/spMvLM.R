@@ -18,16 +18,18 @@ spMvLM <- function(formula, data = parent.frame(), coords, knots,
   ####################################################
   if(missing(formula)){stop("error: formula must be specified")}
 
-  if(class(formula) == "formula"){
-    
+  ##if(class(formula) == "formula"){
+  if(inherits(formula, "formula")){
+      
     holder <- parseFormula(formula, data)
     Y <- holder[[1]]
     X <- holder[[2]]
     x.names <- holder[[3]]
     m <- 1
     
-  }else if(class(formula) == "list"){
-    
+  ##}else if(class(formula) == "list"){
+  }else if(inherits(formula, "list")){
+      
     mv.mats <- mkMats(formula, data)
     Y <- mv.mats[[1]]
     X <- mv.mats[[2]]

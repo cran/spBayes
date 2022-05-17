@@ -1,3 +1,4 @@
+#define USE_FC_LEN_T
 #include <string>
 #include <R.h>
 #include <Rinternals.h>
@@ -5,6 +6,9 @@
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
+#ifndef FCONE
+# define FCONE
+#endif
 
 extern "C" {
   SEXP spMvLMPredict(SEXP X_r, SEXP Y_r, SEXP n_r, SEXP m_r, SEXP p_r, SEXP Z_r, SEXP q_r, SEXP obsD_r, SEXP obsPredD_r, 
@@ -155,21 +159,21 @@ extern "C" {
       tmp_nmqm = (double *) R_alloc(nmqm, sizeof(double));
 
       //I really need to do away with the zeros in Z and X
-      F77_NAME(dgemv)(ytran, &p, &qm, &one, Z, &p, betaMu, &incOne, &zero, tmp_qm, &incOne);
+      F77_NAME(dgemv)(ytran, &p, &qm, &one, Z, &p, betaMu, &incOne, &zero, tmp_qm, &incOne FCONE);
 
-      F77_NAME(dgemv)(ntran, &nm, &p, &negOne, X, &nm, betaMu, &incOne, &zero, z, &incOne);
+      F77_NAME(dgemv)(ntran, &nm, &p, &negOne, X, &nm, betaMu, &incOne, &zero, z, &incOne FCONE);
       F77_NAME(daxpy)(&nm, &one, Y, &incOne, z, &incOne);
        
-      F77_NAME(dsymm)(rside, lower, &nm, &p, &one, betaC, &p, X, &nm, &zero, tmp_nmp, &nm);
-      F77_NAME(dgemm)(ntran, ytran, &nm, &nm, &p, &one, tmp_nmp, &nm, X, &nm, &zero, tmp_nmnm, &nm);
+      F77_NAME(dsymm)(rside, lower, &nm, &p, &one, betaC, &p, X, &nm, &zero, tmp_nmp, &nm FCONE FCONE);
+      F77_NAME(dgemm)(ntran, ytran, &nm, &nm, &p, &one, tmp_nmp, &nm, X, &nm, &zero, tmp_nmnm, &nm FCONE FCONE);
  
-      F77_NAME(dsymm)(lside, lower, &p, &qm, &one, betaC, &p, Z, &p, &zero, tmp_qmp, &p);
+      F77_NAME(dsymm)(lside, lower, &p, &qm, &one, betaC, &p, Z, &p, &zero, tmp_qmp, &p FCONE FCONE);
 
       for(i = 0; i < q; i++){
-	F77_NAME(dgemm)(ytran, ntran, &m, &m, &p, &one, &Z[i*mp], &p, &tmp_qmp[i*mp], &p, &zero, &tmp_qmm[i*mm], &m);
+	F77_NAME(dgemm)(ytran, ntran, &m, &m, &p, &one, &Z[i*mp], &p, &tmp_qmp[i*mp], &p, &zero, &tmp_qmm[i*mm], &m FCONE FCONE);
       }
 
-      F77_NAME(dgemm)(ytran, ytran, &qm, &nm, &p, &one, tmp_qmp, &p, X, &nm, &zero, tmp_nmqm, &qm); 
+      F77_NAME(dgemm)(ytran, ytran, &qm, &nm, &p, &one, tmp_qmp, &p, X, &nm, &zero, tmp_nmqm, &qm FCONE FCONE); 
     }
 
     //check if any prediction locations are observed
@@ -201,7 +205,7 @@ extern "C" {
 
       F77_NAME(dcopy)(&mm, A, &incOne, K, &incOne); //keep a copy of K
 
-      F77_NAME(dpotrf)(lower, &m, A, &m, &info); if(info != 0){error("c++ error: dpotrf failed\n");} //get A
+      F77_NAME(dpotrf)(lower, &m, A, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");} //get A
       clearUT(A, m); //make sure upper tri is clear
 
       for(k = 0; k < m; k++){
@@ -273,8 +277,8 @@ extern "C" {
       	    spCor(&obsPredD[l*n+h], 1, theta, covModel, &tmp_mm[k*m+k]);
       	  }
 	  
-      	  F77_NAME(dtrmm)(lside, lower, ntran, nUnit, &m, &m, &one, A, &m, tmp_mm, &m);
-      	  F77_NAME(dtrmm)(rside, lower, ytran, nUnit, &m, &m, &one, A, &m, tmp_mm, &m);
+      	  F77_NAME(dtrmm)(lside, lower, ntran, nUnit, &m, &m, &one, A, &m, tmp_mm, &m FCONE FCONE FCONE FCONE);
+      	  F77_NAME(dtrmm)(rside, lower, ytran, nUnit, &m, &m, &one, A, &m, tmp_mm, &m FCONE FCONE FCONE FCONE);
 	  
       	  if(nugget && obsPredD[l*n+h] == 0){
       	    for(k = 0; k < m; k++){
@@ -308,30 +312,30 @@ extern "C" {
       	}
       }
 
-      F77_NAME(dpotrf)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: dpotrf failed\n");}//L_1
+      F77_NAME(dpotrf)(lower, &nm, C, &nm, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}//L_1
       
       if(betaPrior == "normal"){
       	F77_NAME(dcopy)(&nm, z, &incOne, u, &incOne);
       }else{
-      	F77_NAME(dgemv)(ntran, &nm, &p, &negOne, X, &nm, &beta[s], &nSamples, &zero, u, &incOne);
+      	F77_NAME(dgemv)(ntran, &nm, &p, &negOne, X, &nm, &beta[s], &nSamples, &zero, u, &incOne FCONE);
       	F77_NAME(daxpy)(&nm, &one, Y, &incOne, u, &incOne);
 
-	F77_NAME(dgemv)(ytran, &p, &qm, &one, Z, &p, &beta[s], &nSamples, &zero, tmp_qm, &incOne);
+	F77_NAME(dgemv)(ytran, &p, &qm, &one, Z, &p, &beta[s], &nSamples, &zero, tmp_qm, &incOne FCONE);
       }
 
-      F77_NAME(dtrsv)(lower, ntran, nUnit, &nm, C, &nm, u, &incOne);//L_1u = (y-X\mu_beta) or (y-X\beta)
+      F77_NAME(dtrsv)(lower, ntran, nUnit, &nm, C, &nm, u, &incOne FCONE FCONE FCONE);//L_1u = (y-X\mu_beta) or (y-X\beta)
      
-      F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &nm, &qm, &one, C, &nm, c, &nm);//L_1v = c_0
+      F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &nm, &qm, &one, C, &nm, c, &nm FCONE FCONE FCONE FCONE);//L_1v = c_0
 
       //for each location
       for(j = 0; j < q; j++){
 
 	//mu
-	F77_NAME(dgemv)(ytran, &nm, &m, &one, &c[(j*m)*nm], &nm, u, &incOne, &zero, tmp_m, &incOne);
+	F77_NAME(dgemv)(ytran, &nm, &m, &one, &c[(j*m)*nm], &nm, u, &incOne, &zero, tmp_m, &incOne FCONE);
 	F77_NAME(daxpy)(&m, &one, &tmp_qm[j*m], &incOne, tmp_m, &incOne);
 
 	//var
-	F77_NAME(dgemm)(ytran, ntran, &m, &m, &nm, &negOne, &c[(j*m)*nm], &nm, &c[(j*m)*nm], &nm, &zero, tmp_mm, &m);
+	F77_NAME(dgemm)(ytran, ntran, &m, &m, &nm, &negOne, &c[(j*m)*nm], &nm, &c[(j*m)*nm], &nm, &zero, tmp_mm, &m FCONE FCONE);
 	F77_NAME(daxpy)(&mm, &one, K, &incOne, tmp_mm, &incOne);
 	
 	if(nugget){
@@ -349,7 +353,7 @@ extern "C" {
       	}
 	
 	if(fitted[j] == 0){
-	  F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info); if(info != 0){error("c++ error: dpotrf failed 1\n");}   
+	  F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 1\n");}   
 	  mvrnorm(&REAL(predSamples_r)[s*qm+j*m], tmp_m, tmp_mm, m, false);
 	}else{
 	  F77_NAME(dcopy)(&m, tmp_m, &incOne, &REAL(predSamples_r)[s*qm+j*m], &incOne);

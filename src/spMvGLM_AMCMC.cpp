@@ -1,3 +1,4 @@
+#define USE_FC_LEN_T
 #include <algorithm>
 #include <string>
 // #ifdef _OPENMP
@@ -10,7 +11,9 @@
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
-
+#ifndef FCONE
+# define FCONE
+#endif
 
 extern "C" {
 
@@ -302,9 +305,9 @@ extern "C" {
 
 	  //invert C and log det cov
 	  detCand = 0;
-	  F77_NAME(dpotrf)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
+	  F77_NAME(dpotrf)(lower, &nm, C, &nm, &info FCONE); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
 	  for(k = 0; k < nm; k++) detCand += 2*log(C[k*nm+k]);
-	  F77_NAME(dpotri)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
+	  F77_NAME(dpotri)(lower, &nm, C, &nm, &info FCONE); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
 
 	  //Likelihood with Jacobian   
 	  logPostCand = 0.0;
@@ -325,8 +328,8 @@ extern "C" {
 	  for(k = 0; k < m; k++) logPostCand += (m-k)*log(A[k*m+k])+log(A[k*m+k]);
 	  
 	  //get S*K^-1, already have the chol of K (i.e., A)
-	  F77_NAME(dpotri)(lower, &m, A, &m, &info); if(info != 0){error("c++ error: dpotri failed\n");}
-	  F77_NAME(dsymm)(rside, lower, &m, &m, &one, A, &m, KIW_S, &m, &zero, tmp_mm, &m);
+	  F77_NAME(dpotri)(lower, &m, A, &m, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
+	  F77_NAME(dsymm)(rside, lower, &m, &m, &one, A, &m, KIW_S, &m, &zero, tmp_mm, &m FCONE FCONE);
 	  for(k = 0; k < m; k++){SKtrace += tmp_mm[k*m+k];}
 	  logPostCand += -0.5*(KIW_df+m+1)*logDetK - 0.5*SKtrace;
 	  
@@ -338,7 +341,7 @@ extern "C" {
 	    }
 	  }
 	  
-	  F77_NAME(dgemv)(ntran, &nm, &p, &one, X, &nm, beta, &incOne, &zero, tmp_nm, &incOne);
+	  F77_NAME(dgemv)(ntran, &nm, &p, &one, X, &nm, beta, &incOne, &zero, tmp_nm, &incOne FCONE);
 	  
 	  if(family == "binomial"){
 	    logPostCand += binomial_logpost(nm, Y, tmp_nm, w, weights);
@@ -349,7 +352,7 @@ extern "C" {
 	  }
 	  
 	  //(-1/2) * tmp_n` *  C^-1 * tmp_n
-	  F77_NAME(dsymv)(lower, &nm, &one, C, &nm, w, &incOne, &zero, tmp_nm1, &incOne);
+	  F77_NAME(dsymv)(lower, &nm, &one, C, &nm, w, &incOne, &zero, tmp_nm1, &incOne FCONE);
 	  logPostCand += -0.5*detCand-0.5*F77_NAME(ddot)(&nm, w, &incOne, tmp_nm1, &incOne);
 	  
 	  //
@@ -406,11 +409,11 @@ extern "C" {
 	
 	//invert C and log det cov
 	detCand = 0;
-	F77_NAME(dpotrf)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+	F77_NAME(dpotrf)(lower, &nm, C, &nm, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
 	for(k = 0; k < nm; k++) detCand += 2*log(C[k*nm+k]);
-	F77_NAME(dpotri)(lower, &nm, C, &nm, &info); if(info != 0){error("c++ error: dpotri failed\n");}
+	F77_NAME(dpotri)(lower, &nm, C, &nm, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
 
-	F77_NAME(dgemv)(ntran, &nm, &p, &one, X, &nm, beta, &incOne, &zero, tmp_nm, &incOne);
+	F77_NAME(dgemv)(ntran, &nm, &p, &one, X, &nm, beta, &incOne, &zero, tmp_nm, &incOne FCONE);
 
 	for(j = 0; j < nm; j++){
 	  
@@ -441,8 +444,8 @@ extern "C" {
 	  for(k = 0; k < m; k++) logPostCand += (m-k)*log(A[k*m+k])+log(A[k*m+k]);
 	  
 	  //get S*K^-1, already have the chol of K (i.e., A)
-	  F77_NAME(dpotri)(lower, &m, A, &m, &info); if(info != 0){error("c++ error: dpotri failed\n");}
-	  F77_NAME(dsymm)(rside, lower, &m, &m, &one, A, &m, KIW_S, &m, &zero, tmp_mm, &m);
+	  F77_NAME(dpotri)(lower, &m, A, &m, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
+	  F77_NAME(dsymm)(rside, lower, &m, &m, &one, A, &m, KIW_S, &m, &zero, tmp_mm, &m FCONE FCONE);
 	  for(k = 0; k < m; k++){SKtrace += tmp_mm[k*m+k];}
 	  logPostCand += -0.5*(KIW_df+m+1)*logDetK - 0.5*SKtrace;
 	  
@@ -463,7 +466,7 @@ extern "C" {
 	  }
 	  
 	  //(-1/2) * tmp_n` *  C^-1 * tmp_n
-	  F77_NAME(dsymv)(lower, &nm, &one, C, &nm, w, &incOne, &zero, tmp_nm1, &incOne);
+	  F77_NAME(dsymv)(lower, &nm, &one, C, &nm, w, &incOne, &zero, tmp_nm1, &incOne FCONE);
 	  logPostCand += -0.5*detCand-0.5*F77_NAME(ddot)(&nm, w, &incOne, tmp_nm1, &incOne);
 	  
 	  //

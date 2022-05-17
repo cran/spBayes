@@ -1,3 +1,4 @@
+#define USE_FC_LEN_T
 #include <string>
 #include <R.h>
 #include <Rinternals.h>
@@ -5,7 +6,9 @@
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
-
+#ifndef FCONE
+# define FCONE
+#endif
 
 extern "C" {
 
@@ -109,11 +112,11 @@ extern "C" {
       spCovLT(knotsD, m, theta, covModel, K);
       spCov(knotsObsD, nm, theta, covModel, P);
       
-      F77_NAME(dpotrf)(lower, &m, K, &m, &info); if(info != 0){error("c++ error: Cholesky failed 1\n");}
-      F77_NAME(dpotri)(lower, &m, K, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed\n");}
+      F77_NAME(dpotrf)(lower, &m, K, &m, &info FCONE); if(info != 0){error("c++ error: Cholesky failed 1\n");}
+      F77_NAME(dpotri)(lower, &m, K, &m, &info FCONE); if(info != 0){error("c++ error: Cholesky inverse failed\n");}
       
       //P K^{-1}
-      F77_NAME(dsymm)(lside, lower, &m, &n, &one, K, &m, P, &m, &zero, tmp_nm, &m);
+      F77_NAME(dsymm)(lside, lower, &m, &n, &one, K, &m, P, &m, &zero, tmp_nm, &m FCONE FCONE);
       
       if(!modPP){
 	for(i = 0; i < n; i++){
@@ -137,30 +140,30 @@ extern "C" {
       }
  
       //(C^{*-1} c) (1/E ct C^{*-1})
-      F77_NAME(dgemm)(ntran, ytran, &m, &m, &n, &one, tmp_nm2, &m, tmp_nm, &m, &zero, tmp_mm, &m);
+      F77_NAME(dgemm)(ntran, ytran, &m, &m, &n, &one, tmp_nm2, &m, tmp_nm, &m, &zero, tmp_mm, &m FCONE FCONE);
 
       for(i = 0; i < mm; i++){
 	K[i] += tmp_mm[i];
       }
      
       //invert C_str
-      F77_NAME(dpotrf)(lower, &m, K, &m, &info); if(info != 0){error("c++ error: Cholesky failed 2\n");}
-      F77_NAME(dpotri)(lower, &m, K, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed\n");}
+      F77_NAME(dpotrf)(lower, &m, K, &m, &info FCONE); if(info != 0){error("c++ error: Cholesky failed 2\n");}
+      F77_NAME(dpotri)(lower, &m, K, &m, &info FCONE); if(info != 0){error("c++ error: Cholesky inverse failed\n");}
       
       //make w* mu
-      F77_NAME(dgemv)(ntran, &n, &p, &negOne, X, &n, &beta[s], &nSamples, &zero, tmp_n, &incOne);
+      F77_NAME(dgemv)(ntran, &n, &p, &negOne, X, &n, &beta[s], &nSamples, &zero, tmp_n, &incOne FCONE);
       F77_NAME(daxpy)(&n, &one, Y, &incOne, tmp_n, &incOne);
       
       //(1/E ct C^{*-1})'(Y-XB)
-      F77_NAME(dgemv)(ntran, &m, &n, &one, tmp_nm2, &m, tmp_n, &incOne, &zero, tmp_m, &incOne);     
-      F77_NAME(dsymv)(lower, &m, &one, K, &m, tmp_m, &incOne, &zero, tmp_m2, &incOne);
+      F77_NAME(dgemv)(ntran, &m, &n, &one, tmp_nm2, &m, tmp_n, &incOne, &zero, tmp_m, &incOne FCONE);     
+      F77_NAME(dsymv)(lower, &m, &one, K, &m, tmp_m, &incOne, &zero, tmp_m2, &incOne FCONE);
 
       //chol for the mvnorm and draw
-      F77_NAME(dpotrf)(lower, &m, K, &m, &info); if(info != 0){error("c++ error: Cholesky failed 3\n");}
+      F77_NAME(dpotrf)(lower, &m, K, &m, &info FCONE); if(info != 0){error("c++ error: Cholesky failed 3\n");}
       mvrnorm(&REAL(wStrSamples_r)[s*m], tmp_m2, K, m, false);
       
       //make \tild{w}
-      F77_NAME(dgemv)(ytran, &m, &n, &one, tmp_nm, &m, &REAL(wStrSamples_r)[s*m], &incOne, &zero, &REAL(wSamples_r)[s*n], &incOne);
+      F77_NAME(dgemv)(ytran, &m, &n, &one, tmp_nm, &m, &REAL(wStrSamples_r)[s*m], &incOne, &zero, &REAL(wSamples_r)[s*n], &incOne FCONE);
    
       R_CheckUserInterrupt();
       

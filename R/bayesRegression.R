@@ -200,8 +200,9 @@ bayesLMConjugate <- function(formula, data = parent.frame(), n.samples, beta.pri
 
   
   if(missing(formula)){stop("error: formula must be specified")} 
-  if(class(formula) == "formula"){
-    
+  ##if(class(formula) == "formula"){
+  if(inherits(formula, "formula")){
+          
     holder <- parseFormula(formula, data)
     Y <- holder[[1]]
     X <- as.matrix(holder[[2]])
@@ -338,8 +339,9 @@ bayesGeostatExact <- function (formula, data = parent.frame(), n.samples, beta.p
     if(missing(nu)){stop("error: nu must be specified")}
   
   if(missing(formula)){stop("error: formula must be specified")} 
-  if(class(formula) == "formula"){
-    
+  ##if(class(formula) == "formula"){
+  if(inherits(formula, "formula")){   
+
     holder <- parseFormula(formula, data)
     Y <- holder[[1]]
     X <- as.matrix(holder[[2]])

@@ -11,19 +11,21 @@ spRecover <- function(sp.obj, get.beta=TRUE, get.w=TRUE, start=1, end, thin=1, v
     }
     
     if(missing(sp.obj)){stop("error: spRecover expects sp.obj\n")}
-    if(!class(sp.obj) %in% c("spLM", "spMvLM", "spMisalignLM", "spSVC")){
+    ##if(!class(sp.obj) %in% c("spLM", "spMvLM", "spMisalignLM", "spSVC")){
+    if(!inherits(sp.obj, c("spLM", "spMvLM", "spMisalignLM", "spSVC"))){
         stop("error: requires an output object of class spLM, spMvLM, spMisalignLM, or spSVC\n")
     }
     
-    obj.class <- class(sp.obj)
+    ##obj.class <- class(sp.obj)
     
     ##need beta to get.w
     if(get.w){
         get.beta <- TRUE
     }
     
-    if(obj.class == "spSVC"){
-        
+    ##if(obj.class == "spSVC"){
+    if(inherits(sp.obj, "spSVC")){
+            
         Y <- sp.obj$Y
         X <- sp.obj$X
         Z <- sp.obj$Z
@@ -147,8 +149,9 @@ spRecover <- function(sp.obj, get.beta=TRUE, get.w=TRUE, start=1, end, thin=1, v
         
         sp.obj
 
-    }else if(obj.class == "spLM"){
-        
+    ##}else if(obj.class == "spLM"){
+    }else if(inherits(sp.obj, "spLM")){        
+
         Y <-sp.obj$Y
         X <- sp.obj$X
         p <- ncol(X)
@@ -265,7 +268,8 @@ spRecover <- function(sp.obj, get.beta=TRUE, get.w=TRUE, start=1, end, thin=1, v
         
         sp.obj
         
-    }else if(obj.class == "spMvLM"){
+    ##}else if(obj.class == "spMvLM"){
+    }else if(inherits(sp.obj, "spMvLM")){
         
         Y <-sp.obj$Y
         X <- sp.obj$X
@@ -366,7 +370,8 @@ spRecover <- function(sp.obj, get.beta=TRUE, get.w=TRUE, start=1, end, thin=1, v
         
         sp.obj
         
-    }else if(obj.class == "spMisalignLM"){
+    ##}else if(obj.class == "spMisalignLM"){
+    }else if(inherits(sp.obj, "spMisalignLM")){
         
         Y <-sp.obj$Y
         X <- sp.obj$X

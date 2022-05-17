@@ -1,3 +1,4 @@
+#define USE_FC_LEN_T
 #include <algorithm>
 #include <string>
 // #ifdef _OPENMP
@@ -10,6 +11,9 @@
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
+#ifndef FCONE
+# define FCONE
+#endif
 
 extern "C" {
 
@@ -379,7 +383,7 @@ extern "C" {
     double *u = (double *) R_alloc(nm, sizeof(double)); 
 
     //X is transposed on the R side to simplify recovery of beta
-    F77_NAME(dgemv)(ytran, &p, &nm, &negOne, X, &p, beta, &incOne, &zero, u, &incOne);
+    F77_NAME(dgemv)(ytran, &p, &nm, &negOne, X, &p, beta, &incOne, &zero, u, &incOne FCONE);
     F77_NAME(daxpy)(&nm, &one, Y, &incOne, u, &incOne);
 
     double *DCurrent = (double *) R_alloc(nmm, sizeof(double)); 
@@ -404,10 +408,10 @@ extern "C" {
       betaCInvMu = (double *) R_alloc(p, sizeof(double));
       
       F77_NAME(dcopy)(&pp, betaC, &incOne, betaCInv, &incOne);
-      F77_NAME(dpotrf)(lower, &p, betaCInv, &p, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
-      F77_NAME(dpotri)(lower, &p, betaCInv, &p, &info); if(info != 0){error("c++ error: dpotri failed\n");}
+      F77_NAME(dpotrf)(lower, &p, betaCInv, &p, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
+      F77_NAME(dpotri)(lower, &p, betaCInv, &p, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
       
-      F77_NAME(dsymv)(lower, &p, &one, betaCInv, &p, betaMu, &incOne, &zero, betaCInvMu, &incOne);      
+      F77_NAME(dsymv)(lower, &p, &one, betaCInv, &p, betaMu, &incOne, &zero, betaCInvMu, &incOne FCONE);      
     }
   
     if(verbose){
@@ -447,7 +451,7 @@ extern "C" {
 	  
 	  //extract and transform
 	  covTransInvExpand(&params[AIndx], A, m);
-	  F77_NAME(dgemm)(ntran, ytran, &m, &m, &m, &one, A, &m, A, &m, &zero, V, &m);
+	  F77_NAME(dgemm)(ntran, ytran, &m, &m, &m, &one, A, &m, A, &m, &zero, V, &m FCONE FCONE);
 	  
 	  for(k = 0; k < m; k++){
 	    phi[k] = logitInv(params[phiIndx+k], phiUnif[k*2], phiUnif[k*2+1]);
@@ -464,7 +468,7 @@ extern "C" {
 	      }
 	    }else{
 	      covTransInvExpand(&params[LIndx], L, m);
-	      F77_NAME(dgemm)(ntran, ytran, &m, &m, &m, &one, L, &m, L, &m, &zero, Psi, &m);
+	      F77_NAME(dgemm)(ntran, ytran, &m, &m, &m, &one, L, &m, L, &m, &zero, Psi, &m FCONE FCONE);
 	    }
 	  }
 	  
@@ -514,26 +518,26 @@ extern "C" {
 	    }
 	  }
 	  
-	  F77_NAME(dpotrf)(lower, &gm, tmp_gmgm, &gm, &info); if(info != 0){error("c++ error: dpotrf failed\n");}//L_K
+	  F77_NAME(dpotrf)(lower, &gm, tmp_gmgm, &gm, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}//L_K
 	  
 	  F77_NAME(dcopy)(&nmgm, P, &incOne, H, &incOne);
 	  
-	  F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &gm, &nm, &one, tmp_gmgm, &gm, H, &gm);
+	  F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &gm, &nm, &one, tmp_gmgm, &gm, H, &gm FCONE FCONE FCONE FCONE);
 	  
 	  for(k = 0; k < n; k++){
-	    F77_NAME(dgemm)(ytran, ntran, &m, &m, &gm, &one, &H[k*gm*m], &gm, &H[k*gm*m], &gm, &zero, tmp_mm, &m);
+	    F77_NAME(dgemm)(ytran, ntran, &m, &m, &gm, &one, &H[k*gm*m], &gm, &H[k*gm*m], &gm, &zero, tmp_mm, &m FCONE FCONE);
 	    
 	    for(l = 0; l < mm; l++){
 	      tmp_mm[l] = Psi[l] + V[l] - tmp_mm[l]; 
 	    }
 	    
-	    F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+	    F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
 	    
 	    for(l = 0; l < m; l++){
 	  	det += 2*log(tmp_mm[l*m+l]); //det(D)
 	      }
 
-	      F77_NAME(dtrtri)(lower, nUnit, &m, tmp_mm, &m, &info); if(info != 0){error("c++ error: dtrtri failed\n");}
+	      F77_NAME(dtrtri)(lower, nUnit, &m, tmp_mm, &m, &info FCONE FCONE); if(info != 0){error("c++ error: dtrtri failed\n");}
 
 	      F77_NAME(dcopy)(&mm, tmp_mm, &incOne, &D[k*mm], &incOne); //D^{-1/2}
 	    }
@@ -548,12 +552,12 @@ extern "C" {
 	      }
 	      det *= n;
 	    }else{
-	      F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+	      F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
 	      for(k = 0; k < m; k++){
 	  	det += 2*log(tmp_mm[k*m+k]);
 	      }
 	      det *= n;
-	      F77_NAME(dtrtri)(lower, nUnit, &m, tmp_mm, &m, &info); if(info != 0){error("c++ error: dtrtri failed\n");}
+	      F77_NAME(dtrtri)(lower, nUnit, &m, tmp_mm, &m, &info FCONE FCONE); if(info != 0){error("c++ error: dtrtri failed\n");}
 	    }
 
 	    for(k = 0; k < n; k++){
@@ -563,10 +567,10 @@ extern "C" {
 
 	  F77_NAME(dcopy)(&nmgm, P, &incOne, H, &incOne);//note, copy needed only in amcmc case, this could be dropped later
 	  for(k = 0; k < n; k++){
-	    F77_NAME(dtrmm)(rside, lower, ytran, nUnit, &gm, &m, &one, &D[k*mm], &m, &H[k*m*gm], &gm);//W'
+	    F77_NAME(dtrmm)(rside, lower, ytran, nUnit, &gm, &m, &one, &D[k*mm], &m, &H[k*m*gm], &gm FCONE FCONE FCONE FCONE);//W'
 	  }
 	  
-	  F77_NAME(dgemm)(ntran, ytran, &gm, &gm, &nm, &one, H, &gm, H, &gm, &zero, tmp_gmgm, &gm);//W'W
+	  F77_NAME(dgemm)(ntran, ytran, &gm, &gm, &nm, &one, H, &gm, H, &gm, &zero, tmp_gmgm, &gm FCONE FCONE);//W'W
 
 	  for(k = 0; k < gm; k++){
 	    for(l = k; l < gm; l++){
@@ -574,26 +578,26 @@ extern "C" {
 	    }
 	  }
 
-	  F77_NAME(dpotrf)(lower, &gm, K, &gm, &info); if(info != 0){error("c++ error: dpotrf failed\n");}//L
+	  F77_NAME(dpotrf)(lower, &gm, K, &gm, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}//L
 
-	  F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &gm, &nm, &one, K, &gm, H, &gm);//LH = W'
+	  F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &gm, &nm, &one, K, &gm, H, &gm FCONE FCONE FCONE FCONE);//LH = W'
 
 	  F77_NAME(dcopy)(&nm, u, &incOne, tmp_nm, &incOne);//note, copy needed only in amcmc case, this could be dropped later
 	  for(k = 0; k < n; k++){
-	    F77_NAME(dtrmv)(lower, ntran, nUnit, &m, &D[k*mm], &m, &tmp_nm[k*m], &incOne);//v
+	    F77_NAME(dtrmv)(lower, ntran, nUnit, &m, &D[k*mm], &m, &tmp_nm[k*m], &incOne FCONE FCONE FCONE);//v
 	  }
 
-	  F77_NAME(dgemv)(ntran, &gm, &nm, &one, H, &gm, tmp_nm, &incOne, &zero, tmp_gm, &incOne); //w = Hv
+	  F77_NAME(dgemv)(ntran, &gm, &nm, &one, H, &gm, tmp_nm, &incOne, &zero, tmp_gm, &incOne FCONE); //w = Hv
 	  
 	  Q = F77_NAME(ddot)(&nm, tmp_nm, &incOne, tmp_nm, &incOne) - F77_NAME(ddot)(&gm, tmp_gm, &incOne, tmp_gm, &incOne);
 	  
-	  F77_NAME(dgemm)(ntran, ytran, &gm, &gm, &nm, &negOne, H, &gm, H, &gm, &zero, tmp_gmgm, &gm);//-HH'
+	  F77_NAME(dgemm)(ntran, ytran, &gm, &gm, &nm, &negOne, H, &gm, H, &gm, &zero, tmp_gmgm, &gm FCONE FCONE);//-HH'
 	  
 	  for(k = 0; k < gm; k++){
 	    tmp_gmgm[k*gm+k] += 1.0; //J check
 	  }
 
-	  F77_NAME(dpotrf)(lower, &gm, tmp_gmgm, &gm, &info); if(info != 0){error("c++ error: dpotrf failed\n");}//L_J
+	  F77_NAME(dpotrf)(lower, &gm, tmp_gmgm, &gm, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}//L_J
 	  
 	  for(k = 0; k < gm; k++){
 	    det -= 2*log(tmp_gmgm[k*gm+k]);
@@ -614,8 +618,8 @@ extern "C" {
 	    for(k = 0; k < m; k++){priors += (m-k)*log(A[k*m+k])+log(A[k*m+k]);}
 	    
 	    //S*K^-1
-	    F77_NAME(dpotri)(lower, &m, A, &m, &info); if(info != 0){error("c++ error: dpotri failed\n");}
-	    F77_NAME(dsymm)(rside, lower, &m, &m, &one, A, &m, KIW_S, &m, &zero, tmp_mm, &m);
+	    F77_NAME(dpotri)(lower, &m, A, &m, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
+	    F77_NAME(dsymm)(rside, lower, &m, &m, &one, A, &m, KIW_S, &m, &zero, tmp_mm, &m FCONE FCONE);
 	    for(k = 0; k < m; k++){SKtrace += tmp_mm[k*m+k];}
 	    priors += -0.5*(KIW_df+m+1)*logDetK - 0.5*SKtrace;
 	  }else{	     
@@ -640,8 +644,8 @@ extern "C" {
 	  	for(k = 0; k < m; k++){priors += (m-k)*log(L[k*m+k])+log(L[k*m+k]);}
 		
 	  	//get S*K^-1
-	  	F77_NAME(dpotri)(lower, &m, L, &m, &info); if(info != 0){error("c++ error: dpotri failed\n");}
-	  	F77_NAME(dsymm)(rside, lower, &m, &m, &one, L, &m, PsiIW_S, &m, &zero, tmp_mm, &m);
+	  	F77_NAME(dpotri)(lower, &m, L, &m, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
+	  	F77_NAME(dsymm)(rside, lower, &m, &m, &one, L, &m, PsiIW_S, &m, &zero, tmp_mm, &m FCONE FCONE);
 	  	for(k = 0; k < m; k++){SKtrace += tmp_mm[k*m+k];}
 	  	priors += -0.5*(PsiIW_df+m+1)*logDetK - 0.5*SKtrace;
 	      }else{
@@ -706,13 +710,13 @@ extern "C" {
 	  F77_NAME(dcopy)(&nmp, X, &incOne, tmp_nmp, &incOne);
 
 	  for(k = 0; k < n; k++){
-	    F77_NAME(dtrmv)(lower, ntran, nUnit, &m, &DCurrent[k*mm], &m, &tmp_nm[k*m], &incOne);//\tilda{y}
-	    F77_NAME(dtrmm)(rside, lower, ytran, nUnit, &p, &m, &one, &DCurrent[k*mm], &m, &tmp_nmp[k*m*p], &p);//V 
+	    F77_NAME(dtrmv)(lower, ntran, nUnit, &m, &DCurrent[k*mm], &m, &tmp_nm[k*m], &incOne FCONE FCONE FCONE);//\tilda{y}
+	    F77_NAME(dtrmm)(rside, lower, ytran, nUnit, &p, &m, &one, &DCurrent[k*mm], &m, &tmp_nmp[k*m*p], &p FCONE FCONE FCONE FCONE);//V 
 	  }
   
-	  F77_NAME(dgemm)(ntran, ytran, &gm, &p, &nm, &one, HCurrent, &gm, tmp_nmp, &p, &zero, tmp_gmp, &gm);//\tilda{V}
-	  F77_NAME(dgemm)(ntran, ytran, &p, &p, &nm, &one, tmp_nmp, &p, tmp_nmp, &p, &zero, tmp_pp, &p);//V'V
-	  F77_NAME(dgemm)(ytran, ntran, &p, &p, &gm, &one, tmp_gmp, &gm, tmp_gmp, &gm, &zero, tmp_pp2, &p);//\tilda{V}'\tilda{V}
+	  F77_NAME(dgemm)(ntran, ytran, &gm, &p, &nm, &one, HCurrent, &gm, tmp_nmp, &p, &zero, tmp_gmp, &gm FCONE FCONE);//\tilda{V}
+	  F77_NAME(dgemm)(ntran, ytran, &p, &p, &nm, &one, tmp_nmp, &p, tmp_nmp, &p, &zero, tmp_pp, &p FCONE FCONE);//V'V
+	  F77_NAME(dgemm)(ytran, ntran, &p, &p, &gm, &one, tmp_gmp, &gm, tmp_gmp, &gm, &zero, tmp_pp2, &p FCONE FCONE);//\tilda{V}'\tilda{V}
 	  
 	  for(k = 0; k < p; k++){
 	    for(l = k; l < p; l++){
@@ -726,13 +730,13 @@ extern "C" {
 	  }
  	  
 	  //B
-	  F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
-	  F77_NAME(dpotri)(lower, &p, tmp_pp, &p, &info); if(info != 0){error("c++ error: dpotri failed\n");}
+	  F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
+	  F77_NAME(dpotri)(lower, &p, tmp_pp, &p, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
    
 	  //b
-	  F77_NAME(dgemv)(ntran, &p, &nm, &one, tmp_nmp, &p, tmp_nm, &incOne, &zero, tmp_p, &incOne); //V'\tilda{y}
-	  F77_NAME(dgemv)(ntran, &gm, &nm, &one, HCurrent, &gm, tmp_nm, &incOne, &zero, tmp_gm, &incOne); //H\tilda{y}
-	  F77_NAME(dgemv)(ytran, &gm, &p, &one, tmp_gmp, &gm, tmp_gm, &incOne, &zero, tmp_pp2, &incOne); //\tilda{V}'(H\tilda{y})
+	  F77_NAME(dgemv)(ntran, &p, &nm, &one, tmp_nmp, &p, tmp_nm, &incOne, &zero, tmp_p, &incOne FCONE); //V'\tilda{y}
+	  F77_NAME(dgemv)(ntran, &gm, &nm, &one, HCurrent, &gm, tmp_nm, &incOne, &zero, tmp_gm, &incOne FCONE); //H\tilda{y}
+	  F77_NAME(dgemv)(ytran, &gm, &p, &one, tmp_gmp, &gm, tmp_gm, &incOne, &zero, tmp_pp2, &incOne FCONE); //\tilda{V}'(H\tilda{y})
 	  
 	  for(k = 0; k < p; k++){
 	    tmp_p[k] -= tmp_pp2[k]; 
@@ -742,8 +746,8 @@ extern "C" {
 	    }
 	  }
 	  
-	  F77_NAME(dsymv)(lower, &p, &one, tmp_pp, &p, tmp_p, &incOne, &zero, tmp_p2, &incOne); //Bb
-	  F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+	  F77_NAME(dsymv)(lower, &p, &one, tmp_pp, &p, tmp_p, &incOne, &zero, tmp_p2, &incOne FCONE); //Bb
+	  F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
 
 	}//end updateBeta
 
@@ -754,15 +758,15 @@ extern "C" {
 	mvrnorm(beta, tmp_p2, tmp_pp, p, false);//note, tmp_p2 and tmp_pp will carry over when theta is not updated
 	
 	//update logPostCurrent (beta changes on every iteration so logPostCurrent must be updated)
-	F77_NAME(dgemv)(ytran, &p, &nm, &negOne, X, &p, beta, &incOne, &zero, u, &incOne);
+	F77_NAME(dgemv)(ytran, &p, &nm, &negOne, X, &p, beta, &incOne, &zero, u, &incOne FCONE);
 	F77_NAME(daxpy)(&nm, &one, Y, &incOne, u, &incOne);//u
 	  
 	F77_NAME(dcopy)(&nm, u, &incOne, tmp_nm, &incOne);
 	for(k = 0; k < n; k++){
-	  F77_NAME(dtrmv)(lower, ntran, nUnit, &m, &DCurrent[k*mm], &m, &tmp_nm[k*m], &incOne);//v
+	  F77_NAME(dtrmv)(lower, ntran, nUnit, &m, &DCurrent[k*mm], &m, &tmp_nm[k*m], &incOne FCONE FCONE FCONE);//v
 	}
 	  
-	F77_NAME(dgemv)(ntran, &gm, &nm, &one, HCurrent, &gm, tmp_nm, &incOne, &zero, tmp_gm, &incOne); //w = Hv
+	F77_NAME(dgemv)(ntran, &gm, &nm, &one, HCurrent, &gm, tmp_nm, &incOne, &zero, tmp_gm, &incOne FCONE); //w = Hv
 	  
 	Q = F77_NAME(ddot)(&nm, tmp_nm, &incOne, tmp_nm, &incOne) - F77_NAME(ddot)(&gm, tmp_gm, &incOne, tmp_gm, &incOne);
 

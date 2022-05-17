@@ -1,3 +1,4 @@
+#define USE_FC_LEN_T
 #include <string>
 #include <R.h>
 #include <Rmath.h>
@@ -6,6 +7,9 @@
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
+#ifndef FCONE
+# define FCONE
+#endif
 
 extern "C" {
 
@@ -126,7 +130,7 @@ extern "C" {
     
     for(s = 0; s < nSamples; s++){    
       
-      F77_NAME(dgemv)(ntran, &n, &p, &negOne, X, &n, &beta[s], &nSamples, &zero, z, &incOne);
+      F77_NAME(dgemv)(ntran, &n, &p, &negOne, X, &n, &beta[s], &nSamples, &zero, z, &incOne FCONE);
       F77_NAME(daxpy)(&n, &one, Y, &incOne, z, &incOne);
       
       theta[0] = sigmaSq[s];
@@ -149,11 +153,11 @@ extern "C" {
 	}
       }
 
-      F77_NAME(dpotrf)(lower, &m, K, &m, &info);//L_K
+      F77_NAME(dpotrf)(lower, &m, K, &m, &info FCONE);//L_K
     
       //get D
       if(modPP){
-	F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &m, &n, &one, K, &m, H, &m);
+	F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &m, &n, &one, K, &m, H, &m FCONE FCONE FCONE FCONE);
 	
 	for(k = 0; k < n; k++){
 	  D[k] = sigmaSq[s] - F77_NAME(ddot)(&m, &H[k*m], &incOne, &H[k*m], &incOne);
@@ -175,7 +179,7 @@ extern "C" {
 	}
       }
       
-      F77_NAME(dgemm)(ntran, ytran, &m, &m, &n, &one, H, &m, H, &m, &zero, tmp_mm, &m);//W'W
+      F77_NAME(dgemm)(ntran, ytran, &m, &m, &n, &one, H, &m, H, &m, &zero, tmp_mm, &m FCONE FCONE);//W'W
       
       for(k = 0; k < m; k++){
       	for(l = k; l < m; l++){
@@ -183,12 +187,12 @@ extern "C" {
       	}
       }
       
-      F77_NAME(dpotrf)(lower, &m, L, &m, &info); if(info != 0){error("c++ error: dpotrf failed\n");}//L
+      F77_NAME(dpotrf)(lower, &m, L, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}//L
       
-      F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &m, &n, &one, L, &m, H, &m);//LH = W'
+      F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &m, &n, &one, L, &m, H, &m FCONE FCONE FCONE FCONE);//LH = W'
 	  
       //get [v_1:v_2: ... : v_n]
-      F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &m, &n, &one, K, &m, P, &m);//L_K [v_1:v_2: ... : v_n] = [c_1:c_2: ... : c_n]
+      F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &m, &n, &one, K, &m, P, &m FCONE FCONE FCONE FCONE);//L_K [v_1:v_2: ... : v_n] = [c_1:c_2: ... : c_n]
       
       //get v
       for(k = 0; k < n; k++){
@@ -198,7 +202,7 @@ extern "C" {
       //for each location
       for(j = 0; j < q; j++){
 	
-      	F77_NAME(dtrsv)(lower, ntran, nUnit, &m, K, &m, &O[j*m], &incOne);//L_K u = c_0
+      	F77_NAME(dtrsv)(lower, ntran, nUnit, &m, K, &m, &O[j*m], &incOne FCONE FCONE FCONE);//L_K u = c_0
 	
 	//get u
       	for(k = 0; k < n; k++){
@@ -206,12 +210,12 @@ extern "C" {
       	}
 	
 	//get w
-	F77_NAME(dgemv)(ntran, &m, &n, &one, H, &m, tmp_n, &incOne, &zero, tmp_m, &incOne);//w = Hu
+	F77_NAME(dgemv)(ntran, &m, &n, &one, H, &m, tmp_n, &incOne, &zero, tmp_m, &incOne FCONE);//w = Hu
 
 	a = F77_NAME(ddot)(&n, tmp_n, &incOne, tmp_n, &incOne) - F77_NAME(ddot)(&m, tmp_m, &incOne, tmp_m, &incOne);
 
 	//get z
-	F77_NAME(dgemv)(ntran, &m, &n, &one, H, &m, tmp_n2, &incOne, &zero, tmp_m2, &incOne); //z = HD^{-1/2}(y-XB)
+	F77_NAME(dgemv)(ntran, &m, &n, &one, H, &m, tmp_n2, &incOne, &zero, tmp_m2, &incOne FCONE); //z = HD^{-1/2}(y-XB)
 
 	a = sigmaSq[s] - a;
 	if(nugget){

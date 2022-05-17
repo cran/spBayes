@@ -11,8 +11,10 @@ spDiag <- function(sp.obj, start=1, end, thin=1, verbose=TRUE, n.report=100, ...
   }
 
   if(missing(sp.obj)){stop("error: spDiag expects sp.obj\n")}
-  if(!class(sp.obj) %in% c("spLM","spMvLM", "spGLM", "spMvGLM","bayesLMRef","nonSpGLM","nonSpMvGLM","spSVC")){
-    stop("error: spDiag requires an output object of class spLM, spMvLM, spGLM, spMvGLM, bayesLMRef, nonSpGLM, nonSpMvGLM, or spSVC\n")}
+  ##if(!class(sp.obj) %in% c("spLM","spMvLM", "spGLM", "spMvGLM","bayesLMRef","nonSpGLM","nonSpMvGLM","spSVC")){
+  if(!inherits(sp.obj, c("spLM","spMvLM", "spGLM", "spMvGLM","bayesLMRef","nonSpGLM","nonSpMvGLM","spSVC"))){
+      stop("error: spDiag requires an output object of class spLM, spMvLM, spGLM, spMvGLM, bayesLMRef, nonSpGLM, nonSpMvGLM, or spSVC\n")}
+    
   if(!is.logical(verbose)){stop("error: verbose must be of type logical\n")}
   
   rmvn <- function(n, mu=0, V = matrix(1)){
@@ -53,8 +55,9 @@ spDiag <- function(sp.obj, start=1, end, thin=1, verbose=TRUE, n.report=100, ...
     GRS
   }
 
-    if(class(sp.obj) == "spSVC"){
-        
+    ##if(class(sp.obj) == "spSVC"){
+    if(inherits(sp.obj, "spSVC")){
+    
         if(!sp.obj$nugget){
             stop("spDiag is not aviable for the no nugget model.")
         }
@@ -163,8 +166,9 @@ spDiag <- function(sp.obj, start=1, end, thin=1, verbose=TRUE, n.report=100, ...
         
     }
     
-  if(class(sp.obj) == "bayesLMRef"){
-
+  ##if(class(sp.obj) == "bayesLMRef"){
+  if(inherits(sp.obj, "bayesLMRef")){
+          
     X <- sp.obj$X
     Y <- sp.obj$Y
     p <- ncol(X)
@@ -251,8 +255,9 @@ spDiag <- function(sp.obj, start=1, end, thin=1, verbose=TRUE, n.report=100, ...
     return(out)
   }
     
-  if(class(sp.obj) %in% c("nonSpGLM", "nonSpMvGLM")){
-
+  ##if(class(sp.obj) %in% c("nonSpGLM", "nonSpMvGLM")){
+  if(inherits(sp.obj, c("nonSpGLM", "nonSpMvGLM"))){
+          
     X <- sp.obj$X
     Y <- sp.obj$Y
     family <- sp.obj$family
@@ -331,8 +336,9 @@ spDiag <- function(sp.obj, start=1, end, thin=1, verbose=TRUE, n.report=100, ...
   }
 
   
-  if(class(sp.obj) %in% c("spLM", "spMvLM")){
-    
+  ##if(class(sp.obj) %in% c("spLM", "spMvLM")){
+  if(inherits(sp.obj, c("spLM", "spMvLM"))){
+        
     ##recover beta and/or w (burn-in and thinning before spDiag)
     is.pp <- sp.obj$is.pp
     
@@ -351,8 +357,9 @@ spDiag <- function(sp.obj, start=1, end, thin=1, verbose=TRUE, n.report=100, ...
     
     w <- sp.obj$p.w.recover.samples
     
-    if(class(sp.obj) == "spMvLM"){
-      
+    ##if(class(sp.obj) == "spMvLM"){
+    if(inherits(sp.obj, "spMvLM")){
+            
       if(!sp.obj$nugget){
         stop("DIC cannot be computed for a no nugget model.")
       }
@@ -562,8 +569,9 @@ spDiag <- function(sp.obj, start=1, end, thin=1, verbose=TRUE, n.report=100, ...
         out      
       }            
       
-    }else if(class(sp.obj) == "spLM"){
-      
+    ##}else if(class(sp.obj) == "spLM"){
+    }else if(inherits(sp.obj, "spLM")){
+        
       if(!sp.obj$nugget){
         stop("DIC cannot be computed for a no nugget model.")
       }
@@ -732,14 +740,16 @@ spDiag <- function(sp.obj, start=1, end, thin=1, verbose=TRUE, n.report=100, ...
         out
       }
     }
-  } else if(class(sp.obj) %in% c("spGLM","spMvGLM")){ 
-    
+  ##} else if(class(sp.obj) %in% c("spGLM","spMvGLM")){ 
+  } else if(inherits(sp.obj, c("spGLM","spMvGLM"))){
+      
     family <- sp.obj$family
     X <- sp.obj$X
     Y <- sp.obj$Y
     p <- ncol(X)
     m <- 1 ##for spGLM
-    if(class(sp.obj) == "spMvGLM"){m <- sp.obj$m}
+    ##if(class(sp.obj) == "spMvGLM"){m <- sp.obj$m}
+    if(inherits(sp.obj, "spMvGLM")){m <- sp.obj$m}
     obs.coords <- sp.obj$coords
     n <- nrow(obs.coords)
     cov.model <- sp.obj$cov.model

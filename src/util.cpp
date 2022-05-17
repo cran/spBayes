@@ -1,3 +1,4 @@
+#define USE_FC_LEN_T
 #include <string>
 #include "util.h"
 
@@ -7,6 +8,9 @@
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include <R_ext/Utils.h>
+#ifndef FCONE
+# define FCONE
+#endif
 
 void mvrnorm(double *des, double *mu, double *cholCov, int dim){
   
@@ -19,7 +23,7 @@ void mvrnorm(double *des, double *mu, double *cholCov, int dim){
     des[i] = rnorm(0.0, 1.0);
   
   //mult this vector by the lower triangle of the cholCov
-  F77_NAME(dtrmv)("L", "N", "N", &dim, cholCov, &dim, des, &inc);
+  F77_NAME(dtrmv)("L", "N", "N", &dim, cholCov, &dim, des, &inc FCONE FCONE FCONE);
   
   //add the mean to the result
   F77_NAME(daxpy)(&dim, &one, mu, &inc, des, &inc);
@@ -38,9 +42,9 @@ void mvrnorm(double *des, double *mu, double *cholCov, int dim, bool upper){
 
   //mult this vector by the lower triangle of the cholCov
   if(upper)
-    F77_NAME(dtrmv)("U", "T", "N", &dim, cholCov, &dim, des, &inc);
+    F77_NAME(dtrmv)("U", "T", "N", &dim, cholCov, &dim, des, &inc FCONE FCONE FCONE);
   else
-    F77_NAME(dtrmv)("L", "N", "N", &dim, cholCov, &dim, des, &inc);
+    F77_NAME(dtrmv)("L", "N", "N", &dim, cholCov, &dim, des, &inc FCONE FCONE FCONE);
 
   //add the mean to the result
   F77_NAME(daxpy)(&dim, &one, mu, &inc, des, &inc);
@@ -691,15 +695,15 @@ void rwish(double *S, int v, int p, double *Z, double *tmp_pp, int iwish){
     bool riwish = static_cast<bool>(iwish);
 
     if(riwish){
-      F77_NAME(dpotrf)(lower, &p, S, &p, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
-      F77_NAME(dpotri)(lower, &p, S, &p, &info); if(info != 0){error("c++ error: dpotri failed\n");}
+      F77_NAME(dpotrf)(lower, &p, S, &p, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
+      F77_NAME(dpotri)(lower, &p, S, &p, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
     }
     
     if(v < p){
       error("c++ error: rwish v < p\n");
     }
     
-    F77_NAME(dpotrf)(lower, &p, S, &p, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+    F77_NAME(dpotrf)(lower, &p, S, &p, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
     zeros(tmp_pp, p*p);
     
     //GetRNGstate();
@@ -714,12 +718,12 @@ void rwish(double *S, int v, int p, double *Z, double *tmp_pp, int iwish){
     }
     //PutRNGstate();
     
-    F77_NAME(dtrmm)(rside, lower, ytran, nUnit, &p, &p, &one, S, &p, tmp_pp, &p);
-    F77_NAME(dgemm)(ytran, ntran, &p, &p, &p, &one, tmp_pp, &p, tmp_pp, &p, &zero, Z, &p); 
+    F77_NAME(dtrmm)(rside, lower, ytran, nUnit, &p, &p, &one, S, &p, tmp_pp, &p FCONE FCONE FCONE FCONE);
+    F77_NAME(dgemm)(ytran, ntran, &p, &p, &p, &one, tmp_pp, &p, tmp_pp, &p, &zero, Z, &p FCONE FCONE); 
     
     if(riwish){
-      F77_NAME(dpotrf)(lower, &p, Z, &p, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
-      F77_NAME(dpotri)(lower, &p, Z, &p, &info); if(info != 0){error("c++ error: dpotri failed\n");}
+      F77_NAME(dpotrf)(lower, &p, Z, &p, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
+      F77_NAME(dpotri)(lower, &p, Z, &p, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
     }
 
     for(i = 1; i < p; i++){

@@ -1,3 +1,4 @@
+#define USE_FC_LEN_T
 #include <algorithm>
 #include <string>
 #include <R.h>
@@ -7,6 +8,9 @@
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
+#ifndef FCONE
+# define FCONE
+#endif
 
 extern "C" {
 
@@ -249,13 +253,13 @@ extern "C" {
   
 	  //invert C and log det cov
 	  detCand = 0;
-	  F77_NAME(dpotrf)(lower, &m, K, &m, &info); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
+	  F77_NAME(dpotrf)(lower, &m, K, &m, &info FCONE); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
 	  for(k = 0; k < m; k++) detCand += 2*log(K[k*m+k]);
-	  F77_NAME(dpotri)(lower, &m, K, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
+	  F77_NAME(dpotri)(lower, &m, K, &m, &info FCONE); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
 	  
 	  //make \tild{w}
-	  F77_NAME(dsymv)(lower, &m, &one, K, &m, w_str, &incOne, &zero, tmp_m, &incOne);     
-	  F77_NAME(dgemv)(ytran, &m, &n, &one, P, &m, tmp_m, &incOne, &zero, w, &incOne);
+	  F77_NAME(dsymv)(lower, &m, &one, K, &m, w_str, &incOne, &zero, tmp_m, &incOne FCONE);     
+	  F77_NAME(dgemv)(ytran, &m, &n, &one, P, &m, tmp_m, &incOne, &zero, w, &incOne FCONE);
 	  
 	  //Likelihood with Jacobian  
 	  logPostCand = 0.0;
@@ -274,7 +278,7 @@ extern "C" {
 	    logPostCand += log(nu - nuUnifa) + log(nuUnifb - nu);   
 	  }
 	  
-	  F77_NAME(dgemv)(ntran, &n, &p, &one, X, &n, beta, &incOne, &zero, tmp_n, &incOne);
+	  F77_NAME(dgemv)(ntran, &n, &p, &one, X, &n, beta, &incOne, &zero, tmp_n, &incOne FCONE);
 	  
 	  if(family == "binomial"){
 	    logPostCand += binomial_logpost(n, Y, tmp_n, w, weights);
@@ -322,13 +326,13 @@ extern "C" {
 	
 	//invert C and log det cov
 	detCand = 0;
-	F77_NAME(dpotrf)(lower, &m, K, &m, &info); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
+	F77_NAME(dpotrf)(lower, &m, K, &m, &info FCONE); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
 	for(k = 0; k < m; k++) detCand += 2*log(K[k*m+k]);
-	F77_NAME(dpotri)(lower, &m, K, &m, &info); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
+	F77_NAME(dpotri)(lower, &m, K, &m, &info FCONE); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
 		
-	F77_NAME(dsymm)(lside, lower, &m, &n, &one, K, &m, P, &m, &zero, tmp_nm, &m);
+	F77_NAME(dsymm)(lside, lower, &m, &n, &one, K, &m, P, &m, &zero, tmp_nm, &m FCONE FCONE);
 
-	F77_NAME(dgemv)(ntran, &n, &p, &one, X, &n, beta, &incOne, &zero, tmp_n, &incOne);
+	F77_NAME(dgemv)(ntran, &n, &p, &one, X, &n, beta, &incOne, &zero, tmp_n, &incOne FCONE);
 
 	for(j = 0; j < m; j++){
 	  
@@ -337,7 +341,7 @@ extern "C" {
 	  w_str[j] = rnorm(w_strjCurrent, exp(w_strTuning[j]));
 
 	  //make \tild{w}
-	  F77_NAME(dgemv)(ytran, &m, &n, &one, tmp_nm, &m, w_str, &incOne, &zero, w, &incOne);
+	  F77_NAME(dgemv)(ytran, &m, &n, &one, tmp_nm, &m, w_str, &incOne, &zero, w, &incOne FCONE);
 	  
 	  //Likelihood with Jacobian  
 	  logPostCand = 0.0;
@@ -365,7 +369,7 @@ extern "C" {
 	  }
 	  
 	  //(-1/2) * tmp_n` *  C^-1 * tmp_n
-	  F77_NAME(dsymv)(lower, &m, &one, K, &m, w_str, &incOne, &zero, tmp_m, &incOne);
+	  F77_NAME(dsymv)(lower, &m, &one, K, &m, w_str, &incOne, &zero, tmp_m, &incOne FCONE);
 	  logPostCand += -0.5*detCand-0.5*F77_NAME(ddot)(&m, w_str, &incOne, tmp_m, &incOne);
 	  
 	  //

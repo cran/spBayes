@@ -1,3 +1,4 @@
+#define USE_FC_LEN_T
 #include <string>
 // #ifdef _OPENMP
 // #include <omp.h>
@@ -9,6 +10,9 @@
 #include <R_ext/Lapack.h>
 #include <R_ext/BLAS.h>
 #include "util.h"
+#ifndef FCONE
+# define FCONE
+#endif
 
 extern "C" {
 
@@ -332,13 +336,13 @@ extern "C" {
       // } //parallel for
 
       detCand = 0.0;
-      F77_NAME(dpotrf)(lower, &qm, K, &qm, &info); if(info != 0){error("c++ error: dpotrf failed\n");}
+      F77_NAME(dpotrf)(lower, &qm, K, &qm, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
       for(i = 0; i < qm; i++) detCand += 2.0*log(K[i*qm+i]);
-      F77_NAME(dpotri)(lower, &qm, K, &qm, &info); if(info != 0){error("c++ error: dpotri failed\n");}
+      F77_NAME(dpotri)(lower, &qm, K, &qm, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
       
       //make \tild{w}
-      F77_NAME(dsymv)(lower, &qm, &one, K, &qm, w_strCand, &incOne, &zero, tmp_qm, &incOne);     
-      F77_NAME(dgemv)(ytran, &qm, &nm, &one, P, &qm, tmp_qm, &incOne, &zero, wCand, &incOne);
+      F77_NAME(dsymv)(lower, &qm, &one, K, &qm, w_strCand, &incOne, &zero, tmp_qm, &incOne FCONE);     
+      F77_NAME(dgemv)(ytran, &qm, &nm, &one, P, &qm, tmp_qm, &incOne, &zero, wCand, &incOne FCONE);
 
       //Likelihood with Jacobian   
       logPostCand = 0.0;
@@ -359,8 +363,8 @@ extern "C" {
       for(i = 0; i < m; i++) logPostCand += (m-i)*log(A[i*m+i])+log(A[i*m+i]);
       
       //get S*K^-1, already have the chol of K (i.e., A)
-      F77_NAME(dpotri)(lower, &m, A, &m, &info); if(info != 0){error("c++ error: dpotri failed\n");}
-      F77_NAME(dsymm)(rside, lower, &m, &m, &one, A, &m, KIW_S, &m, &zero, tmp_mm, &m);
+      F77_NAME(dpotri)(lower, &m, A, &m, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
+      F77_NAME(dsymm)(rside, lower, &m, &m, &one, A, &m, KIW_S, &m, &zero, tmp_mm, &m FCONE FCONE);
       for(i = 0; i < m; i++){SKtrace += tmp_mm[i*m+i];}
       logPostCand += -0.5*(KIW_df+m+1)*logDetK - 0.5*SKtrace;
 
@@ -372,7 +376,7 @@ extern "C" {
       	}
       }
    
-      F77_NAME(dgemv)(ntran, &nm, &p, &one, X, &nm, beta, &incOne, &zero, tmp_nm, &incOne);
+      F77_NAME(dgemv)(ntran, &nm, &p, &one, X, &nm, beta, &incOne, &zero, tmp_nm, &incOne FCONE);
 
       if(family == "binomial"){
 	logPostCand += binomial_logpost(nm, Y, tmp_nm, wCand, weights);
@@ -383,7 +387,7 @@ extern "C" {
       }
 
       //(-1/2) * tmp_n` *  C^-1 * tmp_n
-      //F77_NAME(dsymv)(lower, &qm, &one,  K, &qm, w_strCand, &incOne, &zero, tmp_qm, &incOne);
+      //F77_NAME(dsymv)(lower, &qm, &one,  K, &qm, w_strCand, &incOne, &zero, tmp_qm, &incOne FCONE);
       logPostCand += -0.5*detCand-0.5*F77_NAME(ddot)(&qm, w_strCand, &incOne, tmp_qm, &incOne);
 
       //
