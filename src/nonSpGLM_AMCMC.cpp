@@ -248,7 +248,7 @@ extern "C" {
 	    Rprintf("Batch: %i of %i, %3.2f%%\n", b, nBatch, 100.0*b/nBatch);
 	    Rprintf("\tparameter\tacceptance\ttuning\n");	  
 	    for(j = 0; j < p; j++){
-	      Rprintf("\tbeta[%i]\t\t%3.1f%\t\t%1.5f\n", j, 100.0*REAL(accept_r)[b*p+j], exp(tuning[j]));
+	      Rprintf("\tbeta[%i]\t\t%3.1f\t\t%1.5f\n", j, 100.0*REAL(accept_r)[b*p+j], exp(tuning[j]));
 	    }
 	  }else{
 	    Rprintf("Sampled: %i of %i, %3.2f%%\n", s, nSamples, 100.0*s/nSamples);

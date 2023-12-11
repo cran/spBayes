@@ -1,10 +1,10 @@
-citHeader("To cite spBayes in publications use:")
+citation(auto = meta)
 
-citEntry(entry = "Article",
+bibentry(bibtype = "Article",
   title        = "{spBayes}: An {R} Package for Univariate and Multivariate Hierarchical Point-Referenced Spatial Models",
-  author       = personList(as.person("Andrew O. Finley"),
-                   as.person("Sudipto Banerjee"),
-                   as.person("Bradley P. Carlin")),
+  author       = c(person(c("Andrew O.", "Finley")),
+                   person("Sudipto Banerjee"),
+                   person(c("Bradley P.", "Carlin"))),
   journal      = "Journal of Statistical Software",
   year         = "2007",
   volume       = "19",
@@ -19,11 +19,11 @@ citEntry(entry = "Article",
         "URL https://www.jstatsoft.org/article/view/v019i04.")
 )
 
-citEntry(entry = "Article",
+bibentry(bibtype = "Article",
   title        = "{spBayes} for Large Univariate and Multivariate Point-Referenced Spatio-Temporal Data Models",
-  author       = personList(as.person("Andrew O. Finley"),
-                   as.person("Sudipto Banerjee"),
-                   as.person("Alan E.Gelfand")),
+  author       = c(person(c("Andrew O.", "Finley")),
+                   person("Sudipto Banerjee"),
+                   person(c("Alan E.", "Gelfand"))),
   journal      = "Journal of Statistical Software",
   year         = "2015",
   volume       = "63",

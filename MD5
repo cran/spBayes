@@ -1,4 +1,4 @@
-443fd257af91b99d07d92995079bf5bc *DESCRIPTION
+702bfef0692883d084b2f11e17eb541a *DESCRIPTION
 6ddd08c2b5ef4976ae6fa81439dae21e *NAMESPACE
 92e68259d6dd3e539816b7e847cd3b64 *R/adaptMetropGibbs.R
 ea039c90362f93f213841b8dddcab726 *R/bayesLMRef.R
@@ -30,7 +30,7 @@ c5b7c6afc0ed18d9aa0c3a1ce1035c37 *data/NYOzone.dat.tab.gz
 2b144acd93540659c9000b7084bb8466 *data/SVCMvData.dat.tab.gz
 d3d1506d71992fc0039934124f597f49 *data/WEF.dat.csv.gz
 fc1e01474aece5b483230d0ca4f7b988 *data/Zurich.dat.tab.gz
-57e53dbde5864021c440d35b77faf8c3 *inst/CITATION
+21415f33a5cbc67bbb7f23e2f838ea38 *inst/CITATION
 4db649756f2f76ccbce6428475e94c2a *inst/ChangeLog
 c31f15e48d4789bf5954504137c6a05b *inst/NOTES
 d16bcc410f632fb500366b0a36b70c5c *man/BEF.dat.Rd
@@ -67,7 +67,7 @@ f59470c4c6f07630eb9a0bddbee06864 *src/adaptMetropGibbs.cpp
 bbece153faa3eb8ad96be6a6a4971c5c *src/idist.cpp
 414985d8cd0872c979eb5bb5b0764a88 *src/init.cpp
 827ffb343a3289c0dbc6a176239ff826 *src/mkSpCov.cpp
-a5b716017b9717a220189e3afdc37bf1 *src/nonSpGLM_AMCMC.cpp
+fc07b75d52c378c8c70bdd3b54768f9b *src/nonSpGLM_AMCMC.cpp
 926eb0a1ab66cff3f7ec544a6d39ccc6 *src/ptsInPoly.cpp
 df859a1ea2993c9d031bde93215a27df *src/spBayes.h
 02df9061a2baaefbfbb7264ed1283378 *src/spDynLM.cpp
@@ -91,13 +91,13 @@ a8c9843eac3e1b558b12a77c5cc33239 *src/spMisalignRecover.cpp
 a2838a0abf8581094222e6d4ce62b5dd *src/spPPDynLM.cpp
 28e7c8b57e60bb2b3be1a60f3f0bd94d *src/spPPGLM.cpp
 715e3cacce374b886f0ab62f5bad19b6 *src/spPPGLM_AMCMC.cpp
-be4ede8a896b584a075901ea497f3391 *src/spPPLM.cpp
+bbf4f9fdce7be1bea714f69d6656046d *src/spPPLM.cpp
 d68523c690e4564d207f9d7e2c8817e8 *src/spPPLMPredict.cpp
 38fb54f4c0acdf80cce68eefe3115329 *src/spPPLMRecover.cpp
 1c161e7494ed5e0c90839c7f0b934e9b *src/spPPMvGLM.cpp
 0cdff20b113873a13d48cf0c87fc2a6d *src/spPPMvGLMPredict.cpp
 3c048d7312c94abb4e9272253cb00765 *src/spPPMvGLM_AMCMC.cpp
-7ae598f47bd8b367fc35feccdca49d03 *src/spPPMvLM.cpp
+1fd28366d32823ef0648e0af28a98a10 *src/spPPMvLM.cpp
 a0b340bea6d63d624447e349830b42da *src/spPPMvLMPredict.cpp
 8fb142560317d399d9e8eb1edf2c3b02 *src/spPPMvLMRecover.cpp
 9653091c7a3221f774e1937dbc2397d9 *src/spSVC.cpp
