@@ -1,3 +1,7 @@
+#ifndef R_NO_REMAP
+#  define R_NO_REMAP
+#endif
+
 #define USE_FC_LEN_T
 #include <string>
 #include "util.h"
@@ -52,10 +56,10 @@ void mvrnorm(double *des, double *mu, double *cholCov, int dim, bool upper){
 }
 
 SEXP getList(SEXP list, const char *str){
-  SEXP elmt = R_NilValue, names = getAttrib(list, R_NamesSymbol);
+  SEXP elmt = R_NilValue, names = Rf_getAttrib(list, R_NamesSymbol);
   int i;
   
-  for (i = 0; i < length(list); i++)
+  for (i = 0; i < Rf_length(list); i++)
     if(strcmp(CHAR(STRING_ELT(names, i)), str) == 0) {
       elmt = VECTOR_ELT(list, i);
       break;
@@ -74,13 +78,13 @@ SEXP getGetList(SEXP list, const char *str1, const char *str2){
 }
 
 
-void zeros(double *x, int length){
-  for(int i = 0; i < length; i++)
+void zeros(double *x, int Rf_length){
+  for(int i = 0; i < Rf_length; i++)
     x[i] = 0.0;
 }
 
-void zeros(int *x, int length){
-  for(int i = 0; i < length; i++)
+void zeros(int *x, int Rf_length){
+  for(int i = 0; i < Rf_length; i++)
     x[i] = 0;
 }
 
@@ -404,7 +408,7 @@ double spCorTS(double &D, double &phi, double &nu, std::string &covModel, double
     return exp(-1.0*(pow(phi*D,2)));
       
   }else{
-    error("c++ error: cov.model is not correctly specified");
+    Rf_error("c++ Rf_error: cov.model is not correctly specified");
   }
 }
 
@@ -449,7 +453,7 @@ void spCor(double *D, int n, double *theta, std::string &covModel, double *C){
     }
     
  }else{
-    error("c++ error: cov.model is not correctly specified");
+    Rf_error("c++ Rf_error: cov.model is not correctly specified");
   }
 }
 
@@ -485,7 +489,7 @@ double spCor(double D, double *theta, std::string &covModel){
     }    
     
   }else{
-    error("c++ error: cov.model is not correctly specified");
+    Rf_error("c++ Rf_error: cov.model is not correctly specified");
     return 0;
   }
 }
@@ -520,7 +524,7 @@ double spCor(double D, double phi, double nu, std::string &covModel){
     return exp(-1.0*(pow(phi*D,2)));
       
   }else{
-    error("c++ error: cov.model is not correctly specified");
+    Rf_error("c++ Rf_error: cov.model is not correctly specified");
     return 0;
   }
 }
@@ -566,7 +570,7 @@ void spCov(double *D, int n, double *theta, std::string &covModel, double *C){
     }
     
  }else{
-    error("c++ error: cov.model is not correctly specified");
+    Rf_error("c++ Rf_error: cov.model is not correctly specified");
   }
 }
 
@@ -619,7 +623,7 @@ void spCovLT(double *D, int n, double *theta, std::string &covModel, double *C){
     }
     
  }else{
-    error("c++ error: cov.model is not correctly specified");
+    Rf_error("c++ Rf_error: cov.model is not correctly specified");
   }
 }
 
@@ -695,15 +699,15 @@ void rwish(double *S, int v, int p, double *Z, double *tmp_pp, int iwish){
     bool riwish = static_cast<bool>(iwish);
 
     if(riwish){
-      F77_NAME(dpotrf)(lower, &p, S, &p, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
-      F77_NAME(dpotri)(lower, &p, S, &p, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
+      F77_NAME(dpotrf)(lower, &p, S, &p, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed\n");}
+      F77_NAME(dpotri)(lower, &p, S, &p, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed\n");}
     }
     
     if(v < p){
-      error("c++ error: rwish v < p\n");
+      Rf_error("c++ Rf_error: rwish v < p\n");
     }
     
-    F77_NAME(dpotrf)(lower, &p, S, &p, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
+    F77_NAME(dpotrf)(lower, &p, S, &p, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed\n");}
     zeros(tmp_pp, p*p);
     
     //GetRNGstate();
@@ -722,8 +726,8 @@ void rwish(double *S, int v, int p, double *Z, double *tmp_pp, int iwish){
     F77_NAME(dgemm)(ytran, ntran, &p, &p, &p, &one, tmp_pp, &p, tmp_pp, &p, &zero, Z, &p FCONE FCONE); 
     
     if(riwish){
-      F77_NAME(dpotrf)(lower, &p, Z, &p, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
-      F77_NAME(dpotri)(lower, &p, Z, &p, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
+      F77_NAME(dpotrf)(lower, &p, Z, &p, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed\n");}
+      F77_NAME(dpotri)(lower, &p, Z, &p, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed\n");}
     }
 
     for(i = 1; i < p; i++){

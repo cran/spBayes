@@ -1,3 +1,7 @@
+#ifndef R_NO_REMAP
+#  define R_NO_REMAP
+#endif
+
 #define USE_FC_LEN_T
 #include <string>
 #include <R.h>
@@ -117,7 +121,7 @@ extern "C" {
     *****************************************/
     int status=1;
     SEXP predSamples_r;
-    PROTECT(predSamples_r = allocMatrix(REALSXP, qm, nSamples)); nProtect++; 
+    PROTECT(predSamples_r = Rf_allocMatrix(REALSXP, qm, nSamples)); nProtect++; 
     
     double *P = (double *) R_alloc(nmgm, sizeof(double)); 
     double *K = (double *) R_alloc(gmgm, sizeof(double)); 
@@ -166,7 +170,7 @@ extern "C" {
       
       F77_NAME(dcopy)(&mm, A, &incOne, V, &incOne); //keep a copy of K
 
-      F77_NAME(dpotrf)(lower, &m, A, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");} //get A
+      F77_NAME(dpotrf)(lower, &m, A, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed\n");} //get A
       clearUT(A, m); //make sure upper tri is clear
       
 
@@ -264,8 +268,8 @@ extern "C" {
      	    }
      	  }
 	  
-     	  F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 1\n");}
-     	  F77_NAME(dtrtri)(lower, nUnit, &m, tmp_mm, &m, &info FCONE FCONE); if(info != 0){error("c++ error: dtrtri failed\n");}
+     	  F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed 1\n");}
+     	  F77_NAME(dtrtri)(lower, nUnit, &m, tmp_mm, &m, &info FCONE FCONE); if(info != 0){Rf_error("c++ Rf_error: dtrtri failed\n");}
 
      	  F77_NAME(dcopy)(&mm, tmp_mm, &incOne, &D[k*mm], &incOne); //D^{-1/2}
      	}
@@ -273,8 +277,8 @@ extern "C" {
       }else{
 
      	F77_NAME(dcopy)(&mm, Psi, &incOne, tmp_mm, &incOne);
-     	F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 2\n");}
-     	F77_NAME(dtrtri)(lower, nUnit, &m, tmp_mm, &m, &info FCONE FCONE); if(info != 0){error("c++ error: dtrtri failed\n");}
+     	F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed 2\n");}
+     	F77_NAME(dtrtri)(lower, nUnit, &m, tmp_mm, &m, &info FCONE FCONE); if(info != 0){Rf_error("c++ Rf_error: dtrtri failed\n");}
 	
      	for(k = 0; k < n; k++){
      	  F77_NAME(dcopy)(&mm, tmp_mm, &incOne, &D[k*mm], &incOne); //D^{-1/2}
@@ -294,7 +298,7 @@ extern "C" {
       	}
       }
 
-      F77_NAME(dpotrf)(lower, &gm, L, &gm, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 3\n");}//L
+      F77_NAME(dpotrf)(lower, &gm, L, &gm, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed 3\n");}//L
 
       //get H      
       F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &gm, &nm, &one, L, &gm, H, &gm FCONE FCONE FCONE FCONE);//LH = W'
@@ -343,7 +347,7 @@ extern "C" {
 	  tmp_m[i] =  z[j*m+i] + (tmp_m[i] - tmp_m2[i]);
 	}
 
-	F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 4\n");}   
+	F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed 4\n");}   
 	mvrnorm(&REAL(predSamples_r)[s*qm+j*m], tmp_m, tmp_mm, m, false);
 
 	R_CheckUserInterrupt();
@@ -368,14 +372,14 @@ extern "C" {
     SEXP result_r, resultName_r;
     int nResultListObjs = 1;
 
-    PROTECT(result_r = allocVector(VECSXP, nResultListObjs)); nProtect++;
-    PROTECT(resultName_r = allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(result_r = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(resultName_r = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
 
     //samples
     SET_VECTOR_ELT(result_r, 0, predSamples_r);
-    SET_VECTOR_ELT(resultName_r, 0, mkChar("p.y.predictive.samples")); 
+    SET_VECTOR_ELT(resultName_r, 0, Rf_mkChar("p.y.predictive.samples")); 
 
-    namesgets(result_r, resultName_r);
+    Rf_namesgets(result_r, resultName_r);
    
     //unprotect
     UNPROTECT(nProtect);

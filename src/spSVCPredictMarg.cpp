@@ -1,3 +1,7 @@
+#ifndef R_NO_REMAP
+#  define R_NO_REMAP
+#endif
+
 #define USE_FC_LEN_T
 #ifdef _OPENMP
 #include <omp.h>
@@ -69,7 +73,7 @@ extern "C" {
        Set-up MCMC alg. vars. matrices etc.
     *****************************************/
     SEXP wPredSamples_r;
-    PROTECT(wPredSamples_r = allocMatrix(REALSXP, qm, nSamples)); nProtect++; 
+    PROTECT(wPredSamples_r = Rf_allocMatrix(REALSXP, qm, nSamples)); nProtect++; 
 
     int status=1;
     double *A = (double *) R_alloc(mm, sizeof(double)); zeros(A, mm); //to simplify a future move to the more general cross-cov model
@@ -106,7 +110,7 @@ extern "C" {
 	  }
 #else
     if(nThreads > 1){
-      warning("n.omp.threads = %i, but source not compiled with OpenMP support.", nThreads);
+      Rf_warning("n.omp.threads = %i, but source not compiled with OpenMP support.", nThreads);
       nThreads = 1;
     }
 #endif  
@@ -127,7 +131,7 @@ extern "C" {
       if(KDiag == false){
 	dcopy_(&nLTr, &samples[AIndx*nSamples+s], &nSamples, tmp_nltr, &incOne);
       	covExpand(tmp_nltr, A, m);//note this is K, so we need chol
-      	F77_NAME(dpotrf)(lower, &m, A, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 1\n");} 
+      	F77_NAME(dpotrf)(lower, &m, A, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed 1\n");} 
       	clearUT(A, m); //make sure upper tri is clear
       }
 
@@ -188,8 +192,8 @@ extern "C" {
 
       //printMtrx(B, nm, qm);
            
-      F77_NAME(dpotrf)(lower, &nm, K, &nm, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 1\n");}
-      F77_NAME(dpotri)(lower, &nm, K, &nm, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}     
+      F77_NAME(dpotrf)(lower, &nm, K, &nm, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed 1\n");}
+      F77_NAME(dpotri)(lower, &nm, K, &nm, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed\n");}     
  
       for(i = 0; i < q; i++){
 
@@ -204,7 +208,7 @@ extern "C" {
 	  tmp_mm[j] = C[j] - tmp_mm[j];
 	}
 	
-      	F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 2\n");}
+      	F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed 2\n");}
       	mvrnorm(&REAL(wPredSamples_r)[s*qm+i*m], tmp_m, tmp_mm, m, false);
       }
 	  
@@ -228,14 +232,14 @@ extern "C" {
     SEXP result_r, resultName_r;
     int nResultListObjs = 1;
 
-    PROTECT(result_r = allocVector(VECSXP, nResultListObjs)); nProtect++;
-    PROTECT(resultName_r = allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(result_r = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(resultName_r = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
     
     //samples
     SET_VECTOR_ELT(result_r, 0, wPredSamples_r);
-    SET_VECTOR_ELT(resultName_r, 0, mkChar("p.w.predictive.samples")); 
+    SET_VECTOR_ELT(resultName_r, 0, Rf_mkChar("p.w.predictive.samples")); 
 
-    namesgets(result_r, resultName_r);
+    Rf_namesgets(result_r, resultName_r);
     
     //unprotect
     UNPROTECT(nProtect);

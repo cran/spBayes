@@ -1,3 +1,7 @@
+#ifndef R_NO_REMAP
+#  define R_NO_REMAP
+#endif
+
 #include <algorithm>
 #include <R.h>
 #include <Rmath.h>
@@ -12,24 +16,24 @@ double ltd(SEXP ltd_r, SEXP theta_r, SEXP rho_r){
   SEXP call_r, tmp_r, result_r;
   double result;
   
-  PROTECT(call_r = lang2(ltd_r, theta_r));
-  PROTECT(tmp_r = eval(call_r, rho_r));
+  PROTECT(call_r = Rf_lang2(ltd_r, theta_r));
+  PROTECT(tmp_r = Rf_eval(call_r, rho_r));
   
-  if(!isNumeric(tmp_r))
-    error("ltd: result of function call must be numeric");
+  if(!Rf_isNumeric(tmp_r))
+    Rf_error("ltd: result of function call must be numeric");
   
   if (LENGTH(tmp_r) != 1)
-    error("ltd: result of function call must be scalar");
+    Rf_error("ltd: result of function call must be scalar");
   
-  PROTECT(result_r = coerceVector(tmp_r, REALSXP));
+  PROTECT(result_r = Rf_coerceVector(tmp_r, REALSXP));
   
   result = REAL(result_r)[0];
   
   if (result == R_PosInf)
-    error("ltd: function returned +Inf");
+    Rf_error("ltd: function returned +Inf");
   
   if (R_IsNaN(result) || R_IsNA(result))
-    error("ltd: function returned NA or NaN");
+    Rf_error("ltd: function returned NA or NaN");
   
   
   UNPROTECT(3);
@@ -62,9 +66,9 @@ extern "C" {
     }
 
     SEXP acceptance_r, samples_r, theta_r;
-    PROTECT(samples_r = allocMatrix(REALSXP, nTheta, nSamples)); nProtect++; 
-    PROTECT(theta_r = allocVector(REALSXP, nTheta)); nProtect++; 
-    PROTECT(acceptance_r = allocMatrix(REALSXP, nTheta, nBatch)); nProtect++; 
+    PROTECT(samples_r = Rf_allocMatrix(REALSXP, nTheta, nSamples)); nProtect++; 
+    PROTECT(theta_r = Rf_allocVector(REALSXP, nTheta)); nProtect++; 
+    PROTECT(acceptance_r = Rf_allocMatrix(REALSXP, nTheta, nBatch)); nProtect++; 
      
     double ltdCand, ltdCurrent, thetajCurrent, status = 0;
    
@@ -148,17 +152,17 @@ extern "C" {
     //return stuff
     SEXP result_r, resultNames_r;
             
-    PROTECT(result_r = allocVector(VECSXP, 2)); nProtect++;
-    PROTECT(resultNames_r = allocVector(VECSXP, 2)); nProtect++;
+    PROTECT(result_r = Rf_allocVector(VECSXP, 2)); nProtect++;
+    PROTECT(resultNames_r = Rf_allocVector(VECSXP, 2)); nProtect++;
     
     //samples
     SET_VECTOR_ELT(result_r, 0, samples_r);
-    SET_VECTOR_ELT(resultNames_r, 0, mkChar("p.theta.samples")); 
+    SET_VECTOR_ELT(resultNames_r, 0, Rf_mkChar("p.theta.samples")); 
     
     SET_VECTOR_ELT(result_r, 1, acceptance_r);
-    SET_VECTOR_ELT(resultNames_r, 1, mkChar("acceptance"));
+    SET_VECTOR_ELT(resultNames_r, 1, Rf_mkChar("acceptance"));
 
-    namesgets(result_r, resultNames_r);
+    Rf_namesgets(result_r, resultNames_r);
     
     //unprotect
     UNPROTECT(nProtect);

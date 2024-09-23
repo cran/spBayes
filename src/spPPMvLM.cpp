@@ -1,3 +1,7 @@
+#ifndef R_NO_REMAP
+#  define R_NO_REMAP
+#endif
+
 #define USE_FC_LEN_T
 #include <algorithm>
 #include <string>
@@ -167,7 +171,7 @@ extern "C" {
       if(amcmc){
 	Rprintf("Using adaptive MCMC.\n\n");
 	Rprintf("\tNumber of batches %i.\n", nBatch);
-	Rprintf("\tBatch length %i.\n", batchLength);
+	Rprintf("\tBatch Rf_length %i.\n", batchLength);
 	Rprintf("\ttarget acceptance rate %.5f.\n", acceptRate);
 	Rprintf("\n");
       }else{
@@ -350,10 +354,10 @@ extern "C" {
 
     //return stuff  
     SEXP samples_r, accept_r, tuning_r, betaSamples_r;
-    PROTECT(samples_r = allocMatrix(REALSXP, nParams, nSamples)); nProtect++;
-    PROTECT(accept_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++; 
-    PROTECT(tuning_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++;  
-    PROTECT(betaSamples_r = allocMatrix(REALSXP, p, nSamples)); nProtect++; 
+    PROTECT(samples_r = Rf_allocMatrix(REALSXP, nParams, nSamples)); nProtect++;
+    PROTECT(accept_r = Rf_allocMatrix(REALSXP, nParams, nBatch)); nProtect++; 
+    PROTECT(tuning_r = Rf_allocMatrix(REALSXP, nParams, nBatch)); nProtect++;  
+    PROTECT(betaSamples_r = Rf_allocMatrix(REALSXP, p, nSamples)); nProtect++; 
 
     /*****************************************
        Set-up MCMC alg. vars. matrices etc.
@@ -408,8 +412,8 @@ extern "C" {
       betaCInvMu = (double *) R_alloc(p, sizeof(double));
       
       F77_NAME(dcopy)(&pp, betaC, &incOne, betaCInv, &incOne);
-      F77_NAME(dpotrf)(lower, &p, betaCInv, &p, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
-      F77_NAME(dpotri)(lower, &p, betaCInv, &p, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
+      F77_NAME(dpotrf)(lower, &p, betaCInv, &p, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed\n");}
+      F77_NAME(dpotri)(lower, &p, betaCInv, &p, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed\n");}
       
       F77_NAME(dsymv)(lower, &p, &one, betaCInv, &p, betaMu, &incOne, &zero, betaCInvMu, &incOne FCONE);      
     }
@@ -518,7 +522,7 @@ extern "C" {
 	    }
 	  }
 	  
-	  F77_NAME(dpotrf)(lower, &gm, tmp_gmgm, &gm, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}//L_K
+	  F77_NAME(dpotrf)(lower, &gm, tmp_gmgm, &gm, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed\n");}//L_K
 	  
 	  F77_NAME(dcopy)(&nmgm, P, &incOne, H, &incOne);
 	  
@@ -531,13 +535,13 @@ extern "C" {
 	      tmp_mm[l] = Psi[l] + V[l] - tmp_mm[l]; 
 	    }
 	    
-	    F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
+	    F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed\n");}
 	    
 	    for(l = 0; l < m; l++){
 	  	det += 2*log(tmp_mm[l*m+l]); //det(D)
 	      }
 
-	      F77_NAME(dtrtri)(lower, nUnit, &m, tmp_mm, &m, &info FCONE FCONE); if(info != 0){error("c++ error: dtrtri failed\n");}
+	      F77_NAME(dtrtri)(lower, nUnit, &m, tmp_mm, &m, &info FCONE FCONE); if(info != 0){Rf_error("c++ Rf_error: dtrtri failed\n");}
 
 	      F77_NAME(dcopy)(&mm, tmp_mm, &incOne, &D[k*mm], &incOne); //D^{-1/2}
 	    }
@@ -552,12 +556,12 @@ extern "C" {
 	      }
 	      det *= n;
 	    }else{
-	      F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
+	      F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed\n");}
 	      for(k = 0; k < m; k++){
 	  	det += 2*log(tmp_mm[k*m+k]);
 	      }
 	      det *= n;
-	      F77_NAME(dtrtri)(lower, nUnit, &m, tmp_mm, &m, &info FCONE FCONE); if(info != 0){error("c++ error: dtrtri failed\n");}
+	      F77_NAME(dtrtri)(lower, nUnit, &m, tmp_mm, &m, &info FCONE FCONE); if(info != 0){Rf_error("c++ Rf_error: dtrtri failed\n");}
 	    }
 
 	    for(k = 0; k < n; k++){
@@ -578,7 +582,7 @@ extern "C" {
 	    }
 	  }
 
-	  F77_NAME(dpotrf)(lower, &gm, K, &gm, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}//L
+	  F77_NAME(dpotrf)(lower, &gm, K, &gm, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed\n");}//L
 
 	  F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &gm, &nm, &one, K, &gm, H, &gm FCONE FCONE FCONE FCONE);//LH = W'
 
@@ -597,7 +601,7 @@ extern "C" {
 	    tmp_gmgm[k*gm+k] += 1.0; //J check
 	  }
 
-	  F77_NAME(dpotrf)(lower, &gm, tmp_gmgm, &gm, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}//L_J
+	  F77_NAME(dpotrf)(lower, &gm, tmp_gmgm, &gm, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed\n");}//L_J
 	  
 	  for(k = 0; k < gm; k++){
 	    det -= 2*log(tmp_gmgm[k*gm+k]);
@@ -618,7 +622,7 @@ extern "C" {
 	    for(k = 0; k < m; k++){priors += (m-k)*log(A[k*m+k])+log(A[k*m+k]);}
 	    
 	    //S*K^-1
-	    F77_NAME(dpotri)(lower, &m, A, &m, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
+	    F77_NAME(dpotri)(lower, &m, A, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed\n");}
 	    F77_NAME(dsymm)(rside, lower, &m, &m, &one, A, &m, KIW_S, &m, &zero, tmp_mm, &m FCONE FCONE);
 	    for(k = 0; k < m; k++){SKtrace += tmp_mm[k*m+k];}
 	    priors += -0.5*(KIW_df+m+1)*logDetK - 0.5*SKtrace;
@@ -644,7 +648,7 @@ extern "C" {
 	  	for(k = 0; k < m; k++){priors += (m-k)*log(L[k*m+k])+log(L[k*m+k]);}
 		
 	  	//get S*K^-1
-	  	F77_NAME(dpotri)(lower, &m, L, &m, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
+	  	F77_NAME(dpotri)(lower, &m, L, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed\n");}
 	  	F77_NAME(dsymm)(rside, lower, &m, &m, &one, L, &m, PsiIW_S, &m, &zero, tmp_mm, &m FCONE FCONE);
 	  	for(k = 0; k < m; k++){SKtrace += tmp_mm[k*m+k];}
 	  	priors += -0.5*(PsiIW_df+m+1)*logDetK - 0.5*SKtrace;
@@ -730,8 +734,8 @@ extern "C" {
 	  }
  	  
 	  //B
-	  F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
-	  F77_NAME(dpotri)(lower, &p, tmp_pp, &p, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
+	  F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed\n");}
+	  F77_NAME(dpotri)(lower, &p, tmp_pp, &p, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed\n");}
    
 	  //b
 	  F77_NAME(dgemv)(ntran, &p, &nm, &one, tmp_nmp, &p, tmp_nm, &incOne, &zero, tmp_p, &incOne FCONE); //V'\tilda{y}
@@ -747,7 +751,7 @@ extern "C" {
 	  }
 	  
 	  F77_NAME(dsymv)(lower, &p, &one, tmp_pp, &p, tmp_p, &incOne, &zero, tmp_p2, &incOne FCONE); //Bb
-	  F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
+	  F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed\n");}
 
 	}//end updateBeta
 
@@ -876,23 +880,23 @@ extern "C" {
     SEXP result_r, resultName_r;  
     int nResultListObjs = 4;
         
-    PROTECT(result_r = allocVector(VECSXP, nResultListObjs)); nProtect++;
-    PROTECT(resultName_r = allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(result_r = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(resultName_r = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
     
     //samples
     SET_VECTOR_ELT(result_r, 0, samples_r);
-    SET_VECTOR_ELT(resultName_r, 0, mkChar("p.theta.samples")); 
+    SET_VECTOR_ELT(resultName_r, 0, Rf_mkChar("p.theta.samples")); 
     
     SET_VECTOR_ELT(result_r, 1, accept_r);
-    SET_VECTOR_ELT(resultName_r, 1, mkChar("acceptance"));
+    SET_VECTOR_ELT(resultName_r, 1, Rf_mkChar("acceptance"));
     
     SET_VECTOR_ELT(result_r, 2, tuning_r);
-    SET_VECTOR_ELT(resultName_r, 2, mkChar("tuning"));
+    SET_VECTOR_ELT(resultName_r, 2, Rf_mkChar("tuning"));
     
     SET_VECTOR_ELT(result_r, 3, betaSamples_r);
-    SET_VECTOR_ELT(resultName_r, 3, mkChar("p.beta.samples"));
+    SET_VECTOR_ELT(resultName_r, 3, Rf_mkChar("p.beta.samples"));
     
-    namesgets(result_r, resultName_r);
+    Rf_namesgets(result_r, resultName_r);
     
     //unprotect
     UNPROTECT(nProtect);

@@ -1,3 +1,7 @@
+#ifndef R_NO_REMAP
+#  define R_NO_REMAP
+#endif
+
 #define USE_FC_LEN_T
 #include <string>
 #include <R.h>
@@ -130,7 +134,7 @@ extern "C" {
        Set-up MCMC alg. vars. matrices etc.
     *****************************************/
     SEXP predSamples_r;
-    PROTECT(predSamples_r = allocMatrix(REALSXP, NPred, nSamples)); nProtect++;   
+    PROTECT(predSamples_r = Rf_allocMatrix(REALSXP, NPred, nSamples)); nProtect++;   
     
     int status=1;
     
@@ -167,7 +171,7 @@ extern "C" {
     for(s = 0; s < nSamples; s++){
       
       covExpand(&samples[s*nParams+AIndx], A, m);//note this is K, so we need chol
-      F77_NAME(dpotrf)(lower, &m, A, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 1\n");} 
+      F77_NAME(dpotrf)(lower, &m, A, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed 1\n");} 
       clearUT(A, m); //make sure upper tri is clear
    
       for(k = 0; k < m; k++){
@@ -238,8 +242,8 @@ extern "C" {
 	sk += nPred[k];
       }
             
-      F77_NAME(dpotrf)(lower, &N, C, &N, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
-      F77_NAME(dpotri)(lower, &N, C, &N, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
+      F77_NAME(dpotrf)(lower, &N, C, &N, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed\n");}
+      F77_NAME(dpotri)(lower, &N, C, &N, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed\n");}
       
       F77_NAME(dgemv)(ntran, &N, &P, &negOne, X, &N, &beta[s*P], &incOne, &zero, v, &incOne FCONE);
       F77_NAME(daxpy)(&N, &one, Y, &incOne, v, &incOne);
@@ -288,14 +292,14 @@ extern "C" {
     SEXP result_r, resultName_r;
     int nResultListObjs = 1;
     
-    PROTECT(result_r = allocVector(VECSXP, nResultListObjs)); nProtect++;
-    PROTECT(resultName_r = allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(result_r = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(resultName_r = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
     
     //samples
     SET_VECTOR_ELT(result_r, 0, predSamples_r);
-    SET_VECTOR_ELT(resultName_r, 0, mkChar("p.y.predictive.samples")); 
+    SET_VECTOR_ELT(resultName_r, 0, Rf_mkChar("p.y.predictive.samples")); 
     
-    namesgets(result_r, resultName_r);
+    Rf_namesgets(result_r, resultName_r);
     
     //unprotect
     UNPROTECT(nProtect);

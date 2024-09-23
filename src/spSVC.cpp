@@ -1,3 +1,7 @@
+#ifndef R_NO_REMAP
+#  define R_NO_REMAP
+#endif
+
 #define USE_FC_LEN_T
 #ifdef _OPENMP
 #include <omp.h>
@@ -142,7 +146,7 @@ extern "C" {
     omp_set_num_threads(nThreads);
 #else
     if(nThreads > 1){
-      warning("n.omp.threads = %i, but source not compiled with OpenMP support.", nThreads);
+      Rf_warning("n.omp.threads = %i, but source not compiled with OpenMP support.", nThreads);
       nThreads = 1;
     }
 #endif    
@@ -159,7 +163,7 @@ extern "C" {
       if(amcmc){
 	Rprintf("Using adaptive MCMC.\n\n");
 	Rprintf("\tNumber of batches %i.\n", nBatch);
-	Rprintf("\tBatch length %i.\n", batchLength);
+	Rprintf("\tBatch Rf_length %i.\n", batchLength);
 	Rprintf("\tTarget acceptance rate %.5f.\n", acceptRate);
 	Rprintf("\n");
       }else{
@@ -305,13 +309,13 @@ extern "C" {
 
     //return stuff  
     SEXP samples_r, accept_r, tuning_r;
-    PROTECT(samples_r = allocMatrix(REALSXP, nParams, nSamples)); nProtect++; 
+    PROTECT(samples_r = Rf_allocMatrix(REALSXP, nParams, nSamples)); nProtect++; 
 
     if(amcmc){
-      PROTECT(accept_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++; 
-      PROTECT(tuning_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++; 
+      PROTECT(accept_r = Rf_allocMatrix(REALSXP, nParams, nBatch)); nProtect++; 
+      PROTECT(tuning_r = Rf_allocMatrix(REALSXP, nParams, nBatch)); nProtect++; 
     }else{
-      PROTECT(accept_r = allocMatrix(REALSXP, 1, floor(static_cast<double>(nSamples/nReport)))); nProtect++; 
+      PROTECT(accept_r = Rf_allocMatrix(REALSXP, 1, floor(static_cast<double>(nSamples/nReport)))); nProtect++; 
     }
 
     /*****************************************
@@ -463,7 +467,7 @@ extern "C" {
 	    }
 
 	    det = 0;
-	    F77_NAME(dpotrf)(lower, &n, Cbeta, &n, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
+	    F77_NAME(dpotrf)(lower, &n, Cbeta, &n, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed\n");}
 	    for(k = 0; k < n; k++) det += log(Cbeta[k*n+k]);
 	    
 	    F77_NAME(dcopy)(&n, z, &incOne, tmp_n, &incOne);
@@ -473,7 +477,7 @@ extern "C" {
 	  }else{//beta flat
 	    det = 0;
 
-	    F77_NAME(dpotrf)(lower, &n, C, &n, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}//L
+	    F77_NAME(dpotrf)(lower, &n, C, &n, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed\n");}//L
 	    for(k = 0; k < n; k++) det += log(C[k*n+k]);
 	    
 	    F77_NAME(dcopy)(&n, Y, &incOne, vU, &incOne);
@@ -481,7 +485,7 @@ extern "C" {
 	    F77_NAME(dtrsm)(lside, lower, ntran, nUnit, &n, &p1, &one, C, &n, vU, &n FCONE FCONE FCONE FCONE);//L[v:U] = [y:X]
 
 	    F77_NAME(dgemm)(ytran, ntran, &p, &p, &n, &one, &vU[n], &n, &vU[n], &n, &zero, tmp_pp, &p FCONE FCONE); //U'U
-	    F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
+	    F77_NAME(dpotrf)(lower, &p, tmp_pp, &p, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed\n");}
 	    for(k = 0; k < p; k++) det += log(tmp_pp[k*p+k]);
 	    
 	    F77_NAME(dgemv)(ytran, &n, &p, &one, &vU[n], &n, vU, &incOne, &zero, tmp_p, &incOne FCONE); //U'v
@@ -506,7 +510,7 @@ extern "C" {
 	    for(k = 0; k < m; k++){logPostCand += (m-k)*log(A[k*m+k])+log(A[k*m+k]);}
 	    
 	    //S*K^-1
-	    F77_NAME(dpotri)(lower, &m, A, &m, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
+	    F77_NAME(dpotri)(lower, &m, A, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed\n");}
 	    F77_NAME(dsymm)(rside, lower, &m, &m, &one, A, &m, Kb, &m, &zero, tmp_mm, &m FCONE FCONE);
 	    for(k = 0; k < m; k++){SKtrace += tmp_mm[k*m+k];}
 	    logPostCand += -0.5*(Ka[0]+m+1)*logDetK - 0.5*SKtrace;
@@ -676,22 +680,22 @@ extern "C" {
       nResultListObjs++;
     }
     
-    PROTECT(result_r = allocVector(VECSXP, nResultListObjs)); nProtect++;
-    PROTECT(resultName_r = allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(result_r = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(resultName_r = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
 
     //samples
     SET_VECTOR_ELT(result_r, 0, samples_r);
-    SET_VECTOR_ELT(resultName_r, 0, mkChar("p.theta.samples")); 
+    SET_VECTOR_ELT(resultName_r, 0, Rf_mkChar("p.theta.samples")); 
 
     SET_VECTOR_ELT(result_r, 1, accept_r);
-    SET_VECTOR_ELT(resultName_r, 1, mkChar("acceptance"));
+    SET_VECTOR_ELT(resultName_r, 1, Rf_mkChar("acceptance"));
 
     if(amcmc){
       SET_VECTOR_ELT(result_r, 2, tuning_r);
-      SET_VECTOR_ELT(resultName_r, 2, mkChar("tuning"));
+      SET_VECTOR_ELT(resultName_r, 2, Rf_mkChar("tuning"));
     }
 
-    namesgets(result_r, resultName_r);
+    Rf_namesgets(result_r, resultName_r);
    
     //unprotect
     UNPROTECT(nProtect);

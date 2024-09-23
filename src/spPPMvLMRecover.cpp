@@ -1,3 +1,7 @@
+#ifndef R_NO_REMAP
+#  define R_NO_REMAP
+#endif
+
 #define USE_FC_LEN_T
 #include <string>
 #include <R.h>
@@ -95,8 +99,8 @@ extern "C" {
     SEXP wStrSamples_r; 
     SEXP wSamples_r;
 
-    PROTECT(wStrSamples_r = allocMatrix(REALSXP, gm, nSamples)); nProtect++; 
-    PROTECT(wSamples_r = allocMatrix(REALSXP, nm, nSamples)); nProtect++; 
+    PROTECT(wStrSamples_r = Rf_allocMatrix(REALSXP, gm, nSamples)); nProtect++; 
+    PROTECT(wSamples_r = Rf_allocMatrix(REALSXP, nm, nSamples)); nProtect++; 
       
     double *P = (double *) R_alloc(nmgm, sizeof(double)); 
     double *K = (double *) R_alloc(gmgm, sizeof(double)); 
@@ -133,7 +137,7 @@ extern "C" {
       
       F77_NAME(dcopy)(&mm, A, &incOne, V, &incOne); //keep a copy of K
 
-      F77_NAME(dpotrf)(lower, &m, A, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 1\n");} //get A
+      F77_NAME(dpotrf)(lower, &m, A, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed 1\n");} //get A
       clearUT(A, m); //make sure upper tri is clear
       
       for(k = 0; k < m; k++){
@@ -189,8 +193,8 @@ extern "C" {
      	}
       }
 
-      F77_NAME(dpotrf)(lower, &gm, K, &gm, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 2\n");}
-      F77_NAME(dpotri)(lower, &gm, K, &gm, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
+      F77_NAME(dpotrf)(lower, &gm, K, &gm, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed 2\n");}
+      F77_NAME(dpotri)(lower, &gm, K, &gm, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed\n");}
      
       //P K^{-1}
       F77_NAME(dsymm)(lside, lower, &gm, &nm, &one, K, &gm, P, &gm, &zero, tmp_nmgm, &gm FCONE FCONE);
@@ -208,16 +212,16 @@ extern "C" {
      	  }
 	  
 	  
-	  F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 3\n");}
-	  F77_NAME(dpotri)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
+	  F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed 3\n");}
+	  F77_NAME(dpotri)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed\n");}
 	  
 	  F77_NAME(dcopy)(&mm, tmp_mm, &incOne, &D[k*mm], &incOne); //D^{-1}
 	}
       }else{
 	
 	F77_NAME(dcopy)(&mm, Psi, &incOne, tmp_mm, &incOne);
-	F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 4\n");}
-	F77_NAME(dpotri)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
+	F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed 4\n");}
+	F77_NAME(dpotri)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed\n");}
 	
 	for(k = 0; k < n; k++){
 	  F77_NAME(dcopy)(&mm, tmp_mm, &incOne, &D[k*mm], &incOne); //D^{-1}
@@ -236,8 +240,8 @@ extern "C" {
       }
       
       //invert C_str
-      F77_NAME(dpotrf)(lower, &gm, K, &gm, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 5\n");}
-      F77_NAME(dpotri)(lower, &gm, K, &gm, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
+      F77_NAME(dpotrf)(lower, &gm, K, &gm, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed 5\n");}
+      F77_NAME(dpotri)(lower, &gm, K, &gm, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed\n");}
       
       F77_NAME(dgemv)(ntran, &nm, &p, &negOne, X, &nm, &beta[s], &nSamples, &zero, tmp_nm, &incOne FCONE);
       F77_NAME(daxpy)(&nm, &one, Y, &incOne, tmp_nm, &incOne);
@@ -247,7 +251,7 @@ extern "C" {
       F77_NAME(dsymv)(lower, &gm, &one, K, &gm, tmp_gm, &incOne, &zero, tmp_gm2, &incOne FCONE);
       
       //chol for the mvnorm and draw
-      F77_NAME(dpotrf)(lower, &gm, K, &gm, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 6\n");}
+      F77_NAME(dpotrf)(lower, &gm, K, &gm, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed 6\n");}
       mvrnorm(&REAL(wStrSamples_r)[s*gm], tmp_gm2, K, gm, false);
       
       //make \tild{w}
@@ -274,17 +278,17 @@ extern "C" {
     SEXP result_r, resultName_r;
     int nResultListObjs = 2;
     
-    PROTECT(result_r = allocVector(VECSXP, nResultListObjs)); nProtect++;
-    PROTECT(resultName_r = allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(result_r = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(resultName_r = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
     
     //samples
     SET_VECTOR_ELT(result_r, 0, wSamples_r);
-    SET_VECTOR_ELT(resultName_r, 0, mkChar("p.w.samples")); 
+    SET_VECTOR_ELT(resultName_r, 0, Rf_mkChar("p.w.samples")); 
     
     SET_VECTOR_ELT(result_r, 1, wStrSamples_r);
-    SET_VECTOR_ELT(resultName_r, 1, mkChar("p.wStr.samples")); 
+    SET_VECTOR_ELT(resultName_r, 1, Rf_mkChar("p.wStr.samples")); 
     
-    namesgets(result_r, resultName_r);
+    Rf_namesgets(result_r, resultName_r);
    
     //unprotect
     UNPROTECT(nProtect);

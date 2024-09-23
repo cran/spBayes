@@ -1,3 +1,7 @@
+#ifndef R_NO_REMAP
+#  define R_NO_REMAP
+#endif
+
 #define USE_FC_LEN_T
 #include <string>
 #include <R.h>
@@ -51,10 +55,10 @@ extern"C" {
   
   //Get A
   F77_NAME(dcopy)(&mm, REAL(V_r), &incOne, A, &incOne);
-  F77_NAME(dpotrf)(lower, &m, A, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 1\n");}
+  F77_NAME(dpotrf)(lower, &m, A, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed 1\n");}
 
   SEXP D_r;
-  PROTECT(D_r = allocVector(REALSXP, 1)); 
+  PROTECT(D_r = Rf_allocVector(REALSXP, 1)); 
   REAL(D_r)[0] = 0.0;
 
   //clear upper tri
@@ -96,8 +100,8 @@ extern"C" {
     }
   }
 
-  F77_NAME(dpotrf)(lower, &qm, C_str, &qm, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 2\n");}
-  F77_NAME(dpotri)(lower, &qm, C_str, &qm, &info FCONE); if(info != 0){error("c++ error: dpotri failed 3\n");}
+  F77_NAME(dpotrf)(lower, &qm, C_str, &qm, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed 2\n");}
+  F77_NAME(dpotri)(lower, &qm, C_str, &qm, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed 3\n");}
   
   //C = ct C_str^{-1} t(ct)
   F77_NAME(dsymm)(rside, lower, &nm, &qm, &one, C_str, &qm, ct, &nm, &zero, tmp_nmqm, &nm FCONE FCONE);
@@ -113,9 +117,9 @@ extern"C" {
     
     F77_NAME(dcopy)(&mm, tmp_mm, &incOne, &REAL(CEps_r)[i*mm], &incOne);
 
-    F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 4\n");}
+    F77_NAME(dpotrf)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed 4\n");}
     for(j = 0; j < m; j++) logDet += 2.0*log(tmp_mm[j*m+j]);
-    F77_NAME(dpotri)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){error("c++ error: dpotri failed 5\n");}
+    F77_NAME(dpotri)(lower, &m, tmp_mm, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed 5\n");}
      
     F77_NAME(dsymv)(lower, &m, &one, tmp_mm, &m, &REAL(Q_r)[i*m], &incOne, &zero, &tmp_nm[i*m], &incOne FCONE);
   }

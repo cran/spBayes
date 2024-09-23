@@ -1,3 +1,7 @@
+#ifndef R_NO_REMAP
+#  define R_NO_REMAP
+#endif
+
 #define USE_FC_LEN_T
 #include <string>
 // #ifdef _OPENMP
@@ -74,10 +78,10 @@ extern "C" {
    
     SEXP wPred_r, yPred_r;
 
-    PROTECT(wPred_r = allocMatrix(REALSXP, qm, nSamples)); nProtect++; 
+    PROTECT(wPred_r = Rf_allocMatrix(REALSXP, qm, nSamples)); nProtect++; 
     double *wPred = REAL(wPred_r);
 
-    PROTECT(yPred_r = allocMatrix(REALSXP, qm, nSamples)); nProtect++; 
+    PROTECT(yPred_r = Rf_allocMatrix(REALSXP, qm, nSamples)); nProtect++; 
     double *yPred = REAL(yPred_r);
     
     double *S_knots = (double *) R_alloc(gmgm, sizeof(double));
@@ -108,7 +112,7 @@ extern "C" {
       
       F77_NAME(dcopy)(&p, &samples[s*nParams+betaIndx], &incOne, beta, &incOne);
       covExpand(&samples[s*nParams+AIndx], A, m);
-      F77_NAME(dpotrf)(lower, &m, A, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}   
+      F77_NAME(dpotrf)(lower, &m, A, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed\n");}   
       clearUT(A, m);
  
       for(i = 0; i < m; i++){
@@ -154,8 +158,8 @@ extern "C" {
       }
       // } //parallel for
     
-      F77_NAME(dpotrf)(lower, &gm, S_knots, &gm, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
-      F77_NAME(dpotri)(lower, &gm, S_knots, &gm, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}	 
+      F77_NAME(dpotrf)(lower, &gm, S_knots, &gm, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed\n");}
+      F77_NAME(dpotri)(lower, &gm, S_knots, &gm, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed\n");}	 
 
       F77_NAME(dgemv)(ntran, &qm, &p, &one, Z, &qm, &samples[s*nParams+betaIndx], &incOne, &zero, tmp_qm, &incOne FCONE);
     	
@@ -171,7 +175,7 @@ extern "C" {
 	  yPred[s*qm+i] =  exp(tmp_qm[i]+wPred[s*qm+i]);//rpois(exp(tmp_qm[i]+wPred[s*qm+i]));
 	}	   
       }else{
-	error("c++ error: family misspecification\n");
+	Rf_error("c++ Rf_error: family misspecification\n");
       }
             
       //report
@@ -198,16 +202,16 @@ extern "C" {
      int nResultListObjs = 0;
      nResultListObjs = 2;
      
-     PROTECT(result = allocVector(VECSXP, nResultListObjs)); nProtect++;
-     PROTECT(resultNames = allocVector(VECSXP, nResultListObjs)); nProtect++;
+     PROTECT(result = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
+     PROTECT(resultNames = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
           
      SET_VECTOR_ELT(result, 0, wPred_r);
-     SET_VECTOR_ELT(resultNames, 0, mkChar("p.w.predictive.samples"));
+     SET_VECTOR_ELT(resultNames, 0, Rf_mkChar("p.w.predictive.samples"));
 
      SET_VECTOR_ELT(result, 1, yPred_r);
-     SET_VECTOR_ELT(resultNames, 1, mkChar("p.y.predictive.samples"));
+     SET_VECTOR_ELT(resultNames, 1, Rf_mkChar("p.y.predictive.samples"));
      
-     namesgets(result, resultNames);
+     Rf_namesgets(result, resultNames);
      
      //unprotect
      UNPROTECT(nProtect);

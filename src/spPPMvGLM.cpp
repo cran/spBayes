@@ -1,3 +1,7 @@
+#ifndef R_NO_REMAP
+#  define R_NO_REMAP
+#endif
+
 #define USE_FC_LEN_T
 #include <string>
 // #ifdef _OPENMP
@@ -227,16 +231,16 @@ extern "C" {
     //samples and random effects
     SEXP w_r, w_str_r, samples_r, accept_r;
 
-    PROTECT(w_r = allocMatrix(REALSXP, nm, nSamples)); nProtect++; 
+    PROTECT(w_r = Rf_allocMatrix(REALSXP, nm, nSamples)); nProtect++; 
     double *w = REAL(w_r); zeros(w, nm*nSamples);
 
-    PROTECT(w_str_r = allocMatrix(REALSXP, qm, nSamples)); nProtect++; 
+    PROTECT(w_str_r = Rf_allocMatrix(REALSXP, qm, nSamples)); nProtect++; 
     double *w_str = REAL(w_str_r); zeros(w_str, qm*nSamples);
 
-    PROTECT(samples_r = allocMatrix(REALSXP, nParams, nSamples)); nProtect++; 
+    PROTECT(samples_r = Rf_allocMatrix(REALSXP, nParams, nSamples)); nProtect++; 
     double *samples = REAL(samples_r);
 
-    PROTECT(accept_r = allocMatrix(REALSXP, 1, 1)); nProtect++;
+    PROTECT(accept_r = Rf_allocMatrix(REALSXP, 1, 1)); nProtect++;
 
     /*****************************************
        Set-up MCMC alg. vars. matrices etc.
@@ -336,9 +340,9 @@ extern "C" {
       // } //parallel for
 
       detCand = 0.0;
-      F77_NAME(dpotrf)(lower, &qm, K, &qm, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
+      F77_NAME(dpotrf)(lower, &qm, K, &qm, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed\n");}
       for(i = 0; i < qm; i++) detCand += 2.0*log(K[i*qm+i]);
-      F77_NAME(dpotri)(lower, &qm, K, &qm, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
+      F77_NAME(dpotri)(lower, &qm, K, &qm, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed\n");}
       
       //make \tild{w}
       F77_NAME(dsymv)(lower, &qm, &one, K, &qm, w_strCand, &incOne, &zero, tmp_qm, &incOne FCONE);     
@@ -363,7 +367,7 @@ extern "C" {
       for(i = 0; i < m; i++) logPostCand += (m-i)*log(A[i*m+i])+log(A[i*m+i]);
       
       //get S*K^-1, already have the chol of K (i.e., A)
-      F77_NAME(dpotri)(lower, &m, A, &m, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
+      F77_NAME(dpotri)(lower, &m, A, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed\n");}
       F77_NAME(dsymm)(rside, lower, &m, &m, &one, A, &m, KIW_S, &m, &zero, tmp_mm, &m FCONE FCONE);
       for(i = 0; i < m; i++){SKtrace += tmp_mm[i*m+i];}
       logPostCand += -0.5*(KIW_df+m+1)*logDetK - 0.5*SKtrace;
@@ -383,7 +387,7 @@ extern "C" {
       }else if(family == "poisson"){
 	logPostCand += poisson_logpost(nm, Y, tmp_nm, wCand, weights);
       }else{
-	error("c++ error: family misspecification in spGLM\n");
+	Rf_error("c++ Rf_error: family misspecification in spGLM\n");
       }
 
       //(-1/2) * tmp_n` *  C^-1 * tmp_n
@@ -465,23 +469,23 @@ extern "C" {
     
     int nResultListObjs = 4;
 
-    PROTECT(result = allocVector(VECSXP, nResultListObjs)); nProtect++;
-    PROTECT(resultNames = allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(result = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(resultNames = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
 
    //samples
     SET_VECTOR_ELT(result, 0, samples_r);
-    SET_VECTOR_ELT(resultNames, 0, mkChar("p.beta.theta.samples")); 
+    SET_VECTOR_ELT(resultNames, 0, Rf_mkChar("p.beta.theta.samples")); 
 
     SET_VECTOR_ELT(result, 1, accept_r);
-    SET_VECTOR_ELT(resultNames, 1, mkChar("acceptance"));
+    SET_VECTOR_ELT(resultNames, 1, Rf_mkChar("acceptance"));
     
     SET_VECTOR_ELT(result, 2, w_r);
-    SET_VECTOR_ELT(resultNames, 2, mkChar("p.w.samples"));
+    SET_VECTOR_ELT(resultNames, 2, Rf_mkChar("p.w.samples"));
   
     SET_VECTOR_ELT(result, 3, w_str_r);
-    SET_VECTOR_ELT(resultNames, 3, mkChar("p.w.knots.samples"));
+    SET_VECTOR_ELT(resultNames, 3, Rf_mkChar("p.w.knots.samples"));
 
-    namesgets(result, resultNames);
+    Rf_namesgets(result, resultNames);
    
     //unprotect
     UNPROTECT(nProtect);

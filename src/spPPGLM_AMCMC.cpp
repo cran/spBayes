@@ -1,3 +1,7 @@
+#ifndef R_NO_REMAP
+#  define R_NO_REMAP
+#endif
+
 #define USE_FC_LEN_T
 #include <algorithm>
 #include <string>
@@ -186,13 +190,13 @@ extern "C" {
     //return stuff  
     SEXP w_r, w_str_r, samples_r, accept_r, accept_w_str_r, tuning_r, tuning_w_str_r;
     
-    PROTECT(w_r = allocMatrix(REALSXP, n, nSamples)); nProtect++; 
-    PROTECT(w_str_r = allocMatrix(REALSXP, m, nSamples)); nProtect++; 
-    PROTECT(samples_r = allocMatrix(REALSXP, nParams, nSamples)); nProtect++; 
-    PROTECT(accept_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++;
-    PROTECT(accept_w_str_r = allocMatrix(REALSXP, m, nBatch)); nProtect++;
-    PROTECT(tuning_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++;
-    PROTECT(tuning_w_str_r = allocMatrix(REALSXP, m, nBatch)); nProtect++;
+    PROTECT(w_r = Rf_allocMatrix(REALSXP, n, nSamples)); nProtect++; 
+    PROTECT(w_str_r = Rf_allocMatrix(REALSXP, m, nSamples)); nProtect++; 
+    PROTECT(samples_r = Rf_allocMatrix(REALSXP, nParams, nSamples)); nProtect++; 
+    PROTECT(accept_r = Rf_allocMatrix(REALSXP, nParams, nBatch)); nProtect++;
+    PROTECT(accept_w_str_r = Rf_allocMatrix(REALSXP, m, nBatch)); nProtect++;
+    PROTECT(tuning_r = Rf_allocMatrix(REALSXP, nParams, nBatch)); nProtect++;
+    PROTECT(tuning_w_str_r = Rf_allocMatrix(REALSXP, m, nBatch)); nProtect++;
 
     /*****************************************
        Set-up MCMC alg. vars. matrices etc.
@@ -253,9 +257,9 @@ extern "C" {
   
 	  //invert C and log det cov
 	  detCand = 0;
-	  F77_NAME(dpotrf)(lower, &m, K, &m, &info FCONE); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
+	  F77_NAME(dpotrf)(lower, &m, K, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: Cholesky failed in spGLM\n");}
 	  for(k = 0; k < m; k++) detCand += 2*log(K[k*m+k]);
-	  F77_NAME(dpotri)(lower, &m, K, &m, &info FCONE); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
+	  F77_NAME(dpotri)(lower, &m, K, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: Cholesky inverse failed in spGLM\n");}
 	  
 	  //make \tild{w}
 	  F77_NAME(dsymv)(lower, &m, &one, K, &m, w_str, &incOne, &zero, tmp_m, &incOne FCONE);     
@@ -285,7 +289,7 @@ extern "C" {
 	  }else if(family == "poisson"){
 	    logPostCand += poisson_logpost(n, Y, tmp_n, w, weights);
 	  }else{
-	    error("c++ error: family misspecification in spGLM\n");
+	    Rf_error("c++ Rf_error: family misspecification in spGLM\n");
 	  }
 	  
 	  //(-1/2) * tmp_n` *  C^-1 * tmp_n
@@ -326,9 +330,9 @@ extern "C" {
 	
 	//invert C and log det cov
 	detCand = 0;
-	F77_NAME(dpotrf)(lower, &m, K, &m, &info FCONE); if(info != 0){error("c++ error: Cholesky failed in spGLM\n");}
+	F77_NAME(dpotrf)(lower, &m, K, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: Cholesky failed in spGLM\n");}
 	for(k = 0; k < m; k++) detCand += 2*log(K[k*m+k]);
-	F77_NAME(dpotri)(lower, &m, K, &m, &info FCONE); if(info != 0){error("c++ error: Cholesky inverse failed in spGLM\n");}
+	F77_NAME(dpotri)(lower, &m, K, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: Cholesky inverse failed in spGLM\n");}
 		
 	F77_NAME(dsymm)(lside, lower, &m, &n, &one, K, &m, P, &m, &zero, tmp_nm, &m FCONE FCONE);
 
@@ -365,7 +369,7 @@ extern "C" {
 	  }else if(family == "poisson"){
 	    logPostCand += poisson_logpost(n, Y, tmp_n, w, weights);
 	  }else{
-	    error("c++ error: family misspecification in spGLM\n");
+	    Rf_error("c++ Rf_error: family misspecification in spGLM\n");
 	  }
 	  
 	  //(-1/2) * tmp_n` *  C^-1 * tmp_n
@@ -472,32 +476,32 @@ extern "C" {
     
     int nResultListObjs = 7;
     
-    PROTECT(result = allocVector(VECSXP, nResultListObjs)); nProtect++;
-    PROTECT(resultNames = allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(result = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(resultNames = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
     
     //samples
     SET_VECTOR_ELT(result, 0, samples_r);
-    SET_VECTOR_ELT(resultNames, 0, mkChar("p.beta.theta.samples")); 
+    SET_VECTOR_ELT(resultNames, 0, Rf_mkChar("p.beta.theta.samples")); 
 
     SET_VECTOR_ELT(result, 1, accept_r);
-    SET_VECTOR_ELT(resultNames, 1, mkChar("acceptance"));
+    SET_VECTOR_ELT(resultNames, 1, Rf_mkChar("acceptance"));
 
     SET_VECTOR_ELT(result, 2, accept_w_str_r);
-    SET_VECTOR_ELT(resultNames, 2, mkChar("acceptance.w.knots"));
+    SET_VECTOR_ELT(resultNames, 2, Rf_mkChar("acceptance.w.knots"));
     
     SET_VECTOR_ELT(result, 3, w_r);
-    SET_VECTOR_ELT(resultNames, 3, mkChar("p.w.samples"));
+    SET_VECTOR_ELT(resultNames, 3, Rf_mkChar("p.w.samples"));
 
     SET_VECTOR_ELT(result, 4, w_str_r);
-    SET_VECTOR_ELT(resultNames, 4, mkChar("p.w.knots.samples"));
+    SET_VECTOR_ELT(resultNames, 4, Rf_mkChar("p.w.knots.samples"));
 
     SET_VECTOR_ELT(result, 5, tuning_r);
-    SET_VECTOR_ELT(resultNames, 5, mkChar("tuning"));
+    SET_VECTOR_ELT(resultNames, 5, Rf_mkChar("tuning"));
 
     SET_VECTOR_ELT(result, 6, tuning_w_str_r);
-    SET_VECTOR_ELT(resultNames, 6, mkChar("tuning.w.knots"));
+    SET_VECTOR_ELT(resultNames, 6, Rf_mkChar("tuning.w.knots"));
   
-    namesgets(result, resultNames);
+    Rf_namesgets(result, resultNames);
    
     //unprotect
     UNPROTECT(nProtect);

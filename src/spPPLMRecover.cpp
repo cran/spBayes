@@ -1,3 +1,7 @@
+#ifndef R_NO_REMAP
+#  define R_NO_REMAP
+#endif
+
 #define USE_FC_LEN_T
 #include <string>
 #include <R.h>
@@ -64,8 +68,8 @@ extern "C" {
     int status=1;
     SEXP wStrSamples_r; 
     SEXP wSamples_r;
-    PROTECT(wStrSamples_r = allocMatrix(REALSXP, m, nSamples)); nProtect++; 
-    PROTECT(wSamples_r = allocMatrix(REALSXP, n, nSamples)); nProtect++; 
+    PROTECT(wStrSamples_r = Rf_allocMatrix(REALSXP, m, nSamples)); nProtect++; 
+    PROTECT(wSamples_r = Rf_allocMatrix(REALSXP, n, nSamples)); nProtect++; 
   
     double *theta = (double *) R_alloc(3, sizeof(double)); //phi, nu, and perhaps more in the future
     double *P = (double *) R_alloc(nm, sizeof(double)); 
@@ -112,8 +116,8 @@ extern "C" {
       spCovLT(knotsD, m, theta, covModel, K);
       spCov(knotsObsD, nm, theta, covModel, P);
       
-      F77_NAME(dpotrf)(lower, &m, K, &m, &info FCONE); if(info != 0){error("c++ error: Cholesky failed 1\n");}
-      F77_NAME(dpotri)(lower, &m, K, &m, &info FCONE); if(info != 0){error("c++ error: Cholesky inverse failed\n");}
+      F77_NAME(dpotrf)(lower, &m, K, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: Cholesky failed 1\n");}
+      F77_NAME(dpotri)(lower, &m, K, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: Cholesky inverse failed\n");}
       
       //P K^{-1}
       F77_NAME(dsymm)(lside, lower, &m, &n, &one, K, &m, P, &m, &zero, tmp_nm, &m FCONE FCONE);
@@ -147,8 +151,8 @@ extern "C" {
       }
      
       //invert C_str
-      F77_NAME(dpotrf)(lower, &m, K, &m, &info FCONE); if(info != 0){error("c++ error: Cholesky failed 2\n");}
-      F77_NAME(dpotri)(lower, &m, K, &m, &info FCONE); if(info != 0){error("c++ error: Cholesky inverse failed\n");}
+      F77_NAME(dpotrf)(lower, &m, K, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: Cholesky failed 2\n");}
+      F77_NAME(dpotri)(lower, &m, K, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: Cholesky inverse failed\n");}
       
       //make w* mu
       F77_NAME(dgemv)(ntran, &n, &p, &negOne, X, &n, &beta[s], &nSamples, &zero, tmp_n, &incOne FCONE);
@@ -159,7 +163,7 @@ extern "C" {
       F77_NAME(dsymv)(lower, &m, &one, K, &m, tmp_m, &incOne, &zero, tmp_m2, &incOne FCONE);
 
       //chol for the mvnorm and draw
-      F77_NAME(dpotrf)(lower, &m, K, &m, &info FCONE); if(info != 0){error("c++ error: Cholesky failed 3\n");}
+      F77_NAME(dpotrf)(lower, &m, K, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: Cholesky failed 3\n");}
       mvrnorm(&REAL(wStrSamples_r)[s*m], tmp_m2, K, m, false);
       
       //make \tild{w}
@@ -186,17 +190,17 @@ extern "C" {
     SEXP result_r, resultName_r;
     int nResultListObjs = 2;
     
-    PROTECT(result_r = allocVector(VECSXP, nResultListObjs)); nProtect++;
-    PROTECT(resultName_r = allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(result_r = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(resultName_r = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
     
     //samples
     SET_VECTOR_ELT(result_r, 0, wSamples_r);
-    SET_VECTOR_ELT(resultName_r, 0, mkChar("p.w.samples")); 
+    SET_VECTOR_ELT(resultName_r, 0, Rf_mkChar("p.w.samples")); 
     
     SET_VECTOR_ELT(result_r, 1, wStrSamples_r);
-    SET_VECTOR_ELT(resultName_r, 1, mkChar("p.wStr.samples")); 
+    SET_VECTOR_ELT(resultName_r, 1, Rf_mkChar("p.wStr.samples")); 
     
-    namesgets(result_r, resultName_r);
+    Rf_namesgets(result_r, resultName_r);
    
     //unprotect
     UNPROTECT(nProtect);

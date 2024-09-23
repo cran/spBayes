@@ -1,3 +1,7 @@
+#ifndef R_NO_REMAP
+#  define R_NO_REMAP
+#endif
+
 #define USE_FC_LEN_T
 #include <string>
 #include <R.h>
@@ -101,11 +105,11 @@ extern "C" {
     *****************************************/
     SEXP betaSamples_r, wSamples_r;
     if(getBeta){
-      PROTECT(betaSamples_r = allocMatrix(REALSXP, P, nSamples)); nProtect++;
+      PROTECT(betaSamples_r = Rf_allocMatrix(REALSXP, P, nSamples)); nProtect++;
     }
     
     if(getW){ 
-      PROTECT(wSamples_r = allocMatrix(REALSXP, N, nSamples)); nProtect++; 
+      PROTECT(wSamples_r = Rf_allocMatrix(REALSXP, N, nSamples)); nProtect++; 
     }
     
     int status=1;
@@ -133,8 +137,8 @@ extern "C" {
       betaCInvMu = (double *) R_alloc(P, sizeof(double));
       
       F77_NAME(dcopy)(&PP, betaC, &incOne, betaCInv, &incOne);
-      F77_NAME(dpotrf)(lower, &P, betaCInv, &P, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
-      F77_NAME(dpotri)(lower, &P, betaCInv, &P, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
+      F77_NAME(dpotrf)(lower, &P, betaCInv, &P, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed\n");}
+      F77_NAME(dpotri)(lower, &P, betaCInv, &P, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed\n");}
       
       F77_NAME(dsymv)(lower, &P, &one, betaCInv, &P, betaMu, &incOne, &zero, betaCInvMu, &incOne FCONE);      
     }
@@ -159,7 +163,7 @@ extern "C" {
     for(s = 0; s < nSamples; s++){
       
       covExpand(&samples[s*nParams+AIndx], A, m);//note this is K, so we need chol
-      F77_NAME(dpotrf)(lower, &m, A, &m, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 1\n");} 
+      F77_NAME(dpotrf)(lower, &m, A, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed 1\n");} 
       clearUT(A, m); //make sure upper tri is clear
    
       for(k = 0; k < m; k++){
@@ -206,7 +210,7 @@ extern "C" {
 	}
       }
             
-      F77_NAME(dpotrf)(lower, &N, C, &N, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 2\n");}
+      F77_NAME(dpotrf)(lower, &N, C, &N, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed 2\n");}
       
       F77_NAME(dcopy)(&N, Y, &incOne, vU, &incOne);
       F77_NAME(dcopy)(&NP, X, &incOne, &vU[N], &incOne);
@@ -223,8 +227,8 @@ extern "C" {
 	}
       }
       
-      F77_NAME(dpotrf)(lower, &P, B, &P, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 3\n");}
-      F77_NAME(dpotri)(lower, &P, B, &P, &info FCONE); if(info != 0){error("c++ error: dpotri failed 4\n");}
+      F77_NAME(dpotrf)(lower, &P, B, &P, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed 3\n");}
+      F77_NAME(dpotri)(lower, &P, B, &P, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed 4\n");}
       
       //bb
       F77_NAME(dgemv)(ytran, &N, &P, &one, &vU[N], &N, vU, &incOne, &zero, tmp_P, &incOne FCONE); //U'v
@@ -236,7 +240,7 @@ extern "C" {
       }
       
       F77_NAME(dsymv)(lower, &P, &one, B, &P, tmp_P, &incOne, &zero, bb, &incOne FCONE); 
-      F77_NAME(dpotrf)(lower, &P, B, &P, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 5\n");}
+      F77_NAME(dpotrf)(lower, &P, B, &P, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed 5\n");}
       
       mvrnorm(&REAL(betaSamples_r)[s*P], bb, B, P, false);
       
@@ -264,8 +268,8 @@ extern "C" {
 	    sk += n[k];
 	  }
 	  
-	  F77_NAME(dpotrf)(lower, &N, C, &N, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 6\n");}
-	  F77_NAME(dpotri)(lower, &N, C, &N, &info FCONE); if(info != 0){error("c++ error: dpotri failed 7\n");}
+	  F77_NAME(dpotrf)(lower, &N, C, &N, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed 6\n");}
+	  F77_NAME(dpotri)(lower, &N, C, &N, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed 7\n");}
 	  
 	  
 
@@ -277,8 +281,8 @@ extern "C" {
 	    sl += n[l];
 	  }
 	  
-	  F77_NAME(dpotrf)(lower, &N, C, &N, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 10\n");}
-	  F77_NAME(dpotri)(lower, &N, C, &N, &info FCONE); if(info != 0){error("c++ error: dpotri failed 11\n");}
+	  F77_NAME(dpotrf)(lower, &N, C, &N, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed 10\n");}
+	  F77_NAME(dpotri)(lower, &N, C, &N, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed 11\n");}
 
 	  F77_NAME(dgemv)(ntran, &N, &P, &negOne, X, &N, &REAL(betaSamples_r)[s*P], &incOne, &zero, vU, &incOne FCONE);
 	  F77_NAME(daxpy)(&N, &one, Y, &incOne, vU, &incOne);
@@ -293,7 +297,7 @@ extern "C" {
 	  
 	  F77_NAME(dsymv)(lower, &N, &one, C, &N, &vU[N], &incOne, &zero, vU, &incOne FCONE);
 	  
-	  F77_NAME(dpotrf)(lower, &N, C, &N, &info FCONE); if(info != 0){error("c++ error: dpotrf failed 12\n");}
+	  F77_NAME(dpotrf)(lower, &N, C, &N, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed 12\n");}
 	  
 	  mvrnorm(&REAL(wSamples_r)[s*N], vU, C, N, false);
 	  
@@ -330,19 +334,19 @@ extern "C" {
       nResultListObjs++;
     }
 
-    PROTECT(result_r = allocVector(VECSXP, nResultListObjs)); nProtect++;
-    PROTECT(resultName_r = allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(result_r = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(resultName_r = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
     
     //samples
     SET_VECTOR_ELT(result_r, 0, betaSamples_r);
-    SET_VECTOR_ELT(resultName_r, 0, mkChar("p.beta.samples")); 
+    SET_VECTOR_ELT(resultName_r, 0, Rf_mkChar("p.beta.samples")); 
     
     if(getW){
       SET_VECTOR_ELT(result_r, 1, wSamples_r);
-      SET_VECTOR_ELT(resultName_r, 1, mkChar("p.w.samples"));
+      SET_VECTOR_ELT(resultName_r, 1, Rf_mkChar("p.w.samples"));
     }
 
-    namesgets(result_r, resultName_r);
+    Rf_namesgets(result_r, resultName_r);
     
     //unprotect
     UNPROTECT(nProtect);

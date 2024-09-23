@@ -1,3 +1,7 @@
+#ifndef R_NO_REMAP
+#  define R_NO_REMAP
+#endif
+
 #define USE_FC_LEN_T
 #include <algorithm>
 #include <string>
@@ -229,13 +233,13 @@ extern "C" {
 
     //samples and random effects
     SEXP w_r, w_str_r, samples_r, accept_r, accept_w_str_r, tuning_r, tuning_w_str_r;
-    PROTECT(w_r = allocMatrix(REALSXP, nm, nSamples)); nProtect++; 
-    PROTECT(w_str_r = allocMatrix(REALSXP, qm, nSamples)); nProtect++; 
-    PROTECT(samples_r = allocMatrix(REALSXP, nParams, nSamples)); nProtect++; 
-    PROTECT(accept_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++; 
-    PROTECT(accept_w_str_r = allocMatrix(REALSXP, qm, nBatch)); nProtect++; 
-    PROTECT(tuning_r = allocMatrix(REALSXP, nParams, nBatch)); nProtect++; 
-    PROTECT(tuning_w_str_r = allocMatrix(REALSXP, qm, nBatch)); nProtect++; 
+    PROTECT(w_r = Rf_allocMatrix(REALSXP, nm, nSamples)); nProtect++; 
+    PROTECT(w_str_r = Rf_allocMatrix(REALSXP, qm, nSamples)); nProtect++; 
+    PROTECT(samples_r = Rf_allocMatrix(REALSXP, nParams, nSamples)); nProtect++; 
+    PROTECT(accept_r = Rf_allocMatrix(REALSXP, nParams, nBatch)); nProtect++; 
+    PROTECT(accept_w_str_r = Rf_allocMatrix(REALSXP, qm, nBatch)); nProtect++; 
+    PROTECT(tuning_r = Rf_allocMatrix(REALSXP, nParams, nBatch)); nProtect++; 
+    PROTECT(tuning_w_str_r = Rf_allocMatrix(REALSXP, qm, nBatch)); nProtect++; 
 
     /*****************************************
        Set-up MCMC alg. vars. matrices etc.
@@ -334,9 +338,9 @@ extern "C" {
 	  // } //parallel for
 	  
 	  detCand = 0.0;
-	  F77_NAME(dpotrf)(lower, &qm, K, &qm, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
+	  F77_NAME(dpotrf)(lower, &qm, K, &qm, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed\n");}
 	  for(k = 0; k < qm; k++) detCand += 2.0*log(K[k*qm+k]);
-	  F77_NAME(dpotri)(lower, &qm, K, &qm, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
+	  F77_NAME(dpotri)(lower, &qm, K, &qm, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed\n");}
 	  
 	  //make \tild{w}
 	  F77_NAME(dsymv)(lower, &qm, &one, K, &qm, w_str, &incOne, &zero, tmp_qm, &incOne FCONE);     
@@ -363,7 +367,7 @@ extern "C" {
 	  for(k = 0; k < m; k++) logPostCand += (m-k)*log(A[k*m+k])+log(A[k*m+k]);
 	  
 	  //get S*K^-1, already have the chol of K (i.e., A)
-	  F77_NAME(dpotri)(lower, &m, A, &m, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
+	  F77_NAME(dpotri)(lower, &m, A, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed\n");}
 	  F77_NAME(dsymm)(rside, lower, &m, &m, &one, A, &m, KIW_S, &m, &zero, tmp_mm, &m FCONE FCONE);
 	  for(k = 0; k < m; k++){SKtrace += tmp_mm[k*m+k];}
 	  logPostCand += -0.5*(KIW_df+m+1)*logDetK - 0.5*SKtrace;
@@ -383,7 +387,7 @@ extern "C" {
 	  }else if(family == "poisson"){
 	    logPostCand += poisson_logpost(nm, Y, tmp_nm, w, weights);
 	  }else{
-	    error("c++ error: family misspecification in spGLM\n");
+	    Rf_error("c++ Rf_error: family misspecification in spGLM\n");
 	  }
 	  
 	  //(-1/2) * tmp_n` *  C^-1 * tmp_n
@@ -459,9 +463,9 @@ extern "C" {
 	// } //parallel for
 		  
 	detCand = 0.0;
-	F77_NAME(dpotrf)(lower, &qm, K, &qm, &info FCONE); if(info != 0){error("c++ error: dpotrf failed\n");}
+	F77_NAME(dpotrf)(lower, &qm, K, &qm, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotrf failed\n");}
 	for(k = 0; k < qm; k++) detCand += 2.0*log(K[k*qm+k]);
-	F77_NAME(dpotri)(lower, &qm, K, &qm, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
+	F77_NAME(dpotri)(lower, &qm, K, &qm, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed\n");}
 	
 	F77_NAME(dsymm)(lside, lower, &qm, &nm, &one, K, &qm, P, &qm, &zero, tmp_nmqm, &qm FCONE FCONE);
 	
@@ -499,7 +503,7 @@ extern "C" {
 	  for(k = 0; k < m; k++) logPostCand += (m-k)*log(A[k*m+k])+log(A[k*m+k]);
 	  
 	  //get S*K^-1, already have the chol of K (i.e., A)
-	  F77_NAME(dpotri)(lower, &m, A, &m, &info FCONE); if(info != 0){error("c++ error: dpotri failed\n");}
+	  F77_NAME(dpotri)(lower, &m, A, &m, &info FCONE); if(info != 0){Rf_error("c++ Rf_error: dpotri failed\n");}
 	  F77_NAME(dsymm)(rside, lower, &m, &m, &one, A, &m, KIW_S, &m, &zero, tmp_mm, &m FCONE FCONE);
 	  for(k = 0; k < m; k++){SKtrace += tmp_mm[k*m+k];}
 	  logPostCand += -0.5*(KIW_df+m+1)*logDetK - 0.5*SKtrace;
@@ -517,7 +521,7 @@ extern "C" {
 	  }else if(family == "poisson"){
 	    logPostCand += poisson_logpost(nm, Y, tmp_nm, w, weights);
 	  }else{
-	    error("c++ error: family misspecification in spGLM\n");
+	    Rf_error("c++ Rf_error: family misspecification in spGLM\n");
 	  }
 	  
 	  //(-1/2) * tmp_n` *  C^-1 * tmp_n
@@ -639,32 +643,32 @@ extern "C" {
     
     int nResultListObjs = 7;
     
-    PROTECT(result = allocVector(VECSXP, nResultListObjs)); nProtect++;
-    PROTECT(resultNames = allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(result = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(resultNames = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
     
     //samples
     SET_VECTOR_ELT(result, 0, samples_r);
-    SET_VECTOR_ELT(resultNames, 0, mkChar("p.beta.theta.samples")); 
+    SET_VECTOR_ELT(resultNames, 0, Rf_mkChar("p.beta.theta.samples")); 
 
     SET_VECTOR_ELT(result, 1, accept_r);
-    SET_VECTOR_ELT(resultNames, 1, mkChar("acceptance"));
+    SET_VECTOR_ELT(resultNames, 1, Rf_mkChar("acceptance"));
 
     SET_VECTOR_ELT(result, 2, accept_w_str_r);
-    SET_VECTOR_ELT(resultNames, 2, mkChar("acceptance.w.knots"));
+    SET_VECTOR_ELT(resultNames, 2, Rf_mkChar("acceptance.w.knots"));
     
     SET_VECTOR_ELT(result, 3, w_r);
-    SET_VECTOR_ELT(resultNames, 3, mkChar("p.w.samples"));
+    SET_VECTOR_ELT(resultNames, 3, Rf_mkChar("p.w.samples"));
 
     SET_VECTOR_ELT(result, 4, w_str_r);
-    SET_VECTOR_ELT(resultNames, 4, mkChar("p.w.knots.samples"));
+    SET_VECTOR_ELT(resultNames, 4, Rf_mkChar("p.w.knots.samples"));
 
     SET_VECTOR_ELT(result, 5, tuning_r);
-    SET_VECTOR_ELT(resultNames, 5, mkChar("tuning"));
+    SET_VECTOR_ELT(resultNames, 5, Rf_mkChar("tuning"));
 
     SET_VECTOR_ELT(result, 6, tuning_w_str_r);
-    SET_VECTOR_ELT(resultNames, 6, mkChar("tuning.w.knots"));
+    SET_VECTOR_ELT(resultNames, 6, Rf_mkChar("tuning.w.knots"));
   
-    namesgets(result, resultNames);
+    Rf_namesgets(result, resultNames);
    
     //unprotect
     UNPROTECT(nProtect);

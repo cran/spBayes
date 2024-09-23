@@ -1,3 +1,7 @@
+#ifndef R_NO_REMAP
+#  define R_NO_REMAP
+#endif
+
 #define USE_FC_LEN_T
 #include <algorithm>
 #include <string>
@@ -85,7 +89,7 @@ extern "C" {
       if(amcmc){
 	Rprintf("Using adaptive MCMC.\n\n");
 	Rprintf("\tNumber of batches %i.\n", nBatch);
-	Rprintf("\tBatch length %i.\n", batchLength);
+	Rprintf("\tBatch Rf_length %i.\n", batchLength);
 	Rprintf("\tTarget acceptance rate %.5f.\n", acceptRate);
 	Rprintf("\n");
       }else{
@@ -119,9 +123,9 @@ extern "C" {
     //return stuff  
     SEXP samples_r, accept_r, tuning_r;
     
-    PROTECT(samples_r = allocMatrix(REALSXP, p, nSamples)); nProtect++; 
-    PROTECT(accept_r = allocMatrix(REALSXP, p, nBatch)); nProtect++;
-    PROTECT(tuning_r = allocMatrix(REALSXP, p, nBatch)); nProtect++;
+    PROTECT(samples_r = Rf_allocMatrix(REALSXP, p, nSamples)); nProtect++; 
+    PROTECT(accept_r = Rf_allocMatrix(REALSXP, p, nBatch)); nProtect++;
+    PROTECT(tuning_r = Rf_allocMatrix(REALSXP, p, nBatch)); nProtect++;
 
     /*****************************************
        Set-up MCMC alg. vars. matrices etc.
@@ -182,7 +186,7 @@ extern "C" {
 	  }else if(family == "poisson"){
 	    logPostCand += poisson_logpost(n, Y, tmp_n, weights);
 	  }else{
-	    error("c++ error: family misspecification in spGLM\n");
+	    Rf_error("c++ Rf_error: family misspecification in spGLM\n");
 	  }
 	  
 	  //
@@ -282,20 +286,20 @@ extern "C" {
     
     int nResultListObjs = 3;
     
-    PROTECT(result = allocVector(VECSXP, nResultListObjs)); nProtect++;
-    PROTECT(resultNames = allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(result = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
+    PROTECT(resultNames = Rf_allocVector(VECSXP, nResultListObjs)); nProtect++;
 
     //samples
     SET_VECTOR_ELT(result, 0, samples_r);
-    SET_VECTOR_ELT(resultNames, 0, mkChar("p.beta.samples")); 
+    SET_VECTOR_ELT(resultNames, 0, Rf_mkChar("p.beta.samples")); 
 
     SET_VECTOR_ELT(result, 1, accept_r);
-    SET_VECTOR_ELT(resultNames, 1, mkChar("acceptance"));
+    SET_VECTOR_ELT(resultNames, 1, Rf_mkChar("acceptance"));
 
     SET_VECTOR_ELT(result, 2, tuning_r);
-    SET_VECTOR_ELT(resultNames, 2, mkChar("tuning"));
+    SET_VECTOR_ELT(resultNames, 2, Rf_mkChar("tuning"));
   
-    namesgets(result, resultNames);
+    Rf_namesgets(result, resultNames);
    
     //unprotect
     UNPROTECT(nProtect);

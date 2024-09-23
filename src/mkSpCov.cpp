@@ -1,3 +1,7 @@
+#ifndef R_NO_REMAP
+#  define R_NO_REMAP
+#endif
+
 #define USE_FC_LEN_T
 #include <string>
 #include <R.h>
@@ -43,12 +47,12 @@ extern"C" {
     }
     
     SEXP C;
-    PROTECT(C = allocMatrix(REALSXP, nm, nm)); 
+    PROTECT(C = Rf_allocMatrix(REALSXP, nm, nm)); 
     
     //Get A
     double *A = (double *) R_alloc(mm, sizeof(double));
     F77_NAME(dcopy)(&mm, V, &incOne, A, &incOne);
-    F77_NAME(dpotrf)(lower, &m, A, &m, &info FCONE); if(info != 0){error("Cholesky failed\n");}
+    F77_NAME(dpotrf)(lower, &m, A, &m, &info FCONE); if(info != 0){Rf_error("Cholesky failed\n");}
     clearUT(A, m);    
     
     for(jj = 0; jj < n; jj++){

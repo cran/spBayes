@@ -1,3 +1,7 @@
+#ifndef R_NO_REMAP
+#  define R_NO_REMAP
+#endif
+
 #include <string>
 #include <Rinternals.h>
 
@@ -9,9 +13,9 @@ SEXP getList(SEXP list, const char *str);
 
 SEXP getGetList(SEXP list, const char *str1, const char *str2);
 
-void zeros(double *x, int length);
+void zeros(double *x, int Rf_length);
 
-void zeros(int *x, int length);
+void zeros(int *x, int Rf_length);
 
 void iden(double *x, int &nrow);
 
