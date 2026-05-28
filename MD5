@@ -1,4 +1,4 @@
-1e191fd2acb83301019cabaa7379fedc *DESCRIPTION
+d6fa0a75d470e615076fbd364d2894b6 *DESCRIPTION
 6ddd08c2b5ef4976ae6fa81439dae21e *NAMESPACE
 92e68259d6dd3e539816b7e847cd3b64 *R/adaptMetropGibbs.R
 ea039c90362f93f213841b8dddcab726 *R/bayesLMRef.R
@@ -20,6 +20,7 @@ a2f3fe88204c2be8b39b1a29a30323d2 *R/spMvLM.R
 497b111c2b379a1fe997c649c9c56fd4 *R/spPredict.R
 38ade0142eee34e127e6de0f8944c0de *R/spRecover.R
 2a7f9d047ab892edfb3dd1f7f1b1f3f9 *R/spSVC.R
+2e5414a6da3d5c5585f1880a8f38b89f *README.md
 1e03d714545401d1321a3d4c0b3c35aa *data/BEF.dat.tab.gz
 ebb5b7b5332a40fd7b96cd87eddc584f *data/FBC07.dat.tab.gz
 eae5c9da7f2de909cb5fbfc28ff19cf7 *data/FORMGMT.dat.tab.gz
@@ -33,6 +34,7 @@ fc1e01474aece5b483230d0ca4f7b988 *data/Zurich.dat.tab.gz
 21415f33a5cbc67bbb7f23e2f838ea38 *inst/CITATION
 4db649756f2f76ccbce6428475e94c2a *inst/ChangeLog
 c31f15e48d4789bf5954504137c6a05b *inst/NOTES
+dcf2e0035bdc480af2704fc536da3bec *inst/figures/spBayes-hex.png
 d16bcc410f632fb500366b0a36b70c5c *man/BEF.dat.Rd
 1367fe26a9fc4f816fc5593d48b30811 *man/FBC07.dat.Rd
 fd4f89c2abc2106c3f57751eb0c54938 *man/FORMGMT.dat.Rd
@@ -40,13 +42,14 @@ d17c1c785ff75aa0a3419e0d6ba7f2fc *man/NETemp.dat.Rd
 0c1e956267ed225d2654ebc42f90b82b *man/NYOzone.dat.Rd
 b94dc7da13b75d0da605e64d651cf81f *man/PM10.dat.Rd
 0390a31585213093705d9a55b45e5c7d *man/PM10.poly.Rd
-72ccb953d3ff0bf6c6fda5f8fb7c9506 *man/SVCMvData.dat.Rd
+eb8a3b282c309d77abcecf06886a7998 *man/SVCMvData.dat.Rd
 22c648b98621cfba8dbe9ea6c7b60e7f *man/WEF.dat.Rd
 651b16fc5e405284342490953a2f79f4 *man/Zurich.dat.Rd
 9f3ec8fd2aac553404533615090213ed *man/adaptMetropGibbs.Rd
 3c4d304819d9a54734b1815cbbd8ace3 *man/bayesGeostatExact.Rd
 285c56e8dbb2068e935ca375bec4ac34 *man/bayesLMConjugate.Rd
 542198c3969d380603d7ce1dc8109a38 *man/bayesLMRef.Rd
+dcf2e0035bdc480af2704fc536da3bec *man/figures/logo.png
 97c53a94a363a2b8bdc9cb2e4f78a35b *man/iDist.Rd
 8e47ecf9f4d244fac82aed14076dceca *man/mkMvX.Rd
 c00154c96cfc524bfaffe414c7681cea *man/mkSpCov.Rd
@@ -106,3 +109,8 @@ eb9efe0f2534b4923d46a3d0ec80285d *src/spSVCPredictMarg.cpp
 4eff7719beea91d855045fbd86ab9a0a *src/spSVCRecover.cpp
 398168dfeb6755461f3b0996ff2e6774 *src/util.cpp
 21e2f000852d196364d212dcaff92574 *src/util.h
+4eeccbe66a91109d1f01364f21af6ac2 *tests/testthat.R
+22aec8caee4b423201c474cf2652de2b *tests/testthat/helper-data.R
+a16069ecba4db939942fa6393ba98440 *tests/testthat/test-spGLM.R
+3211b3223d648bc04969f640275fbac9 *tests/testthat/test-spLM.R
+94851d439c62ec8196c5d73a67837ac8 *tests/testthat/test-utilities.R

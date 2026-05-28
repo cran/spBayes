@@ -49,7 +49,7 @@ p <- length(beta)
 q <- 3
 A <- matrix(0, q, q)
 A[lower.tri(A, T)] <- c(1, -1, 0, 1, 1, 0.1)
-K <- A%*%t(A)
+K <- A\%*\%t(A)
 K
 cov2cor(K)
 
@@ -74,4 +74,3 @@ SVCMvData <- data.frame(cbind(coords, y, X[,2:3], w.0, w.a, w.b))
 }
 
 \keyword{datasets}
-
